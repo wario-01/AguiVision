@@ -92,11 +92,20 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!supabase) return null;
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("full_name")
     .eq("id", data.user.id)
     .single();
+  if (profileError) {
+    // TEMPORAL: esto muestra el error real en pantalla en vez de ocultarlo,
+    // para diagnosticar por qué no se encuentra el nombre. Sacar después.
+    return {
+      id: data.user.id,
+      email: data.user.email ?? "",
+      full_name: `[DEBUG: ${profileError.message} | code:${profileError.code}]`,
+    };
+  }
   return {
     id: data.user.id,
     email: data.user.email ?? "",
