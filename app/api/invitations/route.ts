@@ -35,10 +35,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Equipo no encontrado" }, { status: 404 });
   }
 
+  let playerId: string | null = null;
+  const playerName = typeof body.playerName === "string" ? body.playerName.trim() : "";
+  if (playerName) {
+    const { data: existingPlayer } = await supabase
+      .from("players")
+      .select("id")
+      .eq("team_id", team.id)
+      .eq("full_name", playerName)
+      .maybeSingle();
+
+    if (existingPlayer) {
+      playerId = existingPlayer.id;
+    } else {
+      const { data: newPlayer, error: playerError } = await supabase
+        .from("players")
+        .insert({ team_id: team.id, full_name: playerName })
+        .select("id")
+        .single();
+      if (playerError || !newPlayer) {
+        return NextResponse.json({ error: "No tenés permiso para agregar jugadores a este equipo" }, { status: 403 });
+      }
+      playerId = newPlayer.id;
+    }
+  }
+
   const { error } = await supabase.from("team_invitations").insert({
     team_id: team.id,
     email: body.email.trim().toLowerCase(),
     role: body.role,
+    player_id: playerId,
   });
 
   if (error) {

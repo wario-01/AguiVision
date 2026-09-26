@@ -9,6 +9,7 @@ export type Team = {
   age_category: string;
   active: boolean;
   role?: Role; // presente cuando viene de getMyTeams()
+  player_id?: string | null; // el jugador vinculado, si el rol es player/parent
 };
 
 export type CurrentUser = {
@@ -117,13 +118,13 @@ export async function getMyTeams(): Promise<Team[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("role, teams(id, slug, name, age_category, active)")
+    .select("role, player_id, teams(id, slug, name, age_category, active)")
     .eq("profile_id", userData.user.id);
 
   if (error || !data) return [];
 
   return data
-    .map((row: any) => (row.teams ? { ...row.teams, role: row.role } : null))
+    .map((row: any) => (row.teams ? { ...row.teams, role: row.role, player_id: row.player_id } : null))
     .filter(Boolean) as Team[];
 }
 
@@ -155,11 +156,20 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
     const supabase = await createClient();
     if (!team || !supabase) return [];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("highlights")
       .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id)")
       .eq("matches.team_id", team.id)
       .order("created_at", { ascending: false });
+
+    // Un jugador o madre/padre vinculado a un jugador específico solo ve
+    // los highlights de ESE jugador. Entrenadores y asistentes ven todos.
+    if (team.role === "player" || team.role === "parent") {
+      if (!team.player_id) return []; // sin jugador vinculado todavía
+      query = query.eq("player_id", team.player_id);
+    }
+
+    const { data, error } = await query;
 
     if (error || !data) return [];
 
@@ -221,12 +231,15 @@ export type TeamMember = {
   role: Role;
   full_name: string;
   email: string;
+  player_name?: string | null;
 };
 
 export type PendingInvitation = {
   id: string;
   email: string;
   role: Role;
+  player_id?: string | null;
+  player_name?: string | null;
 };
 
 export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
@@ -237,7 +250,7 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("id, profile_id, role, profiles(full_name, email)")
+    .select("id, profile_id, role, profiles(full_name, email), players(full_name)")
     .eq("team_id", team.id);
 
   if (error || !data) return [];
@@ -247,6 +260,7 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
     role: row.role,
     full_name: row.profiles?.full_name ?? "—",
     email: row.profiles?.email ?? "—",
+    player_name: row.players?.full_name ?? null,
   }));
 }
 
@@ -258,9 +272,33 @@ export async function getPendingInvitations(teamSlug: string): Promise<PendingIn
 
   const { data, error } = await supabase
     .from("team_invitations")
-    .select("id, email, role")
+    .select("id, email, role, player_id, players(full_name)")
     .eq("team_id", team.id);
 
   if (error || !data) return [];
-  return data as PendingInvitation[];
+  return data.map((row: any) => ({
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    player_id: row.player_id,
+    player_name: row.players?.full_name ?? null,
+  }));
+}
+
+export type Player = { id: string; full_name: string };
+
+export async function getPlayers(teamSlug: string): Promise<Player[]> {
+  if (!isSupabaseConfigured) return [];
+  const team = await getTeamBySlug(teamSlug);
+  const supabase = await createClient();
+  if (!team || !supabase) return [];
+
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, full_name")
+    .eq("team_id", team.id)
+    .order("full_name");
+
+  if (error || !data) return [];
+  return data as Player[];
 }

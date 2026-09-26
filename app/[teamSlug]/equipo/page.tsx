@@ -3,7 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import InviteForm from "@/components/InviteForm";
 import RemoveMemberButton from "@/components/RemoveMemberButton";
 import CancelInvitationButton from "@/components/CancelInvitationButton";
-import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser } from "@/lib/data";
+import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
   coach: "Entrenador",
@@ -19,6 +19,7 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
   const canInvite = team.role === "coach" || team.role === "assistant";
   const members = await getTeamMembers(team.slug);
   const invitations = canInvite ? await getPendingInvitations(team.slug) : [];
+  const players = canInvite ? await getPlayers(team.slug) : [];
   const currentUser = await getCurrentUser();
 
   return (
@@ -31,7 +32,7 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
         {canInvite && (
           <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
             <div className="font-display text-base font-semibold mb-4">Invitar a alguien</div>
-            <InviteForm teamSlug={team.slug} />
+            <InviteForm teamSlug={team.slug} players={players} />
             <div className="text-xs text-muted mt-3">
               Se vincula solo la primera vez que esa persona inicie sesión con ese email — no hace falta nada más.
             </div>
@@ -53,7 +54,10 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   <div className="text-sm font-bold truncate">
                     {m.full_name} {isSelf && <span className="text-muted font-medium">(vos)</span>}
                   </div>
-                  <div className="text-xs text-muted truncate">{m.email}</div>
+                  <div className="text-xs text-muted truncate">
+                    {m.email}
+                    {m.player_name && <span className="text-gold"> · {m.player_name}</span>}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
                   <span className="text-xs font-bold text-gold">{ROLE_LABELS[m.role] ?? m.role}</span>
@@ -80,7 +84,10 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                     i < invitations.length - 1 ? "border-b border-border" : ""
                   }`}
                 >
-                  <div className="text-sm font-semibold text-muted truncate min-w-0">{inv.email}</div>
+                  <div className="text-sm font-semibold text-muted truncate min-w-0">
+                    {inv.email}
+                    {inv.player_name && <span className="text-gold"> · {inv.player_name}</span>}
+                  </div>
                   <div className="flex items-center gap-4 shrink-0">
                     <span className="text-xs font-bold text-muted">{ROLE_LABELS[inv.role] ?? inv.role}</span>
                     <CancelInvitationButton invitationId={inv.id} />

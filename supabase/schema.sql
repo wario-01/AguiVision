@@ -210,6 +210,7 @@ create table team_invitations (
   team_id uuid not null references teams(id) on delete cascade,
   email text not null,
   role team_role not null,
+  player_id uuid references players(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (team_id, email, role)
 );
@@ -250,8 +251,8 @@ begin
   insert into public.profiles (id, full_name, email)
   values (new.id, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)), new.email);
 
-  insert into public.team_members (team_id, profile_id, role)
-  select ti.team_id, new.id, ti.role
+  insert into public.team_members (team_id, profile_id, role, player_id)
+  select ti.team_id, new.id, ti.role, ti.player_id
   from public.team_invitations ti
   where ti.email = new.email
   on conflict do nothing;

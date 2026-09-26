@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Player } from "@/lib/data";
 
 const ROLES = [
   { value: "coach", label: "Entrenador" },
@@ -10,12 +11,15 @@ const ROLES = [
   { value: "parent", label: "Madre/Padre" },
 ];
 
-export default function InviteForm({ teamSlug }: { teamSlug: string }) {
+export default function InviteForm({ teamSlug, players }: { teamSlug: string; players: Player[] }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("parent");
+  const [playerName, setPlayerName] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState("");
   const router = useRouter();
+
+  const needsPlayer = role === "player" || role === "parent";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,11 +29,17 @@ export default function InviteForm({ teamSlug }: { teamSlug: string }) {
       const res = await fetch("/api/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamSlug, email, role }),
+        body: JSON.stringify({
+          teamSlug,
+          email,
+          role,
+          playerName: needsPlayer && playerName ? playerName : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo invitar");
       setEmail("");
+      setPlayerName("");
       setStatus("idle");
       router.refresh();
     } catch (err: any) {
@@ -65,6 +75,23 @@ export default function InviteForm({ teamSlug }: { teamSlug: string }) {
           ))}
         </select>
       </div>
+      {needsPlayer && (
+        <div className="min-w-[180px]">
+          <label className="block text-xs font-bold text-muted mb-1.5">Jugador</label>
+          <input
+            list="players-list"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Ej: Mateo Contreras"
+            className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold"
+          />
+          <datalist id="players-list">
+            {players.map((p) => (
+              <option key={p.id} value={p.full_name} />
+            ))}
+          </datalist>
+        </div>
+      )}
       <button
         type="submit"
         disabled={status === "saving"}
@@ -72,6 +99,12 @@ export default function InviteForm({ teamSlug }: { teamSlug: string }) {
       >
         {status === "saving" ? "Invitando..." : "Invitar"}
       </button>
+      {needsPlayer && (
+        <div className="w-full text-xs text-muted">
+          Escribí el nombre de un jugador ya cargado (aparece mientras escribís) o uno nuevo — si es nuevo, se
+          crea solo. Si lo dejás vacío, esa persona no queda vinculada a ningún jugador en particular.
+        </div>
+      )}
       {message && <div className="w-full text-sm text-red">{message}</div>}
     </form>
   );
