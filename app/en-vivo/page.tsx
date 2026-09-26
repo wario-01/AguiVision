@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { getLiveStreams } from "@/lib/data";
+import { getLiveStreams, getMyTeams } from "@/lib/data";
 
 export default async function EnVivoPage() {
   const streams = await getLiveStreams();
+  const teams = await getMyTeams();
+  const backHref = teams.length > 0 ? `/${teams[0].slug}` : "/";
 
   return (
     <div className="min-h-screen bg-bg p-11 max-w-4xl mx-auto">
+      <Link href={backHref} className="text-sm text-muted font-semibold mb-5 inline-block">
+        ← Volver a Inicio
+      </Link>
       <div className="font-display text-2xl font-bold mb-1">En vivo ahora</div>
       <div className="text-sm text-muted mb-8">
         {streams.length > 0
