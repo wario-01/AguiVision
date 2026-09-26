@@ -103,7 +103,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     return {
       id: data.user.id,
       email: data.user.email ?? "",
-      full_name: `[DEBUG: ${profileError.message} | code:${profileError.code}]`,
+      full_name: `[DEBUG sesión id:${data.user.id} email:${data.user.email} | error:${profileError.message}]`,
     };
   }
   return {
