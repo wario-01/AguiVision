@@ -6,14 +6,15 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
-// Devuelve null si Supabase todavía no está configurado — el resto de la
-// app usa esto como señal para caer en los datos de ejemplo.
 export async function createClient() {
   if (!url || !anonKey) return null;
 
   const cookieStore = await cookies();
 
   return createServerClient(url, anonKey, {
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();
