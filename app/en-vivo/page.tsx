@@ -7,7 +7,7 @@ export default async function EnVivoPage() {
   const backHref = teams.length > 0 ? `/${teams[0].slug}` : "/";
 
   return (
-    <div className="min-h-screen bg-bg p-11 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-bg px-5 py-8 md:p-11 max-w-4xl mx-auto">
       <Link href={backHref} className="text-sm text-muted font-semibold mb-5 inline-block">
         ← Volver a Inicio
       </Link>
@@ -18,7 +18,7 @@ export default async function EnVivoPage() {
           : "No hay transmisiones activas en este momento"}
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {streams.map((s) => (
           <Link
             key={s.id}

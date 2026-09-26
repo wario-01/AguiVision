@@ -14,14 +14,14 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
-      <div className="flex-grow overflow-y-auto p-11">
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11">
         <div className="mb-7">
           <div className="font-display text-2xl font-bold">Hola, {firstName}</div>
           <div className="text-muted text-sm mt-0.5">{team.name} · temporada 2026</div>
         </div>
 
         <div className="font-display text-lg font-semibold mb-3.5">Highlights recientes</div>
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {highlights.map((h) => (
             <div key={h.id}>
               <div className="w-full h-[110px] rounded-xl bg-panel2 border border-borderMuted mb-2" />
@@ -32,7 +32,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             </div>
           ))}
           {highlights.length === 0 && (
-            <div className="text-sm text-muted">Todavía no hay highlights para este equipo.</div>
+            <div className="text-sm text-muted col-span-2 md:col-span-4">Todavía no hay highlights para este equipo.</div>
           )}
         </div>
 
@@ -42,7 +42,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             <a
               href={`/${team.slug}/partidos/${m.id}`}
               key={m.id}
-              className={`grid grid-cols-[1fr_140px_120px] items-center gap-4 px-5 py-3 hover:bg-panel2 ${
+              className={`flex flex-col gap-1.5 md:grid md:grid-cols-[1fr_140px_120px] md:items-center md:gap-4 px-5 py-3 hover:bg-panel2 ${
                 i < matches.length - 1 ? "border-b border-border" : ""
               }`}
             >

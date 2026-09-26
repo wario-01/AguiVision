@@ -11,11 +11,11 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
-      <div className="flex-grow overflow-y-auto p-11">
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11">
         <div className="font-display text-2xl font-bold mb-1">Highlights</div>
         <div className="text-sm text-muted mb-7">{team.name}</div>
 
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {highlights.map((h) => (
             <a href={`/${team.slug}/highlights/${h.id}`} key={h.id}>
               <div className="w-full h-[110px] rounded-xl bg-panel2 border border-borderMuted relative mb-2 flex items-center justify-center">
@@ -42,7 +42,7 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
 
         {/* Evaluación del jugador — roadmap V2, no funcional todavía */}
         <div className="border border-dashed border-borderMuted rounded-2xl p-6 bg-sidebar max-w-2xl">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
             <div className="flex items-center gap-2.5">
               <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#8CA0C7" strokeWidth={2}>
                 <rect x="5" y="4" width="14" height="17" rx="2" />

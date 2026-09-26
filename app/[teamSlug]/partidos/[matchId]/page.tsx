@@ -21,7 +21,7 @@ export default async function MatchPage({
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
-      <div className="flex-grow overflow-y-auto p-11 max-w-4xl">
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-4xl">
         <div className="font-display text-2xl font-bold mb-1">
           {team.name} vs {match.opponent}
         </div>

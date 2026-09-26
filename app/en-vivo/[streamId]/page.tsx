@@ -9,7 +9,7 @@ export default async function WatchStreamPage({ params }: { params: { streamId: 
   const otherStreams = (await getLiveStreams()).filter((s) => s.id !== stream.id);
 
   return (
-    <div className="min-h-screen bg-bg p-11 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-bg px-5 py-8 md:p-11 max-w-5xl mx-auto">
       <Link href="/en-vivo" className="text-sm text-muted font-semibold mb-5 inline-block">
         ← Todas las transmisiones
       </Link>
@@ -32,7 +32,7 @@ export default async function WatchStreamPage({ params }: { params: { streamId: 
       {otherStreams.length > 0 && (
         <>
           <div className="font-display text-base font-semibold mb-3">Otras transmisiones en vivo</div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {otherStreams.map((s) => (
               <Link
                 key={s.id}

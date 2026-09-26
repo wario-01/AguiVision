@@ -7,3 +7,11 @@ body {
   background-color: #0a1830;
   color: #f5efd6;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

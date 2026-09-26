@@ -23,8 +23,8 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
 
   return (
     <div className="flex h-screen w-full">
-      <Sidebar currentTeamSlug={team.slug} active="inicio" />
-      <div className="flex-grow overflow-y-auto p-11 max-w-2xl">
+      <Sidebar currentTeamSlug={team.slug} active="equipo" />
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
         <div className="font-display text-2xl font-bold mb-1">Equipo</div>
         <div className="text-sm text-muted mb-7">{team.name}</div>
 
@@ -45,17 +45,17 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
             return (
               <div
                 key={m.id}
-                className={`flex items-center justify-between px-5 py-3 ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 ${
                   i < members.length - 1 ? "border-b border-border" : ""
                 }`}
               >
-                <div>
-                  <div className="text-sm font-bold">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold truncate">
                     {m.full_name} {isSelf && <span className="text-muted font-medium">(vos)</span>}
                   </div>
-                  <div className="text-xs text-muted">{m.email}</div>
+                  <div className="text-xs text-muted truncate">{m.email}</div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 shrink-0">
                   <span className="text-xs font-bold text-gold">{ROLE_LABELS[m.role] ?? m.role}</span>
                   {(canInvite || isSelf) && (
                     <RemoveMemberButton memberId={m.id} memberName={m.full_name} isSelf={isSelf} />
@@ -76,12 +76,12 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
               {invitations.map((inv, i) => (
                 <div
                   key={inv.id}
-                  className={`flex items-center justify-between px-5 py-3 ${
+                  className={`flex items-center justify-between gap-3 px-5 py-3 ${
                     i < invitations.length - 1 ? "border-b border-border" : ""
                   }`}
                 >
-                  <div className="text-sm font-semibold text-muted">{inv.email}</div>
-                  <div className="flex items-center gap-4">
+                  <div className="text-sm font-semibold text-muted truncate min-w-0">{inv.email}</div>
+                  <div className="flex items-center gap-4 shrink-0">
                     <span className="text-xs font-bold text-muted">{ROLE_LABELS[inv.role] ?? inv.role}</span>
                     <CancelInvitationButton invitationId={inv.id} />
                   </div>

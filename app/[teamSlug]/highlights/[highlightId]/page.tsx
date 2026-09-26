@@ -18,7 +18,7 @@ export default async function HighlightPage({
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
-      <div className="flex-grow overflow-y-auto p-11 max-w-3xl">
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-3xl">
         <div className="font-display text-2xl font-bold mb-1">
           {highlight.label} · {highlight.player_name}
         </div>
