@@ -4,12 +4,15 @@ import { NextResponse, type NextRequest } from "next/server";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Rutas que no piden login: la página de login misma y el callback del
+// enlace mágico. Todo lo demás requiere sesión cuando Supabase está
+// configurado; si no está configurado, la app sigue en modo demo sin login.
 const PUBLIC_PATHS = ["/login", "/auth/callback"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  if (!url || !anonKey) return response;
+  if (!url || !anonKey) return response; // modo demo: sin Supabase, sin login
 
   try {
     const supabase = createServerClient(url, anonKey, {
@@ -41,6 +44,10 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch (err) {
+    // Si algo falla acá (clave mal copiada, URL con espacios, etc.), dejamos
+    // pasar la request en vez de romper toda la app, y lo dejamos en los
+    // logs de Vercel (Project → Deployments → el deployment → "Logs") para
+    // poder diagnosticarlo.
     console.error("middleware error:", err);
     return response;
   }

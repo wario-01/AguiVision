@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { mux, isMuxConfigured } from "@/lib/mux";
 
 // POST /api/upload
-// body: { teamSlug, opponent, fileName }
+// body: { teamSlug, opponent }
 //
-// Lo que este endpoint hace hoy:
-//   1) valida la entrada
-//   2) confirma que quien llama esté logueado y sea coach/assistant de ese equipo
-//      (las políticas RLS de Supabase también lo exigen del lado de la base de datos)
-//   3) crea la fila en `matches` con video_status='uploading'
-// Lo que falta conectar (elegir Mux o Cloudflare Stream, ver el roadmap de costos):
-//   4) pedirle al proveedor de video una "direct upload URL" y devolverla al cliente
-//      - Mux: POST https://api.mux.com/video/v1/uploads
-//      - Cloudflare Stream: POST /accounts/{id}/stream/direct_upload
-//   5) guardar el asset_id que devuelve el proveedor en matches.video_asset_id
+// 1) confirma que quien llama esté logueado y sea coach/assistant de ese equipo
+//    (las políticas RLS de Supabase también lo exigen del lado de la base de datos)
+// 2) crea la fila en `matches` con video_status='uploading'
+// 3) si Mux está conectado, le pide una URL de subida directa y la devuelve
+//    para que el navegador suba el archivo ahí mismo (el archivo nunca pasa
+//    por nuestro propio servidor)
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body?.teamSlug || !body?.opponent) {
@@ -48,17 +45,41 @@ export async function POST(req: Request) {
   }
 
   // insert respeta RLS: solo inserta si el usuario es coach/assistant de este equipo
-  const { error } = await supabase.from("matches").insert({
-    team_id: team.id,
-    opponent: body.opponent,
-    match_date: new Date().toISOString(),
-    video_status: "uploading",
-  });
+  const { data: match, error: insertError } = await supabase
+    .from("matches")
+    .insert({
+      team_id: team.id,
+      opponent: body.opponent,
+      match_date: new Date().toISOString(),
+      video_status: "uploading",
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (insertError || !match) {
     return NextResponse.json({ error: "No tenés permiso para subir video a este equipo" }, { status: 403 });
   }
 
-  // TODO: reemplazar por la URL de subida directa real del proveedor de video.
-  return NextResponse.json({ uploadUrl: null, note: "Partido creado. Proveedor de video no conectado todavía." });
+  if (!isMuxConfigured || !mux) {
+    return NextResponse.json({
+      uploadUrl: null,
+      matchId: match.id,
+      note: "Partido creado. Falta conectar Mux (variables MUX_TOKEN_ID / MUX_TOKEN_SECRET).",
+    });
+  }
+
+  // El "passthrough" es cómo le decimos a Mux "este video es de este partido" —
+  // vuelve intacto en el evento del webhook cuando el video esté listo.
+  const upload = await mux.video.uploads.create({
+    cors_origin: process.env.NEXT_PUBLIC_APP_URL || "*",
+    new_asset_settings: {
+      playback_policy: ["public"],
+      video_quality: "basic",
+      passthrough: `match:${match.id}`,
+    },
+  });
+
+  await supabase.from("matches").update({ video_asset_id: upload.id }).eq("id", match.id);
+
+  return NextResponse.json({ uploadUrl: upload.url, matchId: match.id });
 }

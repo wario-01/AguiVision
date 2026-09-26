@@ -39,9 +39,10 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
         <div className="font-display text-lg font-semibold mb-3.5">Partidos</div>
         <div className="bg-panel border border-border rounded-2xl overflow-hidden">
           {matches.map((m, i) => (
-            <div
+            <a
+              href={`/${team.slug}/partidos/${m.id}`}
               key={m.id}
-              className={`grid grid-cols-[1fr_140px_120px] items-center gap-4 px-5 py-3 ${
+              className={`grid grid-cols-[1fr_140px_120px] items-center gap-4 px-5 py-3 hover:bg-panel2 ${
                 i < matches.length - 1 ? "border-b border-border" : ""
               }`}
             >
@@ -56,7 +57,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
               >
                 {m.video_status === "ready" ? "Analizado" : "Procesando"}
               </span>
-            </div>
+            </a>
           ))}
           {matches.length === 0 && (
             <div className="px-5 py-4 text-sm text-muted">Todavía no hay partidos cargados.</div>

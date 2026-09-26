@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
   const params = useSearchParams();
@@ -24,6 +25,7 @@ function LoginForm() {
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        data: fullName ? { full_name: fullName } : undefined,
       },
     });
     if (error) {
@@ -53,6 +55,15 @@ function LoginForm() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-6">
+            <label className="block text-xs font-bold text-muted mb-1.5">Tu nombre</label>
+            <input
+              type="text"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Ej: Diego Castillo"
+              className="w-full box-border bg-bg border border-border rounded-lg px-3.5 py-2.5 text-sm font-semibold text-text mb-4"
+            />
             <label className="block text-xs font-bold text-muted mb-1.5">Tu correo</label>
             <input
               type="email"

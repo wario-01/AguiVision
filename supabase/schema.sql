@@ -164,14 +164,66 @@ create policy "ver evaluaciones de mis equipos" on player_evaluations for select
     where tm.profile_id = auth.uid()
   ));
 
--- ============ AUTO-CREAR PERFIL AL REGISTRARSE ============
--- Cuando alguien se registra (Supabase Auth crea la fila en auth.users),
--- este trigger crea automáticamente su fila en `profiles`.
+-- ============ AGREGADO: crear highlights y jugadores (clips por jugada) ============
+-- Necesario para que un entrenador pueda marcar highlights (goles, jugadas
+-- ofensivas/defensivas, etc.) y que la app cree el jugador automáticamente
+-- la primera vez que se lo nombra, sin una pantalla aparte de "cargar plantel".
+create policy "entrenadores crean highlights de su equipo" on highlights for insert
+  with check (match_id in (
+    select m.id from matches m
+    join team_members tm on tm.team_id = m.team_id
+    where tm.profile_id = auth.uid() and tm.role in ('coach', 'assistant')
+  ));
+
+create policy "entrenadores gestionan jugadores de su equipo" on players for all
+  using (team_id in (select team_id from team_members where profile_id = auth.uid() and role in ('coach', 'assistant')));
+
+-- ============ INVITACIONES (reemplaza el "vincular a mano con SQL") ============
+-- Un entrenador invita por email + rol, sin que esa persona necesite existir
+-- todavía. Cuando esa persona entra por primera vez a la app, el trigger de
+-- abajo la vincula sola al equipo — cero SQL manual de acá en más.
+create table team_invitations (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  email text not null,
+  role team_role not null,
+  created_at timestamptz not null default now(),
+  unique (team_id, email, role)
+);
+
+alter table team_invitations enable row level security;
+
+create policy "entrenadores ven invitaciones de su equipo" on team_invitations for select
+  using (team_id in (select team_id from team_members where profile_id = auth.uid() and role in ('coach', 'assistant')));
+
+create policy "entrenadores crean invitaciones de su equipo" on team_invitations for insert
+  with check (team_id in (select team_id from team_members where profile_id = auth.uid() and role in ('coach', 'assistant')));
+
+create policy "entrenadores borran invitaciones de su equipo" on team_invitations for delete
+  using (team_id in (select team_id from team_members where profile_id = auth.uid() and role in ('coach', 'assistant')));
+
+-- ============ AUTO-CREAR PERFIL Y VINCULAR INVITACIONES AL REGISTRARSE ============
+-- Cuando alguien se registra (Supabase Auth crea la fila en auth.users):
+--   1) se crea su perfil (guardando también el email, para poder listar
+--      miembros del equipo sin tocar la tabla interna auth.users)
+--   2) se buscan invitaciones pendientes con ese mismo email y se convierten
+--      en membresías reales (team_members) automáticamente
+alter table profiles add column if not exists email text;
+
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)));
+  insert into public.profiles (id, full_name, email)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)), new.email);
+
+  insert into public.team_members (team_id, profile_id, role)
+  select ti.team_id, new.id, ti.role
+  from public.team_invitations ti
+  where ti.email = new.email
+  on conflict do nothing;
+
+  delete from public.team_invitations where email = new.email;
+
   return new;
 end;
 $$ language plpgsql security definer set search_path = public;
@@ -180,12 +232,8 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ============ VINCULAR AL PRIMER ENTRENADOR (manual, una sola vez) ============
--- Después de registrarte en la app con tu email, corré esto para quedar
--- como entrenador de los dos equipos piloto. Reemplazá el email.
---
--- insert into team_members (team_id, profile_id, role)
--- select t.id, p.id, 'coach'
--- from teams t, profiles p
--- join auth.users u on u.id = p.id
--- where t.slug in ('u11', 'u14') and u.email = 'tu-email@ejemplo.com';
+-- ============ PARA VOS, EL PRIMER ENTRENADOR (una sola vez, ya no hace falta) ============
+-- Si ya te vinculaste a mano con el bloque anterior, no hace falta que hagas
+-- nada más — de acá en adelante, para cualquier persona nueva (otro
+-- entrenador, un padre, etc.) se usa la pantalla "Equipo" dentro de la app,
+-- no SQL.

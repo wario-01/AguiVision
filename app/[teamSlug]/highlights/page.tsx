@@ -17,19 +17,23 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
 
         <div className="grid grid-cols-4 gap-4 mb-8">
           {highlights.map((h) => (
-            <div key={h.id}>
+            <a href={`/${team.slug}/highlights/${h.id}`} key={h.id}>
               <div className="w-full h-[110px] rounded-xl bg-panel2 border border-borderMuted relative mb-2 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" width="26" height="26">
-                  <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)" />
-                  <path d="M10 8l6 4-6 4z" fill="#F5EFD6" />
-                </svg>
+                {h.clip_playback_id ? (
+                  <svg viewBox="0 0 24 24" width="26" height="26">
+                    <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)" />
+                    <path d="M10 8l6 4-6 4z" fill="#F5EFD6" />
+                  </svg>
+                ) : (
+                  <span className="text-[10px] font-bold text-muted">Procesando...</span>
+                )}
                 <span className="absolute bottom-1.5 right-2 bg-black/60 text-text text-[10px] font-bold px-1.5 py-0.5 rounded">
                   {h.duration}
                 </span>
               </div>
               <div className="text-sm font-bold">{h.label} · {h.player_name}</div>
               <div className="text-xs text-muted">min {h.minute}</div>
-            </div>
+            </a>
           ))}
           {highlights.length === 0 && (
             <div className="text-sm text-muted">Todavía no hay highlights para este equipo.</div>

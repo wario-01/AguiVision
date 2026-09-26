@@ -24,6 +24,7 @@ export type Match = {
   match_date: string;
   duration_seconds: number | null;
   video_status: "none" | "uploading" | "processing" | "ready";
+  video_playback_id?: string | null;
 };
 
 export type Highlight = {
@@ -33,6 +34,7 @@ export type Highlight = {
   label: string;
   minute: number;
   duration: string;
+  clip_playback_id?: string | null;
 };
 
 export type LiveStream = {
@@ -148,9 +150,34 @@ export async function getMatches(teamSlug: string): Promise<Match[]> {
 }
 
 export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
-  // TODO: reemplazar por una consulta real a `highlights` (join con matches
-  // del equipo) cuando haya video procesado — hoy no hay filas reales todavía.
-  if (isSupabaseConfigured) return [];
+  if (isSupabaseConfigured) {
+    const team = await getTeamBySlug(teamSlug);
+    const supabase = await createClient();
+    if (!team || !supabase) return [];
+
+    const { data, error } = await supabase
+      .from("highlights")
+      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id)")
+      .eq("matches.team_id", team.id)
+      .order("created_at", { ascending: false });
+
+    if (error || !data) return [];
+
+    return data.map((row: any) => {
+      const durationSeconds = Math.max(0, row.end_seconds - row.start_seconds);
+      const mm = Math.floor(durationSeconds / 60);
+      const ss = String(Math.round(durationSeconds % 60)).padStart(2, "0");
+      return {
+        id: row.id,
+        match_id: row.match_id,
+        player_name: row.players?.full_name ?? "Jugador",
+        label: row.label,
+        minute: Math.floor(row.start_seconds / 60),
+        duration: `${mm}:${ss}`,
+        clip_playback_id: row.clip_playback_id,
+      };
+    });
+  }
   return SEED_HIGHLIGHTS[teamSlug] ?? [];
 }
 
@@ -184,4 +211,52 @@ export async function getLiveStreams(): Promise<LiveStream[]> {
 export async function getLiveStreamById(id: string): Promise<LiveStream | null> {
   const streams = await getLiveStreams();
   return streams.find((s) => s.id === id) ?? null;
+}
+
+// ---------- Miembros del equipo e invitaciones ----------
+
+export type TeamMember = {
+  role: Role;
+  full_name: string;
+  email: string;
+};
+
+export type PendingInvitation = {
+  id: string;
+  email: string;
+  role: Role;
+};
+
+export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
+  if (!isSupabaseConfigured) return [];
+  const team = await getTeamBySlug(teamSlug);
+  const supabase = await createClient();
+  if (!team || !supabase) return [];
+
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("role, profiles(full_name, email)")
+    .eq("team_id", team.id);
+
+  if (error || !data) return [];
+  return data.map((row: any) => ({
+    role: row.role,
+    full_name: row.profiles?.full_name ?? "—",
+    email: row.profiles?.email ?? "—",
+  }));
+}
+
+export async function getPendingInvitations(teamSlug: string): Promise<PendingInvitation[]> {
+  if (!isSupabaseConfigured) return [];
+  const team = await getTeamBySlug(teamSlug);
+  const supabase = await createClient();
+  if (!team || !supabase) return [];
+
+  const { data, error } = await supabase
+    .from("team_invitations")
+    .select("id, email, role")
+    .eq("team_id", team.id);
+
+  if (error || !data) return [];
+  return data as PendingInvitation[];
 }

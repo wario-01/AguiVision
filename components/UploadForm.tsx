@@ -1,36 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import * as UpChunk from "@mux/upchunk";
 
 export default function UploadForm({ teamSlug }: { teamSlug: string }) {
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [opponent, setOpponent] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!fileName) {
+    if (!file) {
       setMessage("Elegí un archivo de video primero.");
       return;
     }
     setStatus("uploading");
     setMessage("");
+    setProgress(0);
+
     try {
-      // 1) Pide una URL de subida directa al backend (esto crea el registro
-      //    del partido y, en el proveedor de video, un "direct upload").
+      // 1) crea el partido y pide una URL de subida directa a Mux
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamSlug, opponent, fileName }),
+        body: JSON.stringify({ teamSlug, opponent }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo iniciar la subida");
 
-      // 2) TODO: cuando esté conectado Mux/Cloudflare, acá se sube el
-      //    archivo real con fetch(data.uploadUrl, { method: 'PUT', body: file }).
-      setStatus("done");
-      setMessage("Backend listo para recibir el archivo (falta conectar el proveedor de video).");
+      if (!data.uploadUrl) {
+        // Mux todavía no está conectado — el partido igual quedó creado
+        setStatus("done");
+        setMessage(data.note ?? "Partido creado (falta conectar el proveedor de video).");
+        return;
+      }
+
+      // 2) sube el archivo directo a Mux, en pedazos, con reintentos automáticos
+      const upload = UpChunk.createUpload({ endpoint: data.uploadUrl, file });
+
+      upload.on("progress", (evt: any) => setProgress(Math.round(evt.detail)));
+
+      upload.on("success", () => {
+        setStatus("done");
+        setProgress(100);
+        setMessage("Video subido. Mux lo está procesando — el partido va a pasar a \"Analizado\" solo, en unos minutos.");
+      });
+
+      upload.on("error", (evt: any) => {
+        setStatus("error");
+        setMessage(evt.detail?.message ?? "Error al subir el archivo a Mux");
+      });
     } catch (err: any) {
       setStatus("error");
       setMessage(err.message ?? "Ocurrió un error");
@@ -48,12 +69,12 @@ export default function UploadForm({ teamSlug }: { teamSlug: string }) {
         <div className="text-sm font-bold text-center">Arrastrá el video del partido</div>
         <div className="text-xs text-muted text-center">o seleccioná un archivo · MP4, MOV hasta 4 GB</div>
         <label className="mt-1 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold cursor-pointer">
-          {fileName ?? "Elegir archivo"}
+          {file?.name ?? "Elegir archivo"}
           <input
             type="file"
             accept="video/*"
             className="hidden"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
       </div>
@@ -66,6 +87,15 @@ export default function UploadForm({ teamSlug }: { teamSlug: string }) {
         placeholder="Ej: Halcones"
         className="w-full box-border bg-bg border border-border rounded-lg px-3.5 py-2.5 text-sm font-semibold mb-5"
       />
+
+      {status === "uploading" && (
+        <div className="mb-5">
+          <div className="w-full h-2 rounded-full bg-bg overflow-hidden">
+            <div className="h-full bg-gold rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="text-xs text-muted mt-1.5">{progress}%</div>
+        </div>
+      )}
 
       <button
         type="submit"
