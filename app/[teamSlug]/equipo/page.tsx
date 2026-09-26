@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import InviteForm from "@/components/InviteForm";
-import { getTeamBySlug, getTeamMembers, getPendingInvitations } from "@/lib/data";
+import RemoveMemberButton from "@/components/RemoveMemberButton";
+import CancelInvitationButton from "@/components/CancelInvitationButton";
+import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
   coach: "Entrenador",
@@ -17,6 +19,7 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
   const canInvite = team.role === "coach" || team.role === "assistant";
   const members = await getTeamMembers(team.slug);
   const invitations = canInvite ? await getPendingInvitations(team.slug) : [];
+  const currentUser = await getCurrentUser();
 
   return (
     <div className="flex h-screen w-full">
@@ -37,20 +40,30 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
 
         <div className="font-display text-lg font-semibold mb-3">Miembros</div>
         <div className="bg-panel border border-border rounded-2xl overflow-hidden mb-8">
-          {members.map((m, i) => (
-            <div
-              key={m.email + m.role}
-              className={`flex items-center justify-between px-5 py-3 ${
-                i < members.length - 1 ? "border-b border-border" : ""
-              }`}
-            >
-              <div>
-                <div className="text-sm font-bold">{m.full_name}</div>
-                <div className="text-xs text-muted">{m.email}</div>
+          {members.map((m, i) => {
+            const isSelf = m.profile_id === currentUser?.id;
+            return (
+              <div
+                key={m.id}
+                className={`flex items-center justify-between px-5 py-3 ${
+                  i < members.length - 1 ? "border-b border-border" : ""
+                }`}
+              >
+                <div>
+                  <div className="text-sm font-bold">
+                    {m.full_name} {isSelf && <span className="text-muted font-medium">(vos)</span>}
+                  </div>
+                  <div className="text-xs text-muted">{m.email}</div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-bold text-gold">{ROLE_LABELS[m.role] ?? m.role}</span>
+                  {(canInvite || isSelf) && (
+                    <RemoveMemberButton memberId={m.id} memberName={m.full_name} isSelf={isSelf} />
+                  )}
+                </div>
               </div>
-              <span className="text-xs font-bold text-gold">{ROLE_LABELS[m.role] ?? m.role}</span>
-            </div>
-          ))}
+            );
+          })}
           {members.length === 0 && (
             <div className="px-5 py-4 text-sm text-muted">Todavía no hay miembros.</div>
           )}
@@ -68,7 +81,10 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   }`}
                 >
                   <div className="text-sm font-semibold text-muted">{inv.email}</div>
-                  <span className="text-xs font-bold text-muted">{ROLE_LABELS[inv.role] ?? inv.role}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-bold text-muted">{ROLE_LABELS[inv.role] ?? inv.role}</span>
+                    <CancelInvitationButton invitationId={inv.id} />
+                  </div>
                 </div>
               ))}
             </div>

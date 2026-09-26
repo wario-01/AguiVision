@@ -216,6 +216,8 @@ export async function getLiveStreamById(id: string): Promise<LiveStream | null> 
 // ---------- Miembros del equipo e invitaciones ----------
 
 export type TeamMember = {
+  id: string;
+  profile_id: string;
   role: Role;
   full_name: string;
   email: string;
@@ -235,11 +237,13 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("role, profiles(full_name, email)")
+    .select("id, profile_id, role, profiles(full_name, email)")
     .eq("team_id", team.id);
 
   if (error || !data) return [];
   return data.map((row: any) => ({
+    id: row.id,
+    profile_id: row.profile_id,
     role: row.role,
     full_name: row.profiles?.full_name ?? "—",
     email: row.profiles?.email ?? "—",

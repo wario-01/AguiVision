@@ -129,8 +129,17 @@ alter table team_members enable row level security;
 -- equipos donde aparece en team_members. Los entrenadores además pueden
 -- crear/editar partidos y highlights de sus propios equipos.
 
-create policy "ver mi propia membresía" on team_members for select
-  using (profile_id = auth.uid());
+-- Función auxiliar (evita la recursión de una política de team_members que
+-- necesita consultar team_members para saber a qué equipos pertenecés).
+create or replace function public.is_team_member(check_team_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from team_members where team_id = check_team_id and profile_id = auth.uid()
+  );
+$$ language sql security definer stable set search_path = public;
+
+create policy "ver miembros de mi equipo" on team_members for select
+  using (public.is_team_member(team_id));
 
 create policy "ver equipos donde participo" on teams for select
   using (id in (select team_id from team_members where profile_id = auth.uid()));
@@ -201,6 +210,17 @@ create policy "entrenadores crean invitaciones de su equipo" on team_invitations
 
 create policy "entrenadores borran invitaciones de su equipo" on team_invitations for delete
   using (team_id in (select team_id from team_members where profile_id = auth.uid() and role in ('coach', 'assistant')));
+
+create or replace function public.is_team_coach(check_team_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from team_members
+    where team_id = check_team_id and profile_id = auth.uid() and role in ('coach', 'assistant')
+  );
+$$ language sql security definer stable set search_path = public;
+
+create policy "entrenadores quitan miembros de su equipo" on team_members for delete
+  using (public.is_team_coach(team_id));
 
 -- ============ AUTO-CREAR PERFIL Y VINCULAR INVITACIONES AL REGISTRARSE ============
 -- Cuando alguien se registra (Supabase Auth crea la fila en auth.users):
