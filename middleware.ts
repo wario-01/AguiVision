@@ -12,6 +12,13 @@ const PUBLIC_PATHS = ["/login", "/auth/callback"];
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // Las rutas de API (/api/*) manejan su propia autenticación adentro de
+  // cada endpoint y devuelven un 401 en JSON cuando corresponde — nunca las
+  // mandamos a la pantalla de login. Esto es necesario para que Mux (el
+  // webhook) y el cron job de limpieza, que no tienen sesión de usuario,
+  // puedan llegar a esas rutas en vez de recibir un redirect que las rompe.
+  if (request.nextUrl.pathname.startsWith("/api/")) return response;
+
   if (!url || !anonKey) return response; // modo demo: sin Supabase, sin login
 
   try {

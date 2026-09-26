@@ -89,6 +89,16 @@ base de datos, inactivos, listos para prender cuando toque).
    jugada ofensiva, jugada defensiva, lo que necesites) y el rango de
    tiempo — Mux corta ese pedazo como un clip propio.
 
+6. **Política de almacenamiento** — decidida junto con el usuario: los
+   highlights se guardan indefinidamente (casi no pesan en el costo de
+   Mux), pero el video completo de un partido se borra automáticamente a
+   los 6 meses (`app/api/cron/cleanup-old-matches`, corre una vez por día
+   vía `vercel.json`). El partido en sí no desaparece de la app — solo
+   pierde el video, y sus highlights ya generados siguen intactos.
+   Para protegerlo de llamadas externas, agregá en Vercel:
+   - Key: `CRON_SECRET` — Value: cualquier texto largo al azar (por
+     ejemplo, generado en https://1password.com/password-generator).
+
 ## Instalación local
 
 ```bash

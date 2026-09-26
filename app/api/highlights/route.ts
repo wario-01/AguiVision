@@ -112,6 +112,9 @@ export async function POST(req: Request) {
     ],
     playback_policy: ["public"],
     video_quality: "basic",
+    // Habilita una copia .mp4 descargable del clip (casi gratis para clips
+    // cortos — ver el análisis de costo que hicimos con el usuario).
+    mp4_support: "capped-1080p",
     passthrough: `highlight:${highlight.id}`,
   } as any);
 
