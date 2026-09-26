@@ -1,4 +1,4 @@
-# AguiVision
+# AguiVision 
 
 App para subir video de partidos, generar highlights por jugador y transmitir
 en vivo — piloto con los equipos **U11** y **U14** (U9 y U12 ya están en la
