@@ -173,7 +173,21 @@ create policy "ver evaluaciones de mis equipos" on player_evaluations for select
     where tm.profile_id = auth.uid()
   ));
 
--- ============ AGREGADO: crear highlights y jugadores (clips por jugada) ============
+-- ============ AGREGADO: permiso de lectura para profiles ============
+-- Quedó sin ninguna política de lectura (RLS bloqueaba todo sin avisar).
+alter table profiles enable row level security;
+
+create policy "ver mi propio perfil" on profiles for select
+  using (id = auth.uid());
+
+create policy "ver perfiles de mis equipos" on profiles for select
+  using (
+    exists (
+      select 1 from team_members tm1
+      join team_members tm2 on tm1.team_id = tm2.team_id
+      where tm1.profile_id = profiles.id and tm2.profile_id = auth.uid()
+    )
+  );
 -- Necesario para que un entrenador pueda marcar highlights (goles, jugadas
 -- ofensivas/defensivas, etc.) y que la app cree el jugador automáticamente
 -- la primera vez que se lo nombra, sin una pantalla aparte de "cargar plantel".
