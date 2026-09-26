@@ -6,6 +6,8 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
+// Devuelve null si Supabase todavía no está configurado — el resto de la
+// app usa esto como señal para caer en los datos de ejemplo.
 export async function createClient() {
   if (!url || !anonKey) return null;
 
@@ -13,7 +15,10 @@ export async function createClient() {
 
   return createServerClient(url, anonKey, {
     global: {
-      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      // Next.js cachea `fetch` por defecto en Server Components — sin esto,
+      // podíamos seguir viendo datos viejos (nombre, equipos, etc.) durante
+      // mucho tiempo aunque la base de datos ya esté actualizada.
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }),
     },
     cookies: {
       getAll() {
