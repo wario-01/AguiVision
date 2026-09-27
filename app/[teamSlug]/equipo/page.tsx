@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import InviteForm from "@/components/InviteForm";
 import RemoveMemberButton from "@/components/RemoveMemberButton";
 import CancelInvitationButton from "@/components/CancelInvitationButton";
+import SponsorLogoForm from "@/components/SponsorLogoForm";
 import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -28,6 +29,12 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
       <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
         <div className="font-display text-2xl font-bold mb-1">Equipo</div>
         <div className="text-sm text-muted mb-7">{team.name}</div>
+
+        {canInvite && (
+          <div className="mb-8">
+            <SponsorLogoForm teamSlug={team.slug} currentUrl={team.sponsor_logo_url ?? null} />
+          </div>
+        )}
 
         {canInvite && (
           <div className="bg-panel border border-border rounded-2xl p-5 mb-8">

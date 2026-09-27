@@ -12,6 +12,7 @@ create table teams (
   name text not null,                 -- 'Sub-11 Águilas'
   age_category text not null,         -- 'U9' | 'U11' | 'U12' | 'U14'
   crest_url text,
+  sponsor_logo_url text,              -- logo del patrocinador actual (se puede cambiar desde la app)
   active boolean not null default false,  -- solo u11/u14 en true durante el piloto
   created_at timestamptz not null default now()
 );
@@ -142,8 +143,29 @@ $$ language sql security definer stable set search_path = public;
 create policy "ver miembros de mi equipo" on team_members for select
   using (public.is_team_member(team_id));
 
+create or replace function public.is_team_coach(check_team_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from team_members
+    where team_id = check_team_id and profile_id = auth.uid() and role in ('coach', 'assistant')
+  );
+$$ language sql security definer stable set search_path = public;
+
 create policy "ver equipos donde participo" on teams for select
   using (id in (select team_id from team_members where profile_id = auth.uid()));
+
+create policy "entrenadores actualizan su equipo" on teams for update
+  using (public.is_team_coach(id));
+
+-- ============ ALMACENAMIENTO: logos de patrocinador ============
+-- Bucket público para las imágenes de patrocinador (el logo del club ya
+-- vive como archivo del proyecto, no acá). Solo el servidor sube archivos
+-- (usando la Service Role Key), así que no hace falta una política de
+-- Storage para escritura — únicamente que sea "public" para poder mostrar
+-- la imagen sin autenticación en la pantalla de transmisión.
+insert into storage.buckets (id, name, public)
+values ('sponsors', 'sponsors', true)
+on conflict (id) do nothing;
 
 create policy "ver jugadores de mis equipos" on players for select
   using (team_id in (select team_id from team_members where profile_id = auth.uid()));
@@ -227,14 +249,6 @@ create policy "entrenadores crean invitaciones de su equipo" on team_invitations
 create policy "entrenadores borran invitaciones de su equipo" on team_invitations for delete
   using (team_id in (select team_id from team_members where profile_id = auth.uid() and role in ('coach', 'assistant')));
 
-create or replace function public.is_team_coach(check_team_id uuid)
-returns boolean as $$
-  select exists (
-    select 1 from team_members
-    where team_id = check_team_id and profile_id = auth.uid() and role in ('coach', 'assistant')
-  );
-$$ language sql security definer stable set search_path = public;
-
 create policy "entrenadores quitan miembros de su equipo" on team_members for delete
   using (public.is_team_coach(team_id));
 
@@ -267,6 +281,19 @@ $$ language plpgsql security definer set search_path = public;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ============ VISITAS PÚBLICAS A TRANSMISIONES (anónimo, sin cuenta) ============
+-- Cuando alguien de afuera entra a una transmisión por un link compartido
+-- (ej: Facebook), no tiene cuenta ni sesión — esto solo cuenta la visita,
+-- no identifica a la persona.
+create table live_stream_views (
+  id uuid primary key default gen_random_uuid(),
+  live_stream_id uuid not null references live_streams(id) on delete cascade,
+  viewed_at timestamptz not null default now()
+);
+-- Sin RLS: nadie consulta esta tabla desde el navegador, solo el cliente
+-- admin (sin sesión) la escribe, y más adelante se podría sumar una
+-- pantalla de estadísticas para el entrenador.
 
 -- ============ PARA VOS, EL PRIMER ENTRENADOR (una sola vez, ya no hace falta) ============
 -- Si ya te vinculaste a mano con el bloque anterior, no hace falta que hagas

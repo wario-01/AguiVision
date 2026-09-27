@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "./supabase/server";
+import { createAdminClient, isAdminConfigured } from "./supabase/admin";
 
 export type Role = "coach" | "assistant" | "player" | "parent";
 
@@ -8,6 +9,7 @@ export type Team = {
   name: string;
   age_category: string;
   active: boolean;
+  sponsor_logo_url?: string | null;
   role?: Role; // presente cuando viene de getMyTeams()
   player_id?: string | null; // el jugador vinculado, si el rol es player/parent
 };
@@ -46,6 +48,7 @@ export type LiveStream = {
   status: "scheduled" | "live" | "ended";
   viewer_count: number;
   playback_id?: string | null;
+  sponsor_logo_url?: string | null;
 };
 
 // ---------- Datos de ejemplo (modo demo, sin Supabase configurado) ----------
@@ -119,7 +122,7 @@ export async function getMyTeams(): Promise<Team[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("role, player_id, teams(id, slug, name, age_category, active)")
+    .select("role, player_id, teams(id, slug, name, age_category, active, sponsor_logo_url)")
     .eq("profile_id", userData.user.id);
 
   if (error || !data) return [];
@@ -325,4 +328,66 @@ export async function getActiveLiveStreamsForTeam(teamSlug: string): Promise<Act
 
   if (error || !data) return [];
   return data as ActiveLiveStream[];
+}
+
+// ---------- Vista pública de transmisiones (sin login) ----------
+// Un visitante que llega por un link compartido (Facebook, etc.) no tiene
+// cuenta — estas funciones usan el cliente admin (sin RLS) para mostrarle
+// SOLO lo necesario para mirar (equipo, título, video), nunca datos
+// privados como el roster o los highlights.
+
+export async function getPublicLiveStreamById(id: string): Promise<LiveStream | null> {
+  if (!isAdminConfigured) return null;
+  const admin = createAdminClient();
+  if (!admin) return null;
+
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, team_id, title, status, viewer_count, playback_id, teams(name, sponsor_logo_url)")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    team_id: data.team_id,
+    team_name: (data as any).teams?.name ?? "Equipo",
+    title: data.title,
+    status: data.status,
+    viewer_count: data.viewer_count,
+    playback_id: data.playback_id,
+    sponsor_logo_url: (data as any).teams?.sponsor_logo_url ?? null,
+  };
+}
+
+export async function getPublicLiveStreams(): Promise<LiveStream[]> {
+  if (!isAdminConfigured) return [];
+  const admin = createAdminClient();
+  if (!admin) return [];
+
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, team_id, title, status, viewer_count, playback_id, teams(name, sponsor_logo_url)")
+    .eq("status", "live");
+
+  if (error || !data) return [];
+  return data.map((row: any) => ({
+    id: row.id,
+    team_id: row.team_id,
+    team_name: row.teams?.name ?? "Equipo",
+    title: row.title,
+    status: row.status,
+    viewer_count: row.viewer_count,
+    playback_id: row.playback_id,
+    sponsor_logo_url: row.teams?.sponsor_logo_url ?? null,
+  }));
+}
+
+// Registra una visita anónima — no identifica a la persona, solo cuenta
+// cuántas veces se abrió esta transmisión y cuándo.
+export async function logPublicStreamView(liveStreamId: string): Promise<void> {
+  if (!isAdminConfigured) return;
+  const admin = createAdminClient();
+  if (!admin) return;
+  await admin.from("live_stream_views").insert({ live_stream_id: liveStreamId });
 }
