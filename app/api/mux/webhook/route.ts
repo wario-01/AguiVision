@@ -9,8 +9,9 @@ import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 //
 // Configurar en Mux Dashboard → Settings → Webhooks:
 //   URL: https://tu-app.vercel.app/api/mux/webhook
-//   Eventos: video.asset.ready, video.asset.errored, video.live_stream.active,
-//   video.live_stream.idle, video.live_stream.disconnected (o "todos", no molesta)
+//   Eventos: video.asset.ready, video.asset.live_stream_completed,
+//   video.asset.errored, video.live_stream.active, video.live_stream.idle,
+//   video.live_stream.disconnected (o "todos", no molesta)
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("mux-signature");
@@ -43,7 +44,11 @@ export async function POST(req: Request) {
   if (isAdminConfigured && id) {
     const admin = createAdminClient();
     if (admin) {
-      if (event.type === "video.asset.ready") {
+      // "video.asset.ready" cubre los partidos subidos a mano. Para una
+      // transmisión en vivo, la grabación final llega con
+      // "video.asset.live_stream_completed" (con la duración ya definitiva)
+      // — tratamos los dos igual porque actualizan el mismo tipo de partido.
+      if (event.type === "video.asset.ready" || event.type === "video.asset.live_stream_completed") {
         const asset = event.data;
         const playbackId = asset.playback_ids?.[0]?.id ?? null;
 

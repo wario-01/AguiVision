@@ -37,10 +37,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Equipo no encontrado" }, { status: 404 });
   }
 
+  // Se crea un partido en la base de datos ANTES de transmitir: cuando Mux
+  // termine de grabar la transmisión, ese video va a quedar guardado en
+  // ESTE partido — aparece solo en "Inicio", se puede ver y marcar
+  // highlights, igual que un video subido a mano.
+  const { data: match, error: matchError } = await supabase
+    .from("matches")
+    .insert({ team_id: team.id, opponent: body.title, match_date: new Date().toISOString(), video_status: "none" })
+    .select("id")
+    .single();
+
+  if (matchError || !match) {
+    return NextResponse.json({ error: "No tenés permiso para transmitir en este equipo" }, { status: 403 });
+  }
+
   // insert respeta RLS: solo entrenadores/asistentes de este equipo pueden crear
   const { data: liveStream, error: insertError } = await supabase
     .from("live_streams")
-    .insert({ team_id: team.id, title: body.title, status: "scheduled" })
+    .insert({ team_id: team.id, match_id: match.id, title: body.title, status: "scheduled" })
     .select("id")
     .single();
 
@@ -58,7 +72,13 @@ export async function POST(req: Request) {
   try {
     const muxLiveStream = await mux.video.liveStreams.create({
       playback_policy: ["public"],
-      new_asset_settings: { playback_policy: ["public"], video_quality: "plus" },
+      new_asset_settings: {
+        playback_policy: ["public"],
+        video_quality: "plus",
+        // Con este passthrough, la grabación de la transmisión se procesa
+        // con el MISMO código que ya usamos para partidos subidos a mano.
+        passthrough: `match:${match.id}`,
+      },
       passthrough: `live:${liveStream.id}`,
       // Baja el retraso de ~30s a ~12-20s. Si la conexión de la cámara es
       // estable, se puede probar "low" (hasta 5s) más adelante.

@@ -16,7 +16,10 @@ base de datos, inactivos, listos para prender cuando toque).
   Broadcaster, y en cuanto la cámara empieza a mandar señal, la
   transmisión aparece sola en "En vivo" para todo el equipo — sin que
   nadie tenga que avisar nada a mano. Soporta varias transmisiones
-  simultáneas (de distintos equipos) sin conflicto.
+  simultáneas (de distintos equipos) sin conflicto. Cuando la
+  transmisión termina, la grabación queda guardada sola como un partido
+  más en "Inicio" — se puede ver y marcar highlights ahí, igual que un
+  video subido a mano.
 - **Login real con enlace mágico** (sin contraseñas) usando Supabase Auth.
 - **Los equipos que ves dependen de tu membresía real** — la tabla
   `team_members` decide qué equipos aparecen en tu selector y con qué rol
