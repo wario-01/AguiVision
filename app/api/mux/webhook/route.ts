@@ -40,6 +40,10 @@ export async function POST(req: Request) {
   const passthrough: string | undefined = event.data?.passthrough;
   const [kind, id] = passthrough ? passthrough.split(":") : [undefined, undefined];
 
+  // TEMPORAL: para ver en los logs de Vercel exactamente qué evento llega y
+  // con qué passthrough, mientras diagnosticamos la transmisión en vivo.
+  console.log("Mux webhook:", event.type, "| passthrough:", passthrough, "| data.id:", event.data?.id);
+
   if (isAdminConfigured && id) {
     const admin = createAdminClient();
     if (admin) {
