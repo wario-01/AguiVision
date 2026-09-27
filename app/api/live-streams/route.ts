@@ -60,6 +60,9 @@ export async function POST(req: Request) {
       playback_policy: ["public"],
       new_asset_settings: { playback_policy: ["public"], video_quality: "plus" },
       passthrough: `live:${liveStream.id}`,
+      // Baja el retraso de ~30s a ~12-20s. Si la conexión de la cámara es
+      // estable, se puede probar "low" (hasta 5s) más adelante.
+      latency_mode: "reduced",
     });
 
     await supabase
