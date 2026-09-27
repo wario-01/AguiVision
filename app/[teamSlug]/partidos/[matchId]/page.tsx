@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { getTeamBySlug, getMatches } from "@/lib/data";
 import MatchPlayer from "@/components/MatchPlayer";
 import HighlightForm from "@/components/HighlightForm";
+import DeleteMatchButtons from "@/components/DeleteMatchButtons";
 
 export default async function MatchPage({
   params,
@@ -36,6 +37,8 @@ export default async function MatchPage({
               : "Este partido todavía no tiene video subido."}
           </div>
         )}
+
+        {canMarkHighlights && <DeleteMatchButtons matchId={match.id} teamSlug={team.slug} />}
 
         {canMarkHighlights && match.video_status === "ready" && <HighlightForm matchId={match.id} />}
       </div>

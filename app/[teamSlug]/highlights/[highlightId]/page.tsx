@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { getTeamBySlug, getHighlights } from "@/lib/data";
 import MatchPlayer from "@/components/MatchPlayer";
+import DeleteHighlightButton from "@/components/DeleteHighlightButton";
 
 export default async function HighlightPage({
   params,
@@ -14,6 +15,8 @@ export default async function HighlightPage({
   const highlights = await getHighlights(team.slug);
   const highlight = highlights.find((h) => h.id === params.highlightId);
   if (!highlight) notFound();
+
+  const canDelete = team.role === "coach" || team.role === "assistant";
 
   return (
     <div className="flex h-screen w-full">
@@ -47,6 +50,8 @@ export default async function HighlightPage({
             Mux todavía está generando este clip — recargá la página en un rato.
           </div>
         )}
+
+        {canDelete && <DeleteHighlightButton highlightId={highlight.id} teamSlug={team.slug} />}
       </div>
     </div>
   );

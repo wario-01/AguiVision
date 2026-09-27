@@ -102,7 +102,7 @@ export async function POST(req: Request) {
   // TODO: revisar el nombre exacto de estos campos contra la versión
   // instalada de @mux/mux-node si esta llamada da error de tipos — Mux
   // documenta esto a veces como "input"/"inputs" según la versión del SDK.
-  await mux.video.assets.create({
+  const clipAsset = await mux.video.assets.create({
     input: [
       {
         url: `mux://assets/${match.video_asset_id}`,
@@ -118,5 +118,44 @@ export async function POST(req: Request) {
     passthrough: `highlight:${highlight.id}`,
   } as any);
 
+  await supabase.from("highlights").update({ clip_asset_id: (clipAsset as any).id }).eq("id", highlight.id);
+
   return NextResponse.json({ highlightId: highlight.id });
+}
+
+// DELETE /api/highlights
+// body: { highlightId }
+export async function DELETE(req: Request) {
+  const body = await req.json().catch(() => null);
+  if (!body?.highlightId) {
+    return NextResponse.json({ error: "Falta el id del highlight" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
+  }
+
+  const { data: highlight } = await supabase
+    .from("highlights")
+    .select("clip_asset_id")
+    .eq("id", body.highlightId)
+    .single();
+
+  // borra la fila primero: si RLS lo rechaza (no sos coach/assistant de ese
+  // equipo), no llegamos a tocar nada en Mux
+  const { error } = await supabase.from("highlights").delete().eq("id", body.highlightId);
+  if (error) {
+    return NextResponse.json({ error: "No tenés permiso para borrar este highlight" }, { status: 403 });
+  }
+
+  if (isMuxConfigured && mux && highlight?.clip_asset_id) {
+    try {
+      await mux.video.assets.delete(highlight.clip_asset_id);
+    } catch (err) {
+      console.error("No se pudo borrar el clip en Mux:", err);
+    }
+  }
+
+  return NextResponse.json({ ok: true });
 }

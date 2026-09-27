@@ -73,6 +73,7 @@ create table highlights (
   start_seconds int not null,
   end_seconds int not null,
   clip_playback_id text,
+  clip_asset_id text,            -- id del asset en Mux, para poder borrarlo después
   created_at timestamptz not null default now()
 );
 
@@ -216,6 +217,13 @@ create policy "ver perfiles de mis equipos" on profiles for select
 -- la primera vez que se lo nombra, sin una pantalla aparte de "cargar plantel".
 create policy "entrenadores crean highlights de su equipo" on highlights for insert
   with check (match_id in (
+    select m.id from matches m
+    join team_members tm on tm.team_id = m.team_id
+    where tm.profile_id = auth.uid() and tm.role in ('coach', 'assistant')
+  ));
+
+create policy "entrenadores borran highlights de su equipo" on highlights for delete
+  using (match_id in (
     select m.id from matches m
     join team_members tm on tm.team_id = m.team_id
     where tm.profile_id = auth.uid() and tm.role in ('coach', 'assistant')
