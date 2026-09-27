@@ -304,3 +304,25 @@ export async function getPlayers(teamSlug: string): Promise<Player[]> {
   if (error || !data) return [];
   return data as Player[];
 }
+
+// Transmisiones del equipo que todavía no terminaron (scheduled o live) —
+// para que el entrenador siempre pueda encontrarlas y cortarlas, aunque se
+// haya perdido la pantalla donde se crearon (recarga de página, error, etc.)
+export type ActiveLiveStream = { id: string; title: string; status: "scheduled" | "live" };
+
+export async function getActiveLiveStreamsForTeam(teamSlug: string): Promise<ActiveLiveStream[]> {
+  if (!isSupabaseConfigured) return [];
+  const team = await getTeamBySlug(teamSlug);
+  const supabase = await createClient();
+  if (!team || !supabase) return [];
+
+  const { data, error } = await supabase
+    .from("live_streams")
+    .select("id, title, status")
+    .eq("team_id", team.id)
+    .in("status", ["scheduled", "live"])
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data as ActiveLiveStream[];
+}
