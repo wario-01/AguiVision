@@ -40,9 +40,7 @@ function LoginForm() {
     <div className="min-h-screen bg-bg flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-full bg-gold flex items-center justify-center font-display font-bold text-bg text-xl mb-3">
-            AV
-          </div>
+          <img src="/logo.png" alt="Nido Águila" className="w-14 h-14 rounded-full object-contain mb-3" />
           <div className="font-display text-2xl font-bold text-text">AguiVision</div>
         </div>
 

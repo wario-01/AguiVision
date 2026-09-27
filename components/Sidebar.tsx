@@ -75,9 +75,7 @@ export default async function Sidebar({
       {/* ---------- Escritorio: barra lateral fija ---------- */}
       <div className="hidden md:flex md:w-[248px] md:shrink-0 h-full bg-sidebar border-r border-border box-border p-6 flex-col">
         <div className="flex items-center gap-2.5 mb-7 px-1">
-          <div className="w-[34px] h-[34px] rounded-full bg-gold flex items-center justify-center font-display font-bold text-bg text-sm">
-            AV
-          </div>
+          <img src="/logo.png" alt="Nido Águila" className="w-[34px] h-[34px] rounded-full object-contain" />
           <div className="font-display text-lg font-bold tracking-wide">AguiVision</div>
         </div>
 
@@ -135,9 +133,7 @@ export default async function Sidebar({
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 bg-sidebar border-b border-border box-border">
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2">
-            <div className="w-[28px] h-[28px] rounded-full bg-gold flex items-center justify-center font-display font-bold text-bg text-xs">
-              AV
-            </div>
+            <img src="/logo.png" alt="Nido Águila" className="w-[28px] h-[28px] rounded-full object-contain" />
             <div className="font-display text-base font-bold">AguiVision</div>
           </div>
           <Link
