@@ -45,6 +45,7 @@ export type LiveStream = {
   title: string;
   status: "scheduled" | "live" | "ended";
   viewer_count: number;
+  playback_id?: string | null;
 };
 
 // ---------- Datos de ejemplo (modo demo, sin Supabase configurado) ----------
@@ -211,6 +212,7 @@ export async function getLiveStreams(): Promise<LiveStream[]> {
         title: row.title,
         status: row.status,
         viewer_count: row.viewer_count,
+        playback_id: row.playback_id,
       }));
     }
     return [];

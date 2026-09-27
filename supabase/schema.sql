@@ -87,6 +87,7 @@ create table live_streams (
   status text not null default 'scheduled', -- scheduled | live | ended
   stream_key text,                   -- clave de ingesta (solo backend, nunca al cliente)
   playback_id text,                  -- id público de reproducción
+  mux_live_stream_id text,           -- id interno de Mux, para poder terminar la transmisión
   viewer_count int not null default 0,
   started_at timestamptz,
   ended_at timestamptz,

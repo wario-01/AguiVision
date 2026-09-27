@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLiveStreamById, getLiveStreams } from "@/lib/data";
+import MatchPlayer from "@/components/MatchPlayer";
 
 export default async function WatchStreamPage({ params }: { params: { streamId: string } }) {
   const stream = await getLiveStreamById(params.streamId);
@@ -14,15 +15,19 @@ export default async function WatchStreamPage({ params }: { params: { streamId: 
         ← Todas las transmisiones
       </Link>
 
-      <div className="w-full aspect-video rounded-2xl bg-sidebar border border-border relative flex items-center justify-center mb-2">
-        {/* TODO: acá va el <mux-player> o el reproductor de Cloudflare Stream
-            apuntando a stream.playback_id cuando el proveedor esté conectado. */}
-        <span className="text-muted text-sm">Reproductor de video (pendiente de conectar el proveedor)</span>
-        <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/55 rounded-full px-3 py-1.5">
-          <div className="w-2 h-2 rounded-full bg-red" />
-          <span className="text-xs font-extrabold">EN VIVO</span>
+      {stream.playback_id ? (
+        <div className="relative mb-2">
+          <MatchPlayer playbackId={stream.playback_id} live />
+          <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/55 rounded-full px-3 py-1.5 pointer-events-none">
+            <div className="w-2 h-2 rounded-full bg-red" />
+            <span className="text-xs font-extrabold">EN VIVO</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="w-full aspect-video rounded-2xl bg-sidebar border border-border flex items-center justify-center mb-2">
+          <span className="text-muted text-sm">Esperando que la transmisión empiece...</span>
+        </div>
+      )}
       <div className="mb-8">
         <div className="text-xs font-bold text-gold uppercase tracking-wide mb-1">{stream.team_name}</div>
         <div className="font-display text-xl font-bold">{stream.title}</div>

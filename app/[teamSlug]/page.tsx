@@ -15,9 +15,20 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
       <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11">
-        <div className="mb-7">
-          <div className="font-display text-2xl font-bold">Hola, {firstName}</div>
-          <div className="text-muted text-sm mt-0.5">{team.name} · temporada 2026</div>
+        <div className="mb-7 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-display text-2xl font-bold">Hola, {firstName}</div>
+            <div className="text-muted text-sm mt-0.5">{team.name} · temporada 2026</div>
+          </div>
+          {(team.role === "coach" || team.role === "assistant") && (
+            <a
+              href={`/${team.slug}/transmitir`}
+              className="flex items-center gap-2 bg-red text-redText rounded-lg px-4 py-2.5 text-sm font-extrabold"
+            >
+              <span className="w-2 h-2 rounded-full bg-redText" />
+              Transmitir en vivo
+            </a>
+          )}
         </div>
 
         <div className="font-display text-lg font-semibold mb-3.5">Highlights recientes</div>

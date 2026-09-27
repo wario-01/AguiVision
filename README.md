@@ -10,6 +10,13 @@ base de datos, inactivos, listos para prender cuando toque).
 - **Invitar gente sin SQL**: pantalla "Equipo" — el entrenador escribe un
   email y elige el rol (entrenador, asistente, jugador, madre/padre), y esa
   persona queda vinculada sola la primera vez que inicia sesión.
+- **Transmisión en vivo real**: el entrenador crea la transmisión desde
+  "Transmitir en vivo" (botón en Inicio), la app le muestra el Server URL y
+  la Stream Key para pegar en la cámara o en una app como Larix
+  Broadcaster, y en cuanto la cámara empieza a mandar señal, la
+  transmisión aparece sola en "En vivo" para todo el equipo — sin que
+  nadie tenga que avisar nada a mano. Soporta varias transmisiones
+  simultáneas (de distintos equipos) sin conflicto.
 - **Login real con enlace mágico** (sin contraseñas) usando Supabase Auth.
 - **Los equipos que ves dependen de tu membresía real** — la tabla
   `team_members` decide qué equipos aparecen en tu selector y con qué rol

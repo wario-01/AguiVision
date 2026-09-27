@@ -3,12 +3,14 @@ import { mux, isMuxConfigured } from "@/lib/mux";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 
 // Mux llama a esta URL solo (nunca el navegador del usuario) cuando pasa algo
-// con un video. El "passthrough" nos dice si el video terminado es un
-// partido completo ("match:<id>") o el clip de un highlight ("highlight:<id>").
+// con un video. El "passthrough" nos dice qué es lo que terminó: un
+// partido completo ("match:<id>"), el clip de un highlight ("highlight:<id>"),
+// o una transmisión en vivo ("live:<id>").
 //
 // Configurar en Mux Dashboard → Settings → Webhooks:
 //   URL: https://tu-app.vercel.app/api/mux/webhook
-//   Evento: video.asset.ready (y de paso video.asset.errored)
+//   Eventos: video.asset.ready, video.asset.errored, video.live_stream.active,
+//   video.live_stream.idle, video.live_stream.disconnected (o "todos", no molesta)
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("mux-signature");
@@ -62,6 +64,23 @@ export async function POST(req: Request) {
 
       if (event.type === "video.asset.errored" && kind === "match") {
         await admin.from("matches").update({ video_status: "none" }).eq("id", id);
+      }
+
+      if (event.type === "video.live_stream.active" && kind === "live") {
+        await admin
+          .from("live_streams")
+          .update({ status: "live", started_at: new Date().toISOString() })
+          .eq("id", id);
+      }
+
+      if (
+        (event.type === "video.live_stream.idle" || event.type === "video.live_stream.disconnected") &&
+        kind === "live"
+      ) {
+        await admin
+          .from("live_streams")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", id);
       }
     }
   }
