@@ -18,6 +18,7 @@ export type CurrentUser = {
   id: string;
   email: string;
   full_name: string;
+  avatar_url?: string | null;
 };
 
 export type Match = {
@@ -99,13 +100,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!data.user) return null;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, avatar_url")
     .eq("id", data.user.id)
     .single();
   return {
     id: data.user.id,
     email: data.user.email ?? "",
     full_name: profile?.full_name ?? data.user.email ?? "Usuario",
+    avatar_url: profile?.avatar_url ?? null,
   };
 }
 
@@ -237,6 +239,7 @@ export type TeamMember = {
   full_name: string;
   email: string;
   player_name?: string | null;
+  avatar_url?: string | null;
 };
 
 export type PendingInvitation = {
@@ -255,7 +258,7 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("id, profile_id, role, profiles(full_name, email), players(full_name)")
+    .select("id, profile_id, role, profiles(full_name, email, avatar_url), players(full_name)")
     .eq("team_id", team.id);
 
   if (error || !data) return [];
@@ -266,6 +269,7 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
     full_name: row.profiles?.full_name ?? "—",
     email: row.profiles?.email ?? "—",
     player_name: row.players?.full_name ?? null,
+    avatar_url: row.profiles?.avatar_url ?? null,
   }));
 }
 
@@ -290,7 +294,7 @@ export async function getPendingInvitations(teamSlug: string): Promise<PendingIn
   }));
 }
 
-export type Player = { id: string; full_name: string };
+export type Player = { id: string; full_name: string; photo_url?: string | null };
 
 export async function getPlayers(teamSlug: string): Promise<Player[]> {
   if (!isSupabaseConfigured) return [];
@@ -300,7 +304,7 @@ export async function getPlayers(teamSlug: string): Promise<Player[]> {
 
   const { data, error } = await supabase
     .from("players")
-    .select("id, full_name")
+    .select("id, full_name, photo_url")
     .eq("team_id", team.id)
     .order("full_name");
 

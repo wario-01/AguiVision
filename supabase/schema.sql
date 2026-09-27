@@ -32,6 +32,7 @@ create table players (
   full_name text not null,
   jersey_number int,
   position text,
+  photo_url text,
   created_at timestamptz not null default now()
 );
 
@@ -168,6 +169,11 @@ insert into storage.buckets (id, name, public)
 values ('sponsors', 'sponsors', true)
 on conflict (id) do nothing;
 
+-- Fotos de jugadores y de perfil (mismo criterio: solo el servidor sube).
+insert into storage.buckets (id, name, public)
+values ('photos', 'photos', true)
+on conflict (id) do nothing;
+
 create policy "ver jugadores de mis equipos" on players for select
   using (team_id in (select team_id from team_members where profile_id = auth.uid()));
 
@@ -202,6 +208,9 @@ create policy "ver evaluaciones de mis equipos" on player_evaluations for select
 alter table profiles enable row level security;
 
 create policy "ver mi propio perfil" on profiles for select
+  using (id = auth.uid());
+
+create policy "actualizar mi propio perfil" on profiles for update
   using (id = auth.uid());
 
 create policy "ver perfiles de mis equipos" on profiles for select

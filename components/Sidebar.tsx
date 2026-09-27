@@ -116,8 +116,12 @@ export default async function Sidebar({
 
         <div className="flex-grow" />
         <div className="flex items-center gap-2.5 pt-4 border-t border-border">
-          <div className="w-[34px] h-[34px] rounded-full bg-panel2 border border-borderMuted flex items-center justify-center font-display text-xs font-bold text-muted">
-            {initials}
+          <div className="w-[34px] h-[34px] rounded-full bg-panel2 border border-borderMuted flex items-center justify-center font-display text-xs font-bold text-muted overflow-hidden">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
           </div>
           <div className="flex flex-col">
             <div className="text-xs font-bold">{user?.full_name ?? "Invitado"}</div>
@@ -138,9 +142,13 @@ export default async function Sidebar({
           </div>
           <Link
             href={`/${currentTeamSlug}/equipo`}
-            className="w-[28px] h-[28px] rounded-full bg-panel2 border border-borderMuted flex items-center justify-center font-display text-[10px] font-bold text-muted"
+            className="w-[28px] h-[28px] rounded-full bg-panel2 border border-borderMuted flex items-center justify-center font-display text-[10px] font-bold text-muted overflow-hidden"
           >
-            {initials}
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
           </Link>
         </div>
         {teams.length > 0 && (

@@ -4,6 +4,8 @@ import InviteForm from "@/components/InviteForm";
 import RemoveMemberButton from "@/components/RemoveMemberButton";
 import CancelInvitationButton from "@/components/CancelInvitationButton";
 import SponsorLogoForm from "@/components/SponsorLogoForm";
+import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
+import PlayerPhotoUpload from "@/components/PlayerPhotoUpload";
 import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -13,6 +15,24 @@ const ROLE_LABELS: Record<string, string> = {
   parent: "Madre/Padre",
 };
 
+function MemberAvatar({ url, name }: { url: string | null | undefined; name: string }) {
+  const initials = name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return (
+    <div className="w-9 h-9 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
+      {url ? (
+        <img src={url} alt={name} className="w-full h-full object-cover" />
+      ) : (
+        <span className="font-display text-xs font-bold text-muted">{initials}</span>
+      )}
+    </div>
+  );
+}
+
 export default async function EquipoPage({ params }: { params: { teamSlug: string } }) {
   const team = await getTeamBySlug(params.teamSlug);
   if (!team) notFound();
@@ -20,7 +40,7 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
   const canInvite = team.role === "coach" || team.role === "assistant";
   const members = await getTeamMembers(team.slug);
   const invitations = canInvite ? await getPendingInvitations(team.slug) : [];
-  const players = canInvite ? await getPlayers(team.slug) : [];
+  const players = await getPlayers(team.slug);
   const currentUser = await getCurrentUser();
 
   return (
@@ -29,6 +49,15 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
       <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
         <div className="font-display text-2xl font-bold mb-1">Equipo</div>
         <div className="text-sm text-muted mb-7">{team.name}</div>
+
+        {/* Tu propia foto de perfil — cualquiera puede cambiar la suya */}
+        <div className="flex items-center gap-3 bg-panel border border-border rounded-2xl p-4 mb-8">
+          <ProfilePhotoUpload currentUrl={currentUser?.avatar_url ?? null} fullName={currentUser?.full_name ?? "?"} size={48} />
+          <div>
+            <div className="text-sm font-bold">{currentUser?.full_name}</div>
+            <div className="text-xs text-muted">Tocá tu foto para cambiarla</div>
+          </div>
+        </div>
 
         {canInvite && (
           <div className="mb-8">
@@ -46,6 +75,25 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
           </div>
         )}
 
+        {canInvite && players.length > 0 && (
+          <>
+            <div className="font-display text-lg font-semibold mb-3">Plantilla</div>
+            <div className="bg-panel border border-border rounded-2xl overflow-hidden mb-8">
+              {players.map((p, i) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-3 px-5 py-3 ${
+                    i < players.length - 1 ? "border-b border-border" : ""
+                  }`}
+                >
+                  <PlayerPhotoUpload playerId={p.id} currentUrl={p.photo_url ?? null} fullName={p.full_name} />
+                  <div className="text-sm font-bold">{p.full_name}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         <div className="font-display text-lg font-semibold mb-3">Miembros</div>
         <div className="bg-panel border border-border rounded-2xl overflow-hidden mb-8">
           {members.map((m, i) => {
@@ -57,13 +105,16 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   i < members.length - 1 ? "border-b border-border" : ""
                 }`}
               >
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">
-                    {m.full_name} {isSelf && <span className="text-muted font-medium">(vos)</span>}
-                  </div>
-                  <div className="text-xs text-muted truncate">
-                    {m.email}
-                    {m.player_name && <span className="text-gold"> · {m.player_name}</span>}
+                <div className="flex items-center gap-3 min-w-0">
+                  <MemberAvatar url={m.avatar_url} name={m.full_name} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold truncate">
+                      {m.full_name} {isSelf && <span className="text-muted font-medium">(vos)</span>}
+                    </div>
+                    <div className="text-xs text-muted truncate">
+                      {m.email}
+                      {m.player_name && <span className="text-gold"> · {m.player_name}</span>}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
