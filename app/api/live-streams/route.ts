@@ -55,28 +55,36 @@ export async function POST(req: Request) {
     });
   }
 
-  const muxLiveStream = await mux.video.liveStreams.create({
-    playback_policy: ["public"],
-    new_asset_settings: { playback_policy: ["public"], video_quality: "basic" },
-    passthrough: `live:${liveStream.id}`,
-  });
+  try {
+    const muxLiveStream = await mux.video.liveStreams.create({
+      playback_policy: ["public"],
+      new_asset_settings: { playback_policy: ["public"], video_quality: "plus" },
+      passthrough: `live:${liveStream.id}`,
+    });
 
-  await supabase
-    .from("live_streams")
-    .update({
-      stream_key: muxLiveStream.stream_key,
-      playback_id: muxLiveStream.playback_ids?.[0]?.id ?? null,
-      mux_live_stream_id: muxLiveStream.id,
-    })
-    .eq("id", liveStream.id);
+    await supabase
+      .from("live_streams")
+      .update({
+        stream_key: muxLiveStream.stream_key,
+        playback_id: muxLiveStream.playback_ids?.[0]?.id ?? null,
+        mux_live_stream_id: muxLiveStream.id,
+      })
+      .eq("id", liveStream.id);
 
-  return NextResponse.json({
-    liveStreamId: liveStream.id,
-    serverUrl: "rtmp://global-live.mux.com:5222/app",
-    serverUrlSecure: "rtmps://global-live.mux.com:443/app",
-    streamKey: muxLiveStream.stream_key,
-    playbackId: muxLiveStream.playback_ids?.[0]?.id ?? null,
-  });
+    return NextResponse.json({
+      liveStreamId: liveStream.id,
+      serverUrl: "rtmp://global-live.mux.com:5222/app",
+      serverUrlSecure: "rtmps://global-live.mux.com:443/app",
+      streamKey: muxLiveStream.stream_key,
+      playbackId: muxLiveStream.playback_ids?.[0]?.id ?? null,
+    });
+  } catch (err: any) {
+    console.error("Error creando el live stream en Mux:", err);
+    return NextResponse.json(
+      { error: `Mux rechazó la transmisión: ${err?.message ?? "error desconocido"}` },
+      { status: 500 }
+    );
+  }
 }
 
 // DELETE /api/live-streams
