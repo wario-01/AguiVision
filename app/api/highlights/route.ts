@@ -3,21 +3,22 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mux, isMuxConfigured } from "@/lib/mux";
 
 // POST /api/highlights
-// body: { matchId, playerName, label, startSeconds, endSeconds }
+// body: { matchId, playerId, label, startSeconds, endSeconds }
+//
+// El jugador tiene que existir de antes (se crean solo invitando a un
+// jugador o madre/padre desde "Equipo") — este endpoint ya no crea
+// jugadores nuevos a partir de un nombre escrito acá.
 //
 // 1) busca el partido (necesita su video_asset_id — el video ya tiene que
 //    estar "ready")
-// 2) busca un jugador con ese nombre en el equipo, o lo crea si es la
-//    primera vez que se lo nombra (así no hace falta una pantalla aparte
-//    de "cargar plantel" para empezar a usar esto)
-// 3) guarda la fila del highlight
-// 4) le pide a Mux que corte ese pedazo del video como un clip propio —
+// 2) guarda la fila del highlight, apuntando al jugador elegido
+// 3) le pide a Mux que corte ese pedazo del video como un clip propio —
 //    el webhook (video.asset.ready) completa clip_playback_id cuando esté listo
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (
     !body?.matchId ||
-    !body?.playerName ||
+    !body?.playerId ||
     !body?.label ||
     body?.startSeconds === undefined ||
     body?.endSeconds === undefined
@@ -52,35 +53,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El video de este partido todavía no está listo" }, { status: 400 });
   }
 
-  // Buscar o crear el jugador dentro del equipo (respeta RLS: solo funciona
-  // si el usuario es coach/assistant de este equipo)
-  let playerId: string;
-  const { data: existingPlayer } = await supabase
+  // Confirma que el jugador elegido sea realmente de este equipo (y no de
+  // otro, pasado por error o a propósito).
+  const { data: player } = await supabase
     .from("players")
     .select("id")
+    .eq("id", body.playerId)
     .eq("team_id", match.team_id)
-    .eq("full_name", body.playerName)
     .maybeSingle();
 
-  if (existingPlayer) {
-    playerId = existingPlayer.id;
-  } else {
-    const { data: newPlayer, error: playerError } = await supabase
-      .from("players")
-      .insert({ team_id: match.team_id, full_name: body.playerName })
-      .select("id")
-      .single();
-    if (playerError || !newPlayer) {
-      return NextResponse.json({ error: "No tenés permiso para agregar jugadores a este equipo" }, { status: 403 });
-    }
-    playerId = newPlayer.id;
+  if (!player) {
+    return NextResponse.json({ error: "Ese jugador no pertenece a este equipo" }, { status: 400 });
   }
 
   const { data: highlight, error: highlightError } = await supabase
     .from("highlights")
     .insert({
       match_id: match.id,
-      player_id: playerId,
+      player_id: player.id,
       label: body.label,
       start_seconds: body.startSeconds,
       end_seconds: body.endSeconds,

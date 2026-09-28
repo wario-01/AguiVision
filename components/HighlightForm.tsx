@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Player } from "@/lib/data";
 
 function parseTimeToSeconds(value: string): number | null {
   // acepta "34:20" (mm:ss) o "204" (segundos sueltos)
@@ -15,8 +16,8 @@ function parseTimeToSeconds(value: string): number | null {
   return isNaN(n) ? null : n;
 }
 
-export default function HighlightForm({ matchId }: { matchId: string }) {
-  const [playerName, setPlayerName] = useState("");
+export default function HighlightForm({ matchId, players }: { matchId: string; players: Player[] }) {
+  const [playerId, setPlayerId] = useState(players[0]?.id ?? "");
   const [label, setLabel] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -28,7 +29,7 @@ export default function HighlightForm({ matchId }: { matchId: string }) {
     const startSeconds = parseTimeToSeconds(start);
     const endSeconds = parseTimeToSeconds(end);
 
-    if (!playerName || !label || startSeconds === null || endSeconds === null) {
+    if (!playerId || !label || startSeconds === null || endSeconds === null) {
       setStatus("error");
       setMessage("Completá jugador, etiqueta, y los tiempos en formato mm:ss (ej: 34:20).");
       return;
@@ -46,14 +47,13 @@ export default function HighlightForm({ matchId }: { matchId: string }) {
       const res = await fetch("/api/highlights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId, playerName, label, startSeconds, endSeconds }),
+        body: JSON.stringify({ matchId, playerId, label, startSeconds, endSeconds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo crear el highlight");
 
       setStatus("done");
       setMessage(data.note ?? "Highlight guardado. Mux está generando el clip — aparece solo cuando esté listo.");
-      setPlayerName("");
       setLabel("");
       setStart("");
       setEnd("");
@@ -63,6 +63,18 @@ export default function HighlightForm({ matchId }: { matchId: string }) {
     }
   }
 
+  if (players.length === 0) {
+    return (
+      <div className="bg-panel border border-border rounded-2xl p-5 mt-6">
+        <div className="font-display text-base font-semibold mb-2">Marcar highlight</div>
+        <div className="text-sm text-muted">
+          Todavía no hay jugadores en este equipo. Agregalos invitando a un jugador o madre/padre desde{" "}
+          <b>Equipo</b> — ahí se les vincula un jugador, y recién aparecen acá para poder etiquetarlos.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-5 mt-6">
       <div className="font-display text-base font-semibold mb-4">Marcar highlight</div>
@@ -70,13 +82,17 @@ export default function HighlightForm({ matchId }: { matchId: string }) {
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <label className="block text-xs font-bold text-muted mb-1.5">Jugador</label>
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            placeholder="Ej: Mateo Contreras"
+          <select
+            value={playerId}
+            onChange={(e) => setPlayerId(e.target.value)}
             className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold"
-          />
+          >
+            {players.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.full_name}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-bold text-muted mb-1.5">Etiqueta</label>

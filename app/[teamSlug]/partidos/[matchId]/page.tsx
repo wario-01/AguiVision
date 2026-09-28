@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-import { getTeamBySlug, getMatches } from "@/lib/data";
+import { getTeamBySlug, getMatches, getPlayers } from "@/lib/data";
 import MatchPlayer from "@/components/MatchPlayer";
 import HighlightForm from "@/components/HighlightForm";
 import DeleteMatchButtons from "@/components/DeleteMatchButtons";
@@ -18,6 +18,7 @@ export default async function MatchPage({
   if (!match) notFound();
 
   const canMarkHighlights = team.role === "coach" || team.role === "assistant";
+  const players = canMarkHighlights ? await getPlayers(team.slug) : [];
 
   return (
     <div className="flex h-screen w-full">
@@ -40,7 +41,9 @@ export default async function MatchPage({
 
         {canMarkHighlights && <DeleteMatchButtons matchId={match.id} teamSlug={team.slug} />}
 
-        {canMarkHighlights && match.video_status === "ready" && <HighlightForm matchId={match.id} />}
+        {canMarkHighlights && match.video_status === "ready" && (
+          <HighlightForm matchId={match.id} players={players} />
+        )}
       </div>
     </div>
   );
