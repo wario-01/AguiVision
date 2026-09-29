@@ -11,7 +11,15 @@ const TYPES = [
   { value: "other", label: "Otro" },
 ];
 
-export default function EventForm({ teamSlug, onDone }: { teamSlug: string; onDone?: () => void }) {
+export default function EventForm({
+  teamSlug,
+  teams,
+  onDone,
+}: {
+  teamSlug: string;
+  teams: { slug: string; name: string }[];
+  onDone?: () => void;
+}) {
   const [type, setType] = useState("game");
   const [title, setTitle] = useState("");
   const [opponent, setOpponent] = useState("");
@@ -21,9 +29,16 @@ export default function EventForm({ teamSlug, onDone }: { teamSlug: string; onDo
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [logo, setLogo] = useState<File | null>(null);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([teamSlug]);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState("");
   const router = useRouter();
+
+  function toggleTeam(slug: string) {
+    setSelectedTeams((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+  }
 
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -37,23 +52,30 @@ export default function EventForm({ teamSlug, onDone }: { teamSlug: string; onDo
       setMessage("Completá la fecha y la hora.");
       return;
     }
+    if (selectedTeams.length === 0) {
+      setStatus("error");
+      setMessage("Elegí al menos un equipo.");
+      return;
+    }
     setStatus("saving");
     setMessage("");
     try {
-      const formData = new FormData();
-      formData.append("teamSlug", teamSlug);
-      formData.append("type", type);
-      if (title) formData.append("title", title);
-      if (opponent) formData.append("opponent", opponent);
-      if (league) formData.append("league", league);
-      if (location) formData.append("location", location);
-      formData.append("startAt", new Date(`${date}T${time}`).toISOString());
-      if (notes) formData.append("notes", notes);
-      if (logo) formData.append("opponentLogo", logo);
+      for (const slug of selectedTeams) {
+        const formData = new FormData();
+        formData.append("teamSlug", slug);
+        formData.append("type", type);
+        if (title) formData.append("title", title);
+        if (opponent) formData.append("opponent", opponent);
+        if (league) formData.append("league", league);
+        if (location) formData.append("location", location);
+        formData.append("startAt", new Date(`${date}T${time}`).toISOString());
+        if (notes) formData.append("notes", notes);
+        if (logo) formData.append("opponentLogo", logo);
 
-      const res = await fetch("/api/events", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "No se pudo crear el evento");
+        const res = await fetch("/api/events", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(`${slug}: ${data.error ?? "no se pudo crear"}`);
+      }
 
       setTitle("");
       setOpponent("");
@@ -75,6 +97,26 @@ export default function EventForm({ teamSlug, onDone }: { teamSlug: string; onDo
   return (
     <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-5">
       <div className="font-display text-base font-semibold mb-4">Nuevo evento</div>
+
+      {teams.length > 1 && (
+        <div className="mb-4">
+          <label className="block text-xs font-bold text-muted mb-1.5">Aplicar a estos equipos</label>
+          <div className="flex gap-2 flex-wrap">
+            {teams.map((t) => (
+              <button
+                type="button"
+                key={t.slug}
+                onClick={() => toggleTeam(t.slug)}
+                className={`rounded-full px-4 py-2 text-xs font-bold ${
+                  selectedTeams.includes(t.slug) ? "bg-gold text-bg" : "bg-bg border border-border text-muted"
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <label className="block text-xs font-bold text-muted mb-1.5">Tipo</label>
       <div className="flex gap-2 mb-4 flex-wrap">

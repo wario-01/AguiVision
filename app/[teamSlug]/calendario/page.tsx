@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import NewEventToggle from "@/components/NewEventToggle";
 import EventDeleteButton from "@/components/EventDeleteButton";
-import { getTeamBySlug, getEvents } from "@/lib/data";
+import { getTeamBySlug, getEvents, getMyTeams } from "@/lib/data";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -35,6 +35,11 @@ export default async function CalendarioPage({
   if (!team) notFound();
 
   const canEdit = team.role === "coach" || team.role === "assistant";
+  const managedTeams = canEdit
+    ? (await getMyTeams())
+        .filter((t) => t.role === "coach" || t.role === "assistant")
+        .map((t) => ({ slug: t.slug, name: t.name }))
+    : [];
 
   const now = new Date();
   const [y, m] = (searchParams.m ?? `${now.getFullYear()}-${now.getMonth()}`).split("-").map(Number);
@@ -81,7 +86,7 @@ export default async function CalendarioPage({
           </Link>
         </div>
 
-        {canEdit && <NewEventToggle teamSlug={team.slug} />}
+        {canEdit && <NewEventToggle teamSlug={team.slug} teams={managedTeams} />}
 
         {days.length === 0 && (
           <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-8 text-center">
