@@ -20,6 +20,11 @@ base de datos, inactivos, listos para prender cuando toque).
   transmisión termina, la grabación queda guardada sola como un partido
   más en "Inicio" — se puede ver y marcar highlights ahí, igual que un
   video subido a mano.
+- **Calendario por equipo**: el entrenador carga partidos, entrenamientos,
+  torneos u otros eventos (con logo del rival opcional para los partidos),
+  navegable mes a mes. Los próximos 3 partidos aparecen también como vista
+  previa en Inicio, con el mismo estilo de tarjeta que usan otras apps de
+  ligas (hora grande, escudos, fecha, lugar).
 - **Login real con enlace mágico** (sin contraseñas) usando Supabase Auth.
 - **Los equipos que ves dependen de tu membresía real** — la tabla
   `team_members` decide qué equipos aparecen en tu selector y con qué rol

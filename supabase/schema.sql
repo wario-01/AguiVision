@@ -159,6 +159,30 @@ create policy "ver equipos donde participo" on teams for select
 create policy "entrenadores actualizan su equipo" on teams for update
   using (public.is_team_coach(id));
 
+-- ============ CALENDARIO: eventos (partidos, entrenamientos, etc.) ============
+create table events (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  type text not null default 'game',  -- game | practice | tournament | other
+  title text,                          -- para eventos que no son partido (ej: "Entrenamiento")
+  opponent text,                       -- solo para partidos
+  opponent_logo_url text,
+  league text,                         -- ej: "CAYSA Fall 2026 Division 3 League"
+  location text,
+  start_at timestamptz not null,
+  end_at timestamptz,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+alter table events enable row level security;
+
+create policy "ver eventos de mis equipos" on events for select
+  using (team_id in (select team_id from team_members where profile_id = auth.uid()));
+
+create policy "entrenadores gestionan eventos de su equipo" on events for all
+  using (public.is_team_coach(team_id));
+
 -- ============ ALMACENAMIENTO: logos de patrocinador ============
 -- Bucket público para las imágenes de patrocinador (el logo del club ya
 -- vive como archivo del proyecto, no acá). Solo el servidor sube archivos

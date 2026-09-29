@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-import { getTeamBySlug, getMatches, getHighlights, getCurrentUser } from "@/lib/data";
+import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingGames } from "@/lib/data";
+
+const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 export default async function TeamHome({ params }: { params: { teamSlug: string } }) {
   const team = await getTeamBySlug(params.teamSlug);
@@ -10,6 +13,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
   const firstName = user?.full_name?.split(" ")[0] ?? "";
   const matches = await getMatches(team.slug);
   const highlights = await getHighlights(team.slug);
+  const upcomingGames = await getUpcomingGames(team.slug, 3);
 
   return (
     <div className="flex h-screen w-full">
@@ -30,6 +34,60 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             </a>
           )}
         </div>
+
+        {upcomingGames.length > 0 && (
+          <>
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="font-display text-lg font-semibold">Próximos partidos</div>
+              <a href={`/${team.slug}/calendario`} className="text-xs font-bold text-gold">
+                Ver calendario
+              </a>
+            </div>
+            <div className="flex flex-col gap-3 mb-8">
+              {upcomingGames.map((g) => {
+                const d = new Date(g.start_at);
+                return (
+                  <div key={g.id} className="bg-panel border border-border rounded-2xl overflow-hidden">
+                    {g.league && (
+                      <div className="px-5 pt-3 text-[11px] font-bold text-muted uppercase tracking-wide">
+                        {g.league}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-4 px-5 py-4">
+                      <div className="w-12 h-12 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
+                        <img src="/logo.png" alt={team.name} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="flex-grow text-center">
+                        <div className="font-display text-2xl font-bold">
+                          {d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}
+                        </div>
+                        <div className="text-xs text-muted mt-0.5">
+                          {DIAS[d.getDay()]}, {d.getDate()} {MESES[d.getMonth()]}
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
+                        {g.opponent_logo_url ? (
+                          <img src={g.opponent_logo_url} alt={g.opponent ?? ""} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] font-bold text-muted">
+                            {(g.opponent ?? "?").slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between px-5 pb-4 -mt-2">
+                      <span className="text-sm font-bold">{team.name}</span>
+                      <span className="text-sm font-bold text-right">{g.opponent}</span>
+                    </div>
+                    {g.location && (
+                      <div className="px-5 pb-3 text-xs text-muted border-t border-border pt-3">{g.location}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         <div className="font-display text-lg font-semibold mb-3.5">Highlights recientes</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
