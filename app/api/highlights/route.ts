@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mux, isMuxConfigured } from "@/lib/mux";
+import { sendEmail } from "@/lib/resend";
 
 // POST /api/highlights
 // body: { matchId, playerId, label, startSeconds, endSeconds }
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
   // otro, pasado por error o a propósito).
   const { data: player } = await supabase
     .from("players")
-    .select("id")
+    .select("id, full_name")
     .eq("id", body.playerId)
     .eq("team_id", match.team_id)
     .maybeSingle();
@@ -80,6 +81,33 @@ export async function POST(req: Request) {
 
   if (highlightError || !highlight) {
     return NextResponse.json({ error: "No tenés permiso para crear highlights en este equipo" }, { status: 403 });
+  }
+
+  // Avisarle por correo a la madre/padre (o al jugador) vinculado a este
+  // jugador puntual — no a todo el equipo. Si el correo falla, no afecta
+  // el resto: el highlight ya quedó guardado.
+  const { data: team } = await supabase.from("teams").select("slug, name").eq("id", match.team_id).single();
+  const { data: recipients } = await supabase
+    .from("team_members")
+    .select("profiles(email)")
+    .eq("team_id", match.team_id)
+    .eq("player_id", player.id)
+    .in("role", ["player", "parent"]);
+
+  const emails = (recipients ?? [])
+    .map((r: any) => r.profiles?.email)
+    .filter((e: string | undefined): e is string => Boolean(e));
+
+  if (emails.length > 0 && team) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nidoaguilaatx.com";
+    await sendEmail({
+      to: emails,
+      subject: `Nuevo highlight de ${player.full_name} — ${body.label}`,
+      html: `
+        <p>Hay un highlight nuevo de <b>${player.full_name}</b> (${team.name}): <b>${body.label}</b>.</p>
+        <p><a href="${appUrl}/${team.slug}/highlights/${highlight.id}">Ver el highlight en AguiVision</a></p>
+      `,
+    });
   }
 
   if (!isMuxConfigured || !mux) {

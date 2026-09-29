@@ -25,6 +25,10 @@ base de datos, inactivos, listos para prender cuando toque).
   navegable mes a mes. Los próximos 3 partidos aparecen también como vista
   previa en Inicio, con el mismo estilo de tarjeta que usan otras apps de
   ligas (hora grande, escudos, fecha, lugar).
+- **Notificaciones por correo**: cuando se crea un highlight, se avisa a la
+  madre/padre o jugador vinculado a ESE jugador puntual (no a todo el
+  equipo). Cuando se crea un evento en el calendario, se avisa a todo el
+  equipo (menos a quien lo creó). Usa el mismo Resend ya conectado.
 - **Login real con enlace mágico** (sin contraseñas) usando Supabase Auth.
 - **Los equipos que ves dependen de tu membresía real** — la tabla
   `team_members` decide qué equipos aparecen en tu selector y con qué rol

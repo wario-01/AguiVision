@@ -438,7 +438,7 @@ export async function getEvents(
 }
 
 // Los próximos partidos (type='game', a futuro) — para la vista previa en Inicio.
-export async function getUpcomingGames(teamSlug: string, limit = 3): Promise<CalendarEvent[]> {
+export async function getUpcomingEvents(teamSlug: string, limit = 5): Promise<CalendarEvent[]> {
   if (!isSupabaseConfigured) return [];
   const team = await getTeamBySlug(teamSlug);
   const supabase = await createClient();
@@ -448,7 +448,6 @@ export async function getUpcomingGames(teamSlug: string, limit = 3): Promise<Cal
     .from("events")
     .select("*")
     .eq("team_id", team.id)
-    .eq("type", "game")
     .gte("start_at", new Date().toISOString())
     .order("start_at", { ascending: true })
     .limit(limit);

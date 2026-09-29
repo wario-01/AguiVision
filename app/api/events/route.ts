@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/resend";
 
 // POST /api/events — crear
 // form-data: teamSlug, type, title?, opponent?, league?, location?, startAt,
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
   }
 
-  const { data: team } = await supabase.from("teams").select("id").eq("slug", teamSlug).single();
+  const { data: team } = await supabase.from("teams").select("id, slug, name").eq("slug", teamSlug).single();
   if (!team) {
     return NextResponse.json({ error: "Equipo no encontrado" }, { status: 404 });
   }
@@ -70,6 +71,42 @@ export async function POST(req: Request) {
 
   if (error || !event) {
     return NextResponse.json({ error: "No tenés permiso para agregar eventos a este equipo" }, { status: 403 });
+  }
+
+  // Avisarle por correo a todo el equipo (menos a quien lo creó).
+  const { data: recipients } = await supabase
+    .from("team_members")
+    .select("profile_id, profiles(email)")
+    .eq("team_id", team.id);
+
+  const emails = (recipients ?? [])
+    .filter((r: any) => r.profile_id !== userData.user!.id)
+    .map((r: any) => r.profiles?.email)
+    .filter((e: string | undefined): e is string => Boolean(e));
+
+  if (emails.length > 0) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nidoaguilaatx.com";
+    const type = formData.get("type") ?? "game";
+    const what =
+      type === "game"
+        ? `partido vs ${formData.get("opponent") || "?"}`
+        : (formData.get("title") as string) || "evento nuevo";
+    const when = new Date(startAt).toLocaleString("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    await sendEmail({
+      to: emails,
+      subject: `${team.name}: ${what}`,
+      html: `
+        <p>Se agregó un evento nuevo a ${team.name}: <b>${what}</b>.</p>
+        <p>${when}</p>
+        <p><a href="${appUrl}/${team.slug}/calendario">Ver el calendario en AguiVision</a></p>
+      `,
+    });
   }
 
   return NextResponse.json({ id: event.id });

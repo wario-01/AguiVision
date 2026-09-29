@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingGames } from "@/lib/data";
+import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingEvents } from "@/lib/data";
+
+const TYPE_LABELS: Record<string, string> = {
+  practice: "Entrenamiento",
+  tournament: "Torneo",
+  other: "Evento",
+};
 
 const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -13,7 +19,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
   const firstName = user?.full_name?.split(" ")[0] ?? "";
   const matches = await getMatches(team.slug);
   const highlights = await getHighlights(team.slug);
-  const upcomingGames = await getUpcomingGames(team.slug, 3);
+  const upcomingEvents = await getUpcomingEvents(team.slug, 5);
 
   return (
     <div className="flex h-screen w-full">
@@ -35,17 +41,40 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
           )}
         </div>
 
-        {upcomingGames.length > 0 && (
+        {upcomingEvents.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-3.5">
-              <div className="font-display text-lg font-semibold">Próximos partidos</div>
+              <div className="font-display text-lg font-semibold">Próximos eventos</div>
               <a href={`/${team.slug}/calendario`} className="text-xs font-bold text-gold">
                 Ver calendario
               </a>
             </div>
             <div className="flex flex-col gap-3 mb-8">
-              {upcomingGames.map((g) => {
+              {upcomingEvents.map((g) => {
                 const d = new Date(g.start_at);
+                if (g.type !== "game") {
+                  return (
+                    <div
+                      key={g.id}
+                      className="flex items-center gap-4 bg-panel border border-border rounded-2xl px-5 py-4"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center shrink-0">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8CA0C7" strokeWidth={2}>
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <div className="text-sm font-bold truncate">{g.title || TYPE_LABELS[g.type] || "Evento"}</div>
+                        <div className="text-xs text-muted truncate">
+                          {DIAS[d.getDay()]}, {d.getDate()} {MESES[d.getMonth()]} ·{" "}
+                          {d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}
+                          {g.location ? ` · ${g.location}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={g.id} className="bg-panel border border-border rounded-2xl overflow-hidden">
                     {g.league && (
