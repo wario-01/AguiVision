@@ -6,7 +6,7 @@ import CancelInvitationButton from "@/components/CancelInvitationButton";
 import SponsorLogoForm from "@/components/SponsorLogoForm";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import PlayerPhotoUpload from "@/components/PlayerPhotoUpload";
-import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers } from "@/lib/data";
+import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers, getMyTeams } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
   coach: "Entrenador",
@@ -42,6 +42,11 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
   const invitations = canInvite ? await getPendingInvitations(team.slug) : [];
   const players = await getPlayers(team.slug);
   const currentUser = await getCurrentUser();
+  const managedTeams = canInvite
+    ? (await getMyTeams())
+        .filter((t) => t.role === "coach" || t.role === "assistant")
+        .map((t) => ({ slug: t.slug, name: t.name }))
+    : [];
 
   return (
     <div className="flex h-screen w-full">
@@ -68,7 +73,7 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
         {canInvite && (
           <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
             <div className="font-display text-base font-semibold mb-4">Invitar a alguien</div>
-            <InviteForm teamSlug={team.slug} players={players} />
+            <InviteForm teamSlug={team.slug} teams={managedTeams} players={players} />
             <div className="text-xs text-muted mt-3">
               Se vincula solo la primera vez que esa persona inicie sesión con ese email — no hace falta nada más.
             </div>
