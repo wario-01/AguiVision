@@ -34,6 +34,8 @@ export type Match = {
 export type Highlight = {
   id: string;
   match_id: string;
+  match_opponent: string;
+  match_date: string;
   player_name: string;
   label: string;
   minute: number;
@@ -74,12 +76,12 @@ const SEED_MATCHES: Record<string, Match[]> = {
 
 const SEED_HIGHLIGHTS: Record<string, Highlight[]> = {
   u11: [
-    { id: "h1", match_id: "m1", player_name: "Mateo Contreras", label: "Gol", minute: 34, duration: "0:18" },
-    { id: "h2", match_id: "m1", player_name: "Sofía Ramírez", label: "Atajada", minute: 51, duration: "0:24" },
+    { id: "h1", match_id: "m1", match_opponent: "Tigres", match_date: "2026-09-14", player_name: "Mateo Contreras", label: "Gol", minute: 34, duration: "0:18" },
+    { id: "h2", match_id: "m1", match_opponent: "Tigres", match_date: "2026-09-14", player_name: "Sofía Ramírez", label: "Atajada", minute: 51, duration: "0:24" },
   ],
   u14: [
-    { id: "h3", match_id: "m3", player_name: "Iker Paredes", label: "Asistencia", minute: 62, duration: "0:15" },
-    { id: "h4", match_id: "m3", player_name: "Lucía Torres", label: "Gol", minute: 9, duration: "0:20" },
+    { id: "h3", match_id: "m3", match_opponent: "Halcones", match_date: "2026-09-13", player_name: "Iker Paredes", label: "Asistencia", minute: 62, duration: "0:15" },
+    { id: "h4", match_id: "m3", match_opponent: "Halcones", match_date: "2026-09-13", player_name: "Lucía Torres", label: "Gol", minute: 9, duration: "0:20" },
   ],
 };
 
@@ -164,7 +166,7 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
 
     let query = supabase
       .from("highlights")
-      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id)")
+      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id, opponent, match_date)")
       .eq("matches.team_id", team.id)
       .order("created_at", { ascending: false });
 
@@ -186,6 +188,8 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
       return {
         id: row.id,
         match_id: row.match_id,
+        match_opponent: row.matches?.opponent ?? "?",
+        match_date: row.matches?.match_date ?? "",
         player_name: row.players?.full_name ?? "Jugador",
         label: row.label,
         minute: Math.floor(row.start_seconds / 60),

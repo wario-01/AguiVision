@@ -89,30 +89,53 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
           </>
         )}
 
-        <div className="font-display text-lg font-semibold mb-3.5">Highlights recientes</div>
+        <div className="flex items-center justify-between mb-3.5">
+          <div className="font-display text-lg font-semibold">Highlights recientes</div>
+          {highlights.length > 0 && (
+            <a href={`/${team.slug}/highlights`} className="text-xs font-bold text-gold">
+              Ver todos
+            </a>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {highlights.map((h) => (
-            <div key={h.id}>
-              <div className="w-full h-[110px] rounded-xl bg-panel2 border border-borderMuted mb-2" />
+          {highlights.slice(0, 6).map((h) => (
+            <a href={`/${team.slug}/highlights/${h.id}`} key={h.id}>
+              <div className="w-full h-[110px] rounded-xl bg-panel2 border border-borderMuted relative mb-2 flex items-center justify-center">
+                {h.clip_playback_id ? (
+                  <svg viewBox="0 0 24 24" width="26" height="26">
+                    <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)" />
+                    <path d="M10 8l6 4-6 4z" fill="#F5EFD6" />
+                  </svg>
+                ) : (
+                  <span className="text-[10px] font-bold text-muted">Procesando...</span>
+                )}
+              </div>
               <div className="text-sm font-bold">
                 {h.label} · {h.player_name}
               </div>
               <div className="text-xs text-muted">min {h.minute} · {h.duration}</div>
-            </div>
+            </a>
           ))}
           {highlights.length === 0 && (
             <div className="text-sm text-muted col-span-2 md:col-span-4">Todavía no hay highlights para este equipo.</div>
           )}
         </div>
 
-        <div className="font-display text-lg font-semibold mb-3.5">Partidos</div>
+        <div className="flex items-center justify-between mb-3.5">
+          <div className="font-display text-lg font-semibold">Partidos</div>
+          {matches.length > 0 && (
+            <a href={`/${team.slug}/partidos`} className="text-xs font-bold text-gold">
+              Ver todos
+            </a>
+          )}
+        </div>
         <div className="bg-panel border border-border rounded-2xl overflow-hidden">
-          {matches.map((m, i) => (
+          {matches.slice(0, 5).map((m, i, arr) => (
             <a
               href={`/${team.slug}/partidos/${m.id}`}
               key={m.id}
               className={`flex flex-col gap-1.5 md:grid md:grid-cols-[1fr_140px_120px] md:items-center md:gap-4 px-5 py-3 hover:bg-panel2 ${
-                i < matches.length - 1 ? "border-b border-border" : ""
+                i < arr.length - 1 ? "border-b border-border" : ""
               }`}
             >
               <span className="text-sm font-bold">{team.name} vs {m.opponent}</span>
