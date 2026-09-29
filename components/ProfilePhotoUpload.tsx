@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { resizeImage } from "@/lib/resizeImage";
 
 export default function ProfilePhotoUpload({
   currentUrl,
@@ -23,11 +24,12 @@ export default function ProfilePhotoUpload({
     .toUpperCase();
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPreview(URL.createObjectURL(file));
+    const original = e.target.files?.[0];
+    if (!original) return;
+    setPreview(URL.createObjectURL(original));
     setBusy(true);
     try {
+      const file = await resizeImage(original);
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/profile-photo", { method: "POST", body: formData });

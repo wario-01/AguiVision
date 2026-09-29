@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { resizeImage } from "@/lib/resizeImage";
 
 export default function SponsorLogoForm({
   teamSlug,
@@ -16,10 +17,12 @@ export default function SponsorLogoForm({
   const [message, setMessage] = useState("");
   const router = useRouter();
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
-    setFile(f);
-    if (f) setPreview(URL.createObjectURL(f));
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const original = e.target.files?.[0] ?? null;
+    if (!original) return;
+    const resized = await resizeImage(original, 1000);
+    setFile(resized);
+    setPreview(URL.createObjectURL(resized));
   }
 
   async function handleSubmit(e: React.FormEvent) {
