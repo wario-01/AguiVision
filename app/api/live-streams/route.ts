@@ -75,11 +75,11 @@ export async function POST(req: Request) {
       new_asset_settings: {
         playback_policy: ["public"],
         video_quality: "plus",
-        // Con este passthrough, la grabación de la transmisión se procesa
-        // con el MISMO código que ya usamos para partidos subidos a mano.
-        passthrough: `match:${match.id}`,
       },
-      passthrough: `live:${liveStream.id}`,
+      // Mux exige que la transmisión y la grabación que genera compartan el
+      // MISMO passthrough — acá metemos los dos ids juntos (separados por
+      // "|") y el webhook los separa según qué evento le llegue.
+      passthrough: `live:${liveStream.id}|match:${match.id}`,
       // Baja el retraso de ~30s a ~12-20s. Si la conexión de la cámara es
       // estable, se puede probar "low" (hasta 5s) más adelante.
       latency_mode: "reduced",
