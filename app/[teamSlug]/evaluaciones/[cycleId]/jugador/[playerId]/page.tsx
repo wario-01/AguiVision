@@ -22,9 +22,10 @@ export default async function EvaluarJugadorPage({
   if (!cycle) return <div className="p-8">Ciclo no encontrado.</div>;
 
   // lib/data.ts no tiene getPlayerById, así que traemos todos los
-  // jugadores del equipo y buscamos el que coincide con el id de la URL.
-  const players = await getPlayers(team.id);
-  const player = players.find((p: any) => p.id === params.playerId);
+  // jugadores del equipo (getPlayers recibe el slug, no el id) y
+  // buscamos el que coincide con el id de la URL.
+  const players = await getPlayers(team.slug);
+  const player = players.find((p) => p.id === params.playerId);
   if (!player) return <div className="p-8">Jugador no encontrado.</div>;
 
   const [items, evaluaciones] = await Promise.all([
@@ -47,7 +48,7 @@ export default async function EvaluarJugadorPage({
         </Link>
       </p>
       <h1 className="text-3xl font-bold mb-8" style={{ color: '#0A1830' }}>
-        {player.name}
+        {player.full_name}
       </h1>
 
       {groups.length === 0 ? (
