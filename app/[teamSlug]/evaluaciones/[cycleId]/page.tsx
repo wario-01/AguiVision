@@ -1,16 +1,12 @@
-// app/[teamSlug]/evaluaciones/[cycleId]/page.tsx
-//
-// Lista a los jugadores del equipo para que el coach entre a calificar
-// a cada uno dentro de este ciclo. Muestra también cuántos de los
-// ítems de currículo ya tienen un nivel asignado, como progreso rápido.
-
-import Link from 'next/link';
-import { getTeamBySlug, getPlayers } from '@/lib/data';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import { getTeamBySlug, getPlayers } from "@/lib/data";
 import {
   getEvalCycle,
   getCurriculumItems,
   getFormativeEvaluationsForPlayer,
-} from '@/lib/data-evaluaciones';
+} from "@/lib/data-evaluaciones";
 
 export default async function CicloDetallePage({
   params,
@@ -18,10 +14,10 @@ export default async function CicloDetallePage({
   params: { teamSlug: string; cycleId: string };
 }) {
   const team = await getTeamBySlug(params.teamSlug);
-  if (!team) return <div className="p-8">Equipo no encontrado.</div>;
+  if (!team) notFound();
 
   const cycle = await getEvalCycle(params.cycleId);
-  if (!cycle) return <div className="p-8">Ciclo no encontrado.</div>;
+  if (!cycle) notFound();
 
   const [players, curriculumItems] = await Promise.all([
     getPlayers(team.slug),
@@ -31,42 +27,47 @@ export default async function CicloDetallePage({
   const totalItems = curriculumItems.length;
 
   const playersWithProgress = await Promise.all(
-    players.map(async (player: any) => {
+    players.map(async (player) => {
       const evaluated = await getFormativeEvaluationsForPlayer(player.id, cycle.id);
       return { ...player, completados: Object.keys(evaluated).length };
     })
   );
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      <p className="text-sm text-gray-500 mb-1">
-        <Link href={`/${team.slug}/evaluaciones`} className="underline">
-          Evaluaciones
-        </Link>{' '}
-        / {cycle.name}
-      </p>
-      <h1 className="text-3xl font-bold mb-2" style={{ color: '#0A1830' }}>
-        {cycle.name}
-      </h1>
-      <p className="text-gray-500 mb-8">
-        {totalItems} ítems de currículo cargados
-        {totalItems === 0 && ' — agrega currículo antes de calificar'}
-      </p>
+    <div className="flex h-screen w-full">
+      <Sidebar currentTeamSlug={team.slug} active="evaluaciones" />
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
+        <div className="text-xs text-muted mb-1">
+          <Link href={`/${team.slug}/evaluaciones`} className="font-bold hover:text-text">
+            Evaluaciones
+          </Link>{" "}
+          / {cycle.name}
+        </div>
+        <div className="font-display text-2xl font-bold mb-1">{cycle.name}</div>
+        <div className="text-sm text-muted mb-6">
+          {totalItems} ítems de currículo cargados
+          {totalItems === 0 && " — agrega currículo antes de calificar"}
+        </div>
 
-      <div className="flex flex-col gap-2">
-        {playersWithProgress.map((player) => (
-          <Link
-            key={player.id}
-            href={`/${team.slug}/evaluaciones/${cycle.id}/jugador/${player.id}`}
-            className="flex items-center justify-between border rounded-xl p-4 hover:shadow-md transition"
-            style={{ borderColor: '#D9D2BE' }}
-          >
-            <span className="font-semibold">{player.full_name}</span>
-            <span className="text-sm text-gray-500">
-              {player.completados} / {totalItems} calificados
-            </span>
-          </Link>
-        ))}
+        <div className="flex flex-col gap-2">
+          {playersWithProgress.map((player) => (
+            <Link
+              key={player.id}
+              href={`/${team.slug}/evaluaciones/${cycle.id}/jugador/${player.id}`}
+              className="flex items-center justify-between bg-panel border border-border rounded-xl px-4 py-3.5 hover:border-borderMuted transition"
+            >
+              <span className="font-bold text-sm">{player.full_name}</span>
+              <span className="text-xs text-muted">
+                {player.completados} / {totalItems} calificados
+              </span>
+            </Link>
+          ))}
+          {players.length === 0 && (
+            <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-8 text-center">
+              Este equipo todavía no tiene jugadores.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
