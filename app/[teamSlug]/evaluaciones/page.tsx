@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { getTeamBySlug } from "@/lib/data";
-import { getEvalCycles } from "@/lib/data-evaluaciones";
+import { getEvalCycles, getPhysicalEvalEnabled } from "@/lib/data-evaluaciones";
 
 export default async function EvaluacionesPage({
   params,
@@ -13,7 +13,10 @@ export default async function EvaluacionesPage({
   if (!team) notFound();
 
   const isCoach = team.role === "coach";
-  const cycles = await getEvalCycles(team.id);
+  const [cycles, physicalEnabled] = await Promise.all([
+    getEvalCycles(team.id),
+    getPhysicalEvalEnabled(team.id),
+  ]);
 
   return (
     <div className="flex h-screen w-full">
@@ -31,6 +34,16 @@ export default async function EvaluacionesPage({
           )}
         </div>
         <div className="text-sm text-muted mb-6">{team.name}</div>
+
+        {physicalEnabled && (
+          <Link
+            href={`/${team.slug}/evaluaciones/fisico`}
+            className="flex items-center justify-between bg-panel2 border border-borderMuted rounded-xl px-4 py-3.5 hover:border-border transition mb-6"
+          >
+            <span className="font-bold text-sm">Evaluación físico-técnica</span>
+            <span className="text-xs text-gold font-bold">Ver →</span>
+          </Link>
+        )}
 
         {cycles.length === 0 ? (
           <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-8 text-center">

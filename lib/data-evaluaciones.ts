@@ -206,3 +206,132 @@ export async function getProgresoFormativo(playerId: string, teamId: string) {
       return { ciclo: entry.cycleName, ...promedios };
     });
 }
+
+// ========================================================
+// Evaluación físico-técnica
+// ========================================================
+
+export interface PhysicalMetric {
+  id: string;
+  team_id: string;
+  nombre: string;
+  unidad: string;
+  mejor_direccion: 'menor' | 'mayor';
+  orden: number;
+  activo: boolean;
+}
+
+export interface PhysicalResult {
+  id: string;
+  player_id: string;
+  metric_id: string;
+  valor: number;
+  fecha: string;
+}
+
+// Las métricas configuradas para el equipo (solo si tiene activada la
+// evaluación físico-técnica — teams.physical_eval_enabled).
+export async function getPhysicalMetrics(teamId: string): Promise<PhysicalMetric[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('physical_metrics')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('activo', true)
+    .order('orden', { ascending: true });
+
+  if (error || !data) {
+    if (error) console.error('getPhysicalMetrics error', error);
+    return [];
+  }
+  return data;
+}
+
+// Todos los resultados de un jugador, agrupados por métrica y
+// ordenados del más reciente al más viejo — para mostrar el historial
+// y, más adelante, la gráfica de progreso.
+export async function getPhysicalResultsForPlayer(
+  playerId: string
+): Promise<Record<string, PhysicalResult[]>> {
+  const supabase = await createClient();
+  if (!supabase) return {};
+
+  const { data, error } = await supabase
+    .from('physical_results')
+    .select('*')
+    .eq('player_id', playerId)
+    .order('fecha', { ascending: false });
+
+  if (error || !data) {
+    if (error) console.error('getPhysicalResultsForPlayer error', error);
+    return {};
+  }
+
+  const byMetric: Record<string, PhysicalResult[]> = {};
+  for (const row of data as PhysicalResult[]) {
+    if (!byMetric[row.metric_id]) byMetric[row.metric_id] = [];
+    byMetric[row.metric_id].push(row);
+  }
+  return byMetric;
+}
+
+// El promedio del equipo en cada métrica, usando solo el resultado MÁS
+// RECIENTE de cada jugador — para la gráfica de "tú vs. el equipo" del
+// perfil del jugador (Fase 5).
+export async function getPhysicalTeamAverages(
+  teamId: string,
+  metricIds: string[]
+): Promise<Record<string, number>> {
+  if (metricIds.length === 0) return {};
+  const supabase = await createClient();
+  if (!supabase) return {};
+
+  const { data, error } = await supabase
+    .from('physical_results')
+    .select('metric_id, valor, fecha, player_id, players!inner(team_id)')
+    .in('metric_id', metricIds)
+    .eq('players.team_id', teamId)
+    .order('fecha', { ascending: false });
+
+  if (error || !data) {
+    if (error) console.error('getPhysicalTeamAverages error', error);
+    return {};
+  }
+
+  // Solo el resultado más reciente por jugador+métrica (ya viene
+  // ordenado por fecha desc, así que el primero que veamos es el más
+  // nuevo).
+  const vistos = new Set<string>();
+  const porMetrica: Record<string, number[]> = {};
+  for (const row of data as any[]) {
+    const key = `${row.player_id}:${row.metric_id}`;
+    if (vistos.has(key)) continue;
+    vistos.add(key);
+    if (!porMetrica[row.metric_id]) porMetrica[row.metric_id] = [];
+    porMetrica[row.metric_id].push(row.valor);
+  }
+
+  const promedios: Record<string, number> = {};
+  for (const [metricId, valores] of Object.entries(porMetrica)) {
+    promedios[metricId] = valores.reduce((a, b) => a + b, 0) / valores.length;
+  }
+  return promedios;
+}
+
+// lib/data.ts no trae physical_eval_enabled en su tipo Team, así que lo
+// consultamos aparte con este helper.
+export async function getPhysicalEvalEnabled(teamId: string): Promise<boolean> {
+  const supabase = await createClient();
+  if (!supabase) return false;
+
+  const { data, error } = await supabase
+    .from('teams')
+    .select('physical_eval_enabled')
+    .eq('id', teamId)
+    .single();
+
+  if (error || !data) return false;
+  return Boolean((data as any).physical_eval_enabled);
+}
