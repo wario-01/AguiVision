@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const AREAS = [
@@ -10,9 +10,43 @@ const AREAS = [
   { value: "actitudinal", label: "Actitudinal" },
 ];
 
+const DURACIONES = [
+  { value: "mensual", label: "Mensual", meses: 1 },
+  { value: "trimestral", label: "Trimestral", meses: 3 },
+  { value: "cuatrimestral", label: "Cuatrimestral", meses: 4 },
+  { value: "semestral", label: "Semestral", meses: 6 },
+  { value: "anual", label: "Anual", meses: 12 },
+];
+
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
 interface Periodo {
   period_label: string;
   items: Record<string, string>; // area -> descripcion
+}
+
+// A partir de la fecha de inicio y la duración elegida, genera un
+// periodo por cada mes (ej. trimestral desde marzo => Marzo, Abril, Mayo).
+// Si ya había texto de currículo escrito para un mes, lo conserva.
+function generarPeriodos(startDate: string, periodType: string, anteriores: Periodo[]): Periodo[] {
+  const duracion = DURACIONES.find((d) => d.value === periodType);
+  const cantidadMeses = duracion?.meses ?? 1;
+
+  if (!startDate) {
+    return Array.from({ length: cantidadMeses }, () => ({ period_label: "", items: {} }));
+  }
+
+  const [y, m] = startDate.split("-").map(Number);
+  const anterioresPorLabel = new Map(anteriores.map((p) => [p.period_label, p.items]));
+
+  return Array.from({ length: cantidadMeses }, (_, i) => {
+    const mesIndex = (m - 1 + i) % 12;
+    const label = MESES[mesIndex];
+    return { period_label: label, items: anterioresPorLabel.get(label) ?? {} };
+  });
 }
 
 export default function NewCycleForm({
@@ -27,27 +61,19 @@ export default function NewCycleForm({
   const [periodType, setPeriodType] = useState("trimestral");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [periodos, setPeriodos] = useState<Periodo[]>([{ period_label: "", items: {} }]);
+  const [periodos, setPeriodos] = useState<Periodo[]>(generarPeriodos("", "trimestral", []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function addPeriodo() {
-    setPeriodos([...periodos, { period_label: "", items: {} }]);
-  }
-
-  function removePeriodo(index: number) {
-    setPeriodos(periodos.filter((_, i) => i !== index));
-  }
-
-  function updatePeriodoLabel(index: number, label: string) {
-    const next = [...periodos];
-    next[index].period_label = label;
-    setPeriodos(next);
-  }
+  // Regenera los meses cada vez que cambia la fecha de inicio o la
+  // duración — sin que el coach tenga que agregarlos ni nombrarlos.
+  useEffect(() => {
+    setPeriodos((anteriores) => generarPeriodos(startDate, periodType, anteriores));
+  }, [startDate, periodType]);
 
   function updateItem(index: number, area: string, descripcion: string) {
     const next = [...periodos];
-    next[index].items[area] = descripcion;
+    next[index] = { ...next[index], items: { ...next[index].items, [area]: descripcion } };
     setPeriodos(next);
   }
 
@@ -125,10 +151,11 @@ export default function NewCycleForm({
               onChange={(e) => setPeriodType(e.target.value)}
               className="bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold"
             >
-              <option value="mensual">Mensual</option>
-              <option value="trimestral">Trimestral</option>
-              <option value="semestral">Semestral</option>
-              <option value="anual">Anual</option>
+              {DURACIONES.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -150,57 +177,47 @@ export default function NewCycleForm({
             />
           </div>
         </div>
+        {!startDate && (
+          <div className="text-xs text-muted">
+            Elige la fecha de inicio para que se generen los meses automáticamente.
+          </div>
+        )}
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-bold">Currículo por periodo</div>
-          <button type="button" onClick={addPeriodo} className="text-xs font-bold text-gold">
-            + Agregar periodo
-          </button>
-        </div>
+      {startDate && (
+        <div>
+          <div className="text-sm font-bold mb-3">
+            Currículo por mes ({periodos.map((p) => p.period_label).join(", ")})
+          </div>
 
-        <div className="flex flex-col gap-4">
-          {periodos.map((periodo, i) => (
-            <div key={i} className="bg-panel border border-border rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3 gap-3">
-                <input
-                  value={periodo.period_label}
-                  onChange={(e) => updatePeriodoLabel(i, e.target.value)}
-                  placeholder="Marzo"
-                  className="bg-bg border border-border rounded-lg px-3 py-1.5 text-sm font-bold w-40"
-                />
-                {periodos.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removePeriodo(i)}
-                    className="text-xs font-bold text-red"
-                  >
-                    Quitar periodo
-                  </button>
-                )}
-              </div>
+          <div className="flex flex-col gap-4">
+            {periodos.map((periodo, i) => (
+              <div key={periodo.period_label + i} className="bg-panel border border-border rounded-xl p-4">
+                <div className="text-sm font-bold text-gold mb-3 uppercase tracking-wide">
+                  {periodo.period_label}
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {AREAS.map((area) => (
-                  <div key={area.value}>
-                    <label className="block text-[11px] font-bold text-muted mb-1">
-                      {area.label}
-                    </label>
-                    <textarea
-                      value={periodo.items[area.value] || ""}
-                      onChange={(e) => updateItem(i, area.value, e.target.value)}
-                      placeholder="Descripción del currículo..."
-                      rows={2}
-                      className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-xs font-medium"
-                    />
-                  </div>
-                ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {AREAS.map((area) => (
+                    <div key={area.value}>
+                      <label className="block text-[11px] font-bold text-muted mb-1">
+                        {area.label}
+                      </label>
+                      <textarea
+                        value={periodo.items[area.value] || ""}
+                        onChange={(e) => updateItem(i, area.value, e.target.value)}
+                        placeholder="Descripción del currículo..."
+                        rows={2}
+                        className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-xs font-medium"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <button
         type="submit"
