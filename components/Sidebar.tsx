@@ -41,6 +41,13 @@ const NAV_ICONS = {
       <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  evaluaciones: (
+    <>
+      <path d="M9 3h6a2 2 0 012 2v1H7V5a2 2 0 012-2z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 4H5a2 2 0 00-2 2v13a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2h-2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 13l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
 };
 
 function Icon({ path, active, size = 19 }: { path: React.ReactNode; active: boolean; size?: number }) {
@@ -56,7 +63,7 @@ export default async function Sidebar({
   active,
 }: {
   currentTeamSlug: string;
-  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario";
+  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario" | "evaluaciones";
 }) {
   const teams: Team[] = await getMyTeams();
   const user = await getCurrentUser();
@@ -75,6 +82,7 @@ export default async function Sidebar({
     { key: "highlights" as const, href: `/${currentTeamSlug}/highlights`, label: "Highlights", icon: NAV_ICONS.highlights },
     { key: "vivo" as const, href: `/en-vivo`, label: "En vivo", icon: NAV_ICONS.vivo },
     { key: "equipo" as const, href: `/${currentTeamSlug}/equipo`, label: "Equipo", icon: NAV_ICONS.equipo },
+    { key: "evaluaciones" as const, href: `/${currentTeamSlug}/evaluaciones`, label: "Evaluación", icon: NAV_ICONS.evaluaciones },
   ];
 
   return (
