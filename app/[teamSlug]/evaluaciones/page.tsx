@@ -1,16 +1,10 @@
 // app/[teamSlug]/evaluaciones/page.tsx
 //
 // Lista los ciclos de evaluación formativa del equipo. Si el usuario
-// es coach, muestra el botón "Nuevo ciclo".
-//
-// AJUSTA: este archivo asume que ya tienes getTeamBySlug(slug) y una
-// función para saber si el usuario actual es coach del equipo (en tu
-// app ya existe ese chequeo para mostrar botones de "agregar" en otras
-// pantallas — reusa el mismo patrón que uses ahí; aquí lo dejo como
-// `isCoach` resuelto con una consulta directa de ejemplo).
+// es coach, muestra el botón "Nuevo ciclo". team.role ya viene
+// resuelto por getTeamBySlug() (lo trae de getMyTeams()).
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { getTeamBySlug } from '@/lib/data';
 import { getEvalCycles } from '@/lib/data-evaluaciones';
 
@@ -24,16 +18,7 @@ export default async function EvaluacionesPage({
     return <div className="p-8">Equipo no encontrado.</div>;
   }
 
-  const supabase = createClient();
-  const { data: userRes } = await supabase.auth.getUser();
-  const { data: membership } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('team_id', team.id)
-    .eq('user_id', userRes.user?.id ?? '')
-    .maybeSingle();
-
-  const isCoach = membership?.role === 'coach';
+  const isCoach = team.role === 'coach';
   const cycles = await getEvalCycles(team.id);
 
   return (
