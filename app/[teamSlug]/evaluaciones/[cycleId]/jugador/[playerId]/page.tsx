@@ -1,14 +1,14 @@
-// app/[teamSlug]/evaluaciones/[cycleId]/jugador/[playerId]/page.tsx
-
-import Link from 'next/link';
-import { getTeamBySlug, getPlayers } from '@/lib/data';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import { getTeamBySlug, getPlayers } from "@/lib/data";
 import {
   getEvalCycle,
   getCurriculumItems,
   groupCurriculumByPeriod,
   getFormativeEvaluationsForPlayer,
-} from '@/lib/data-evaluaciones';
-import PlayerEvalForm from '@/components/PlayerEvalForm';
+} from "@/lib/data-evaluaciones";
+import PlayerEvalForm from "@/components/PlayerEvalForm";
 
 export default async function EvaluarJugadorPage({
   params,
@@ -16,17 +16,14 @@ export default async function EvaluarJugadorPage({
   params: { teamSlug: string; cycleId: string; playerId: string };
 }) {
   const team = await getTeamBySlug(params.teamSlug);
-  if (!team) return <div className="p-8">Equipo no encontrado.</div>;
+  if (!team) notFound();
 
   const cycle = await getEvalCycle(params.cycleId);
-  if (!cycle) return <div className="p-8">Ciclo no encontrado.</div>;
+  if (!cycle) notFound();
 
-  // lib/data.ts no tiene getPlayerById, así que traemos todos los
-  // jugadores del equipo (getPlayers recibe el slug, no el id) y
-  // buscamos el que coincide con el id de la URL.
   const players = await getPlayers(team.slug);
   const player = players.find((p) => p.id === params.playerId);
-  if (!player) return <div className="p-8">Jugador no encontrado.</div>;
+  if (!player) notFound();
 
   const [items, evaluaciones] = await Promise.all([
     getCurriculumItems(cycle.id),
@@ -41,27 +38,31 @@ export default async function EvaluarJugadorPage({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
-      <p className="text-sm text-gray-500 mb-1">
-        <Link href={`/${team.slug}/evaluaciones/${cycle.id}`} className="underline">
-          {cycle.name}
-        </Link>
-      </p>
-      <h1 className="text-3xl font-bold mb-8" style={{ color: '#0A1830' }}>
-        {player.full_name}
-      </h1>
+    <div className="flex h-screen w-full">
+      <Sidebar currentTeamSlug={team.slug} active="evaluaciones" />
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
+        <div className="text-xs text-muted mb-1">
+          <Link
+            href={`/${team.slug}/evaluaciones/${cycle.id}`}
+            className="font-bold hover:text-text"
+          >
+            {cycle.name}
+          </Link>
+        </div>
+        <div className="font-display text-2xl font-bold mb-6">{player.full_name}</div>
 
-      {groups.length === 0 ? (
-        <p className="text-gray-500">
-          Este ciclo todavía no tiene currículo cargado.
-        </p>
-      ) : (
-        <PlayerEvalForm
-          playerId={player.id}
-          groups={groups}
-          evaluaciones={evaluacionesSimples}
-        />
-      )}
+        {groups.length === 0 ? (
+          <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-8 text-center">
+            Este ciclo todavía no tiene currículo cargado.
+          </div>
+        ) : (
+          <PlayerEvalForm
+            playerId={player.id}
+            groups={groups}
+            evaluaciones={evaluacionesSimples}
+          />
+        )}
+      </div>
     </div>
   );
 }
