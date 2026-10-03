@@ -24,7 +24,10 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 });
+  }
 
   let body: Body;
   try {
