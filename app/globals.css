@@ -15,3 +15,23 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Perfil de jugador: vista imprimible (botón "Descargar PDF" usa
+   window.print()). Oculta el menú/navegación y pasa el área del
+   perfil a fondo blanco/texto negro, como el informe en papel. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .print-area * {
+    color: #1a1a1a !important;
+    background: transparent !important;
+    border-color: #d9d2be !important;
+  }
+}

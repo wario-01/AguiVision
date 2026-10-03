@@ -335,3 +335,87 @@ export async function getPhysicalEvalEnabled(teamId: string): Promise<boolean> {
   if (error || !data) return false;
   return Boolean((data as any).physical_eval_enabled);
 }
+
+// ========================================================
+// Perfil de jugador (Fase 5)
+// ========================================================
+
+export interface PlayerProfile {
+  id: string;
+  full_name: string;
+  jersey_number: number | null;
+  position: string | null;
+  photo_url: string | null;
+  team_id: string;
+}
+
+// lib/data.ts solo trae id/full_name/photo_url en su tipo Player — para
+// el perfil necesitamos también el número y la posición, que sí existen
+// en la tabla pero no estaban expuestos ahí.
+export async function getPlayerProfile(playerId: string): Promise<PlayerProfile | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('players')
+    .select('id, full_name, jersey_number, position, photo_url, team_id')
+    .eq('id', playerId)
+    .single();
+
+  if (error || !data) return null;
+  return data as PlayerProfile;
+}
+
+export interface PlayerHighlight {
+  id: string;
+  match_opponent: string;
+  match_date: string;
+  label: string;
+  minute: number;
+  duration: string;
+  clip_playback_id: string | null;
+}
+
+// Los highlights más recientes de ESTE jugador en particular (no de
+// todo el equipo) — para la sección de clips del perfil.
+export async function getPlayerHighlights(playerId: string, limit = 5): Promise<PlayerHighlight[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('highlights')
+    .select('id, label, start_seconds, end_seconds, clip_playback_id, matches!inner(opponent, match_date)')
+    .eq('player_id', playerId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return (data as any[]).map((row) => {
+    const durationSeconds = Math.max(0, row.end_seconds - row.start_seconds);
+    const mm = Math.floor(durationSeconds / 60);
+    const ss = String(Math.round(durationSeconds % 60)).padStart(2, '0');
+    return {
+      id: row.id,
+      match_opponent: row.matches?.opponent ?? '?',
+      match_date: row.matches?.match_date ?? '',
+      label: row.label,
+      minute: Math.floor(row.start_seconds / 60),
+      duration: `${mm}:${ss}`,
+      clip_playback_id: row.clip_playback_id,
+    };
+  });
+}
+
+// El ciclo formativo MÁS RECIENTE del jugador, con el promedio de
+// nivel (1-5) por área — para la gráfica de radar del perfil.
+export async function getLatestFormativeSnapshot(
+  playerId: string,
+  teamId: string
+): Promise<{ cycleName: string; areas: Record<string, number> } | null> {
+  const progreso = await getProgresoFormativo(playerId, teamId);
+  if (progreso.length === 0) return null;
+  const ultimo = progreso[progreso.length - 1];
+  const { ciclo, ...areas } = ultimo as any;
+  return { cycleName: ciclo, areas };
+}

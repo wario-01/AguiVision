@@ -51,16 +51,28 @@ export default async function CicloDetallePage({
 
         <div className="flex flex-col gap-2">
           {playersWithProgress.map((player) => (
-            <Link
+            <div
               key={player.id}
-              href={`/${team.slug}/evaluaciones/${cycle.id}/jugador/${player.id}`}
               className="flex items-center justify-between bg-panel border border-border rounded-xl px-4 py-3.5 hover:border-borderMuted transition"
             >
-              <span className="font-bold text-sm">{player.full_name}</span>
-              <span className="text-xs text-muted">
-                {player.completados} / {totalItems} calificados
-              </span>
-            </Link>
+              <Link
+                href={`/${team.slug}/evaluaciones/${cycle.id}/jugador/${player.id}`}
+                className="font-bold text-sm flex-grow"
+              >
+                {player.full_name}
+              </Link>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">
+                  {player.completados} / {totalItems} calificados
+                </span>
+                <Link
+                  href={`/${team.slug}/jugador/${player.id}`}
+                  className="text-xs font-bold text-gold hover:underline"
+                >
+                  Ver perfil
+                </Link>
+              </div>
+            </div>
           ))}
           {players.length === 0 && (
             <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-8 text-center">
