@@ -3,10 +3,7 @@
 // Funciones de datos para la evaluación formativa (niveles) y la
 // evaluación físico-técnica (métricas numéricas).
 //
-// Este es un archivo NUEVO — no reemplaza tu lib/data.ts existente.
-// Usa el mismo patrón de cliente de Supabase que ya usas en lib/data.ts
-// (createClient desde '@/lib/supabase/server'). Si tu import real tiene
-// otro nombre o ruta, ajusta la línea de abajo.
+// Archivo NUEVO — no reemplaza tu lib/data.ts existente.
 
 import { createClient } from '@/lib/supabase/server';
 
@@ -59,30 +56,34 @@ export interface FormativeEvaluation {
 // ---------- Ciclos ----------
 
 export async function getEvalCycles(teamId: string): Promise<EvalCycle[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('eval_cycles')
     .select('*')
     .eq('team_id', teamId)
     .order('start_date', { ascending: false });
 
-  if (error) {
-    console.error('getEvalCycles error', error);
+  if (error || !data) {
+    if (error) console.error('getEvalCycles error', error);
     return [];
   }
-  return data ?? [];
+  return data;
 }
 
 export async function getEvalCycle(cycleId: string): Promise<EvalCycle | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from('eval_cycles')
     .select('*')
     .eq('id', cycleId)
     .single();
 
-  if (error) {
-    console.error('getEvalCycle error', error);
+  if (error || !data) {
+    if (error) console.error('getEvalCycle error', error);
     return null;
   }
   return data;
@@ -91,18 +92,20 @@ export async function getEvalCycle(cycleId: string): Promise<EvalCycle | null> {
 // ---------- Currículo ----------
 
 export async function getCurriculumItems(cycleId: string): Promise<CurriculumItem[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('eval_curriculum_items')
     .select('*')
     .eq('cycle_id', cycleId)
     .order('period_order', { ascending: true });
 
-  if (error) {
-    console.error('getCurriculumItems error', error);
+  if (error || !data) {
+    if (error) console.error('getCurriculumItems error', error);
     return [];
   }
-  return data ?? [];
+  return data;
 }
 
 // Agrupa los items de currículo por periodo (mes), para pintar la
@@ -126,20 +129,22 @@ export async function getFormativeEvaluationsForPlayer(
   playerId: string,
   cycleId: string
 ): Promise<Record<string, FormativeEvaluation>> {
-  const supabase = createClient();
+  const supabase = await createClient();
+  if (!supabase) return {};
+
   const { data, error } = await supabase
     .from('formative_evaluations')
     .select('*, eval_curriculum_items!inner(cycle_id)')
     .eq('player_id', playerId)
     .eq('eval_curriculum_items.cycle_id', cycleId);
 
-  if (error) {
-    console.error('getFormativeEvaluationsForPlayer error', error);
+  if (error || !data) {
+    if (error) console.error('getFormativeEvaluationsForPlayer error', error);
     return {};
   }
 
   const byItem: Record<string, FormativeEvaluation> = {};
-  for (const row of data ?? []) {
+  for (const row of data as any[]) {
     byItem[row.curriculum_item_id] = row;
   }
   return byItem;
@@ -157,7 +162,9 @@ const NIVEL_A_NUMERO: Record<Nivel, number> = {
 };
 
 export async function getProgresoFormativo(playerId: string, teamId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('formative_evaluations')
     .select(
@@ -165,8 +172,8 @@ export async function getProgresoFormativo(playerId: string, teamId: string) {
     )
     .eq('player_id', playerId);
 
-  if (error) {
-    console.error('getProgresoFormativo error', error);
+  if (error || !data) {
+    if (error) console.error('getProgresoFormativo error', error);
     return [];
   }
 
@@ -176,7 +183,7 @@ export async function getProgresoFormativo(playerId: string, teamId: string) {
     { cycleName: string; startDate: string; areas: Record<string, number[]> }
   >();
 
-  for (const row of data ?? []) {
+  for (const row of data as any[]) {
     const item: any = row.eval_curriculum_items;
     const cycle = item?.eval_cycles;
     if (!cycle || cycle.team_id !== teamId) continue;
