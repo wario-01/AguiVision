@@ -24,7 +24,7 @@ export default async function CicloDetallePage({
   if (!cycle) return <div className="p-8">Ciclo no encontrado.</div>;
 
   const [players, curriculumItems] = await Promise.all([
-    getPlayers(team.id),
+    getPlayers(team.slug),
     getCurriculumItems(cycle.id),
   ]);
 
@@ -61,7 +61,7 @@ export default async function CicloDetallePage({
             className="flex items-center justify-between border rounded-xl p-4 hover:shadow-md transition"
             style={{ borderColor: '#D9D2BE' }}
           >
-            <span className="font-semibold">{player.name}</span>
+            <span className="font-semibold">{player.full_name}</span>
             <span className="text-sm text-gray-500">
               {player.completados} / {totalItems} calificados
             </span>
