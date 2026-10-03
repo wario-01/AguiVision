@@ -1,7 +1,7 @@
 // app/[teamSlug]/evaluaciones/[cycleId]/jugador/[playerId]/page.tsx
 
 import Link from 'next/link';
-import { getTeamBySlug, getPlayerById } from '@/lib/data';
+import { getTeamBySlug, getPlayers } from '@/lib/data';
 import {
   getEvalCycle,
   getCurriculumItems,
@@ -21,10 +21,10 @@ export default async function EvaluarJugadorPage({
   const cycle = await getEvalCycle(params.cycleId);
   if (!cycle) return <div className="p-8">Ciclo no encontrado.</div>;
 
-  // AJUSTA: si tu lib/data.ts no tiene getPlayerById, usa la función
-  // equivalente que ya tengas para traer un jugador por id (por
-  // ejemplo filtrando el resultado de getPlayers).
-  const player = await getPlayerById(params.playerId);
+  // lib/data.ts no tiene getPlayerById, así que traemos todos los
+  // jugadores del equipo y buscamos el que coincide con el id de la URL.
+  const players = await getPlayers(team.id);
+  const player = players.find((p: any) => p.id === params.playerId);
   if (!player) return <div className="p-8">Jugador no encontrado.</div>;
 
   const [items, evaluaciones] = await Promise.all([
