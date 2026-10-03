@@ -1,7 +1,7 @@
-// app/[teamSlug]/evaluaciones/nuevo/page.tsx
-
-import { getTeamBySlug } from '@/lib/data';
-import NewCycleForm from '@/components/NewCycleForm';
+import { notFound } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import { getTeamBySlug } from "@/lib/data";
+import NewCycleForm from "@/components/NewCycleForm";
 
 export default async function NuevoCicloPage({
   params,
@@ -9,16 +9,16 @@ export default async function NuevoCicloPage({
   params: { teamSlug: string };
 }) {
   const team = await getTeamBySlug(params.teamSlug);
-  if (!team) {
-    return <div className="p-8">Equipo no encontrado.</div>;
-  }
+  if (!team) notFound();
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold mb-8" style={{ color: '#0A1830' }}>
-        Nuevo ciclo de evaluación
-      </h1>
-      <NewCycleForm teamId={team.id} teamSlug={team.slug} />
+    <div className="flex h-screen w-full">
+      <Sidebar currentTeamSlug={team.slug} active="evaluaciones" />
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
+        <div className="font-display text-2xl font-bold mb-1">Nuevo ciclo de evaluación</div>
+        <div className="text-sm text-muted mb-6">{team.name}</div>
+        <NewCycleForm teamId={team.id} teamSlug={team.slug} />
+      </div>
     </div>
   );
 }
