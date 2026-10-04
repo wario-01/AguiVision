@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import InviteForm from "@/components/InviteForm";
 import RemoveMemberButton from "@/components/RemoveMemberButton";
@@ -92,7 +93,13 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   }`}
                 >
                   <PlayerPhotoUpload playerId={p.id} currentUrl={p.photo_url ?? null} fullName={p.full_name} />
-                  <div className="text-sm font-bold">{p.full_name}</div>
+                  <div className="text-sm font-bold flex-grow">{p.full_name}</div>
+                  <Link
+                    href={`/${team.slug}/jugador/${p.id}/editar`}
+                    className="text-xs font-bold text-gold hover:underline shrink-0"
+                  >
+                    Editar datos
+                  </Link>
                 </div>
               ))}
             </div>

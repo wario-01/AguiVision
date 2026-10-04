@@ -18,6 +18,7 @@ import {
   getPhysicalMetrics,
   getPhysicalResultsForPlayer,
   getPhysicalTeamAverages,
+  PERFIL_LABELS,
 } from "@/lib/data-evaluaciones";
 import FormativeRadarChart from "@/components/charts/FormativeRadarChart";
 import PhysicalLineChart from "@/components/charts/PhysicalLineChart";
@@ -33,6 +34,8 @@ export default async function PerfilJugadorPage({
 
   const player = await getPlayerProfile(params.playerId);
   if (!player || player.team_id !== team.id) notFound();
+
+  const canEdit = team.role === "coach" || team.role === "assistant";
 
   const physicalEnabled = await getPhysicalEvalEnabled(team.id);
 
@@ -90,9 +93,26 @@ export default async function PerfilJugadorPage({
                 {player.jersey_number != null && ` · #${player.jersey_number}`}
                 {player.position && ` · ${player.position}`}
               </div>
+              <div className="text-xs text-muted mt-0.5">
+                {player.peso != null && `${player.peso} kg`}
+                {player.peso != null && player.altura != null && " · "}
+                {player.altura != null && `${player.altura} cm`}
+                {(player.peso != null || player.altura != null) && player.perfil && " · "}
+                {player.perfil && PERFIL_LABELS[player.perfil]}
+              </div>
             </div>
           </div>
-          <PrintButton />
+          <div className="no-print flex items-center gap-3">
+            {canEdit && (
+              <Link
+                href={`/${team.slug}/jugador/${player.id}/editar`}
+                className="text-xs font-bold text-gold hover:underline"
+              >
+                Editar datos
+              </Link>
+            )}
+            <PrintButton />
+          </div>
         </div>
 
         {/* ---------- Evaluación formativa ---------- */}

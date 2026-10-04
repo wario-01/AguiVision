@@ -340,6 +340,14 @@ export async function getPhysicalEvalEnabled(teamId: string): Promise<boolean> {
 // Perfil de jugador (Fase 5)
 // ========================================================
 
+export type PerfilJugador = "derecho" | "izquierdo" | "ambidiestro";
+
+export const PERFIL_LABELS: Record<PerfilJugador, string> = {
+  derecho: "Pie derecho",
+  izquierdo: "Pie izquierdo",
+  ambidiestro: "Ambidiestro",
+};
+
 export interface PlayerProfile {
   id: string;
   full_name: string;
@@ -347,18 +355,20 @@ export interface PlayerProfile {
   position: string | null;
   photo_url: string | null;
   team_id: string;
+  peso: number | null;
+  altura: number | null;
+  perfil: PerfilJugador | null;
 }
 
 // lib/data.ts solo trae id/full_name/photo_url en su tipo Player — para
-// el perfil necesitamos también el número y la posición, que sí existen
-// en la tabla pero no estaban expuestos ahí.
+// el perfil necesitamos también el número, posición, peso, altura y perfil.
 export async function getPlayerProfile(playerId: string): Promise<PlayerProfile | null> {
   const supabase = await createClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('players')
-    .select('id, full_name, jersey_number, position, photo_url, team_id')
+    .select('id, full_name, jersey_number, position, photo_url, team_id, peso, altura, perfil')
     .eq('id', playerId)
     .single();
 
