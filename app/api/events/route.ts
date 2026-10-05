@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
+import { checkImage } from "@/lib/imageUpload";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 // POST /api/events — crear
 // form-data: teamSlug, type, title?, opponent?, league?, location?, startAt,
@@ -30,9 +32,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Equipo no encontrado" }, { status: 404 });
   }
 
+  // Solo entrenador/asistente: se verifica ANTES de subir cualquier archivo.
+  const { data: membership } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", team.id)
+    .eq("profile_id", userData.user.id)
+    .maybeSingle();
+  if (!membership || (membership.role !== "coach" && membership.role !== "assistant")) {
+    return NextResponse.json({ error: "No tenés permiso para agregar eventos a este equipo" }, { status: 403 });
+  }
+
   let opponentLogoUrl: string | null = null;
   const logoFile = formData.get("opponentLogo");
   if (logoFile instanceof File && logoFile.size > 0) {
+    const image = checkImage(logoFile);
+    if (!image.ok) {
+      return NextResponse.json({ error: image.error }, { status: 400 });
+    }
     if (!isAdminConfigured) {
       return NextResponse.json({ error: "Falta configurar el almacenamiento" }, { status: 500 });
     }
@@ -40,8 +57,7 @@ export async function POST(req: Request) {
     if (!admin) {
       return NextResponse.json({ error: "Falta configurar el almacenamiento" }, { status: 500 });
     }
-    const ext = logoFile.name.split(".").pop() || "jpg";
-    const path = `events/${team.id}-${Date.now()}.${ext}`;
+    const path = `events/${team.id}-${Date.now()}.${image.ext}`;
     const { error: uploadError } = await admin.storage
       .from("photos")
       .upload(path, logoFile, { contentType: logoFile.type, upsert: true });
@@ -102,8 +118,8 @@ export async function POST(req: Request) {
       to: emails,
       subject: `${team.name}: ${what}`,
       html: `
-        <p>Se agregó un evento nuevo a ${team.name}: <b>${what}</b>.</p>
-        <p>${when}</p>
+        <p>Se agregó un evento nuevo a ${escapeHtml(team.name)}: <b>${escapeHtml(what)}</b>.</p>
+        <p>${escapeHtml(when)}</p>
         <p><a href="${appUrl}/${team.slug}/calendario">Ver el calendario en AguiVision</a></p>
       `,
     });

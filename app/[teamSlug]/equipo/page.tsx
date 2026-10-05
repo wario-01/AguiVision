@@ -39,10 +39,12 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
   if (!team) notFound();
 
   const canInvite = team.role === "coach" || team.role === "assistant";
-  const members = await getTeamMembers(team.slug);
+  const allMembers = await getTeamMembers(team.slug);
   const invitations = canInvite ? await getPendingInvitations(team.slug) : [];
   const players = await getPlayers(team.slug);
   const currentUser = await getCurrentUser();
+  // Madres/padres y jugadores no ven los correos de los demás: solo su propia fila.
+  const members = canInvite ? allMembers : allMembers.filter((m) => m.profile_id === currentUser?.id);
   const managedTeams = canInvite
     ? (await getMyTeams())
         .filter((t) => t.role === "coach" || t.role === "assistant")

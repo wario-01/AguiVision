@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
+import { checkImage } from "@/lib/imageUpload";
 
 // POST /api/sponsor-logo
 // form-data: { teamSlug, file }
@@ -17,8 +18,9 @@ export async function POST(req: Request) {
   if (typeof teamSlug !== "string" || !(file instanceof File)) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "El archivo tiene que ser una imagen" }, { status: 400 });
+  const image = checkImage(file);
+  if (!image.ok) {
+    return NextResponse.json({ error: image.error }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -55,8 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Falta configurar el almacenamiento" }, { status: 500 });
   }
 
-  const ext = file.name.split(".").pop() || "png";
-  const path = `${team.id}-${Date.now()}.${ext}`;
+  const path = `${team.id}-${Date.now()}.${image.ext}`;
 
   const { error: uploadError } = await admin.storage
     .from("sponsors")

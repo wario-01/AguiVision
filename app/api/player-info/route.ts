@@ -58,12 +58,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Falta configurar el servidor" }, { status: 500 });
   }
 
-  const update: Record<string, unknown> = { ...parsed.fields };
+  const { jersey_number, position, peso, altura, perfil } = parsed.fields;
+
+  const update: Record<string, unknown> = { jersey_number, position };
   if (newName) update.full_name = newName;
 
   const { error: updateError } = await admin.from("players").update(update).eq("id", player.id);
-
   if (updateError) {
+    return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
+  }
+
+  // Peso, altura y perfil van a una tabla aparte, solo visible para staff.
+  const { error: privateError } = await admin
+    .from("player_private")
+    .upsert({ player_id: player.id, peso, altura, perfil, updated_at: new Date().toISOString() });
+  if (privateError) {
     return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
   }
 

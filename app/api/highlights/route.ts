@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mux, isMuxConfigured } from "@/lib/mux";
 import { sendEmail } from "@/lib/resend";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 // POST /api/highlights
 // body: { matchId, playerId, label, startSeconds, endSeconds }
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
       to: emails,
       subject: `Nuevo highlight de ${player.full_name} — ${body.label}`,
       html: `
-        <p>Hay un highlight nuevo de <b>${player.full_name}</b> (${team.name}): <b>${body.label}</b>.</p>
+        <p>Hay un highlight nuevo de <b>${escapeHtml(player.full_name)}</b> (${escapeHtml(team.name)}): <b>${escapeHtml(body.label)}</b>.</p>
         <p><a href="${appUrl}/${team.slug}/highlights/${highlight.id}">Ver el highlight en AguiVision</a></p>
       `,
     });

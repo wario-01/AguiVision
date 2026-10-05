@@ -19,32 +19,21 @@
 6. **Respaldo de la base de datos**: confirmar que Supabase tiene copias automáticas activas.
 7. Si los videos se siguen subiendo al equipo equivocado: revisar cómo se elige el equipo al iniciar una transmisión.
 
-## Backlog de seguridad (pendiente de la auditoría de octubre 2026)
-Ordenado por prioridad. Lo marcado con [config] depende de variables de entorno en Vercel.
-
-**Alta**
-- Papás y jugadores todavía pueden leer `peso`, `altura` y `perfil` de TODOS los jugadores de su equipo
-  directamente contra la base de datos (la tabla `players` es legible por cualquier miembro). Solución:
-  mover esos campos a una tabla solo para entrenadores, o exponer una vista sin ellos.
-- La llave de transmisión (`live_streams.stream_key`) es legible por cualquier miembro del equipo.
-  Solución: moverla a una tabla solo para entrenadores.
-- [config] `MUX_WEBHOOK_SECRET`: confirmar que está configurada en Vercel. Con ella, el webhook ya rechaza
-  eventos sin firma; sin ella, no se puede verificar nada.
-- [config] `CRON_SECRET`: confirmar que está configurada. Si no, la ruta de limpieza queda abierta.
+## Backlog de seguridad (pendiente)
+Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 
 **Media**
-- Los highlights se filtran por rol solo en el código; en la base de datos cualquier miembro puede leerlos todos.
-- Papás y jugadores ven correos y vínculos de otros miembros en la pantalla Equipo.
-- Subidas de archivos (foto de rival, fotos de perfil/jugador, logos): validar tipo y tamaño, y exigir rol
-  de entrenador antes de subir el logo del rival.
 - Las fotos están en un bucket público (los nombres no se pueden adivinar, pero quien reciba el enlace lo conserva).
+  Solución a futuro: bucket privado con enlaces firmados.
+- Las transmisiones públicas no tienen límite de visitas ni validación (cualquiera con el enlace ve la
+  transmisión; cada visita escribe una fila).
 - El truco de "rastreadores" (WhatsApp/Facebook) en el middleware se puede falsificar; el impacto hoy es bajo.
-- Las transmisiones públicas no tienen límite de visitas ni validación.
 
 **Baja**
-- Escapar HTML en los correos de notificación (nombres, títulos).
-- La política de actualización de `profiles` permite cambiar el propio correo.
+- La política de actualización de `profiles` permite cambiar el propio correo (afecta a qué correo llegan
+  los avisos). Arreglarlo con cuidado para no romper la foto de perfil.
 - `cors_origin: "*"` en las subidas a Mux si falta `NEXT_PUBLIC_APP_URL`.
+- Revisar de vez en cuando las políticas de la base de datos al agregar tablas nuevas (siempre RLS activado).
 
 ## Ya corregido en la ronda de octubre 2026
 - Un papá o jugador ya no puede borrar videos/clips ni terminar transmisiones (el rol se verifica antes de tocar Mux).
@@ -53,3 +42,9 @@ Ordenado por prioridad. Lo marcado con [config] depende de variables de entorno 
 - El inicio de sesión ya no acepta redirecciones a otros sitios.
 - Un ciclo de evaluación solo se abre desde su propio equipo.
 - El webhook de Mux rechaza eventos sin firma cuando la clave está configurada.
+- Peso, altura y perfil de los jugadores viven en una tabla aparte (`player_private`) que solo leen entrenador/asistente.
+- La llave de transmisión ya no se guarda en la base de datos.
+- Los highlights se filtran por rol también en la base de datos (papás/jugadores solo ven los de su jugador).
+- Papás y jugadores ya no ven los correos de los demás miembros del equipo.
+- Las subidas de imágenes validan tipo (JPG/PNG/WEBP/GIF) y tamaño (5 MB); crear eventos exige ser entrenador/asistente antes de subir nada.
+- Los correos de aviso escapan el texto (nombres, títulos) para evitar inyección de HTML.

@@ -50,14 +50,26 @@ export async function POST(req: Request) {
   const auth = await requireStaff(body.teamId);
   if ("error" in auth) return auth.error;
 
+  const { jersey_number, position, peso, altura, perfil } = parsed.fields;
+
   const { data, error } = await auth.admin
     .from("players")
-    .insert({ team_id: body.teamId, full_name: name.name, ...parsed.fields })
+    .insert({ team_id: body.teamId, full_name: name.name, jersey_number, position })
     .select("id")
     .single();
 
   if (error || !data) {
     return NextResponse.json({ error: "No se pudo crear el jugador" }, { status: 500 });
+  }
+
+  // Peso, altura y perfil van a una tabla aparte, solo visible para staff.
+  if (peso !== null || altura !== null || perfil !== null) {
+    const { error: privateError } = await auth.admin
+      .from("player_private")
+      .insert({ player_id: data.id, peso, altura, perfil });
+    if (privateError) {
+      return NextResponse.json({ error: "El jugador se creó, pero no se pudieron guardar peso/altura/perfil" }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true, id: data.id });

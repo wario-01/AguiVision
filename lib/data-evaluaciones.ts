@@ -368,12 +368,26 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
 
   const { data, error } = await supabase
     .from('players')
-    .select('id, full_name, jersey_number, position, photo_url, team_id, peso, altura, perfil')
+    .select('id, full_name, jersey_number, position, photo_url, team_id')
     .eq('id', playerId)
     .single();
 
   if (error || !data) return null;
-  return data as PlayerProfile;
+
+  // Peso, altura y perfil están en una tabla aparte que solo leen
+  // entrenador/asistente (datos de menores).
+  const { data: priv } = await supabase
+    .from('player_private')
+    .select('peso, altura, perfil')
+    .eq('player_id', playerId)
+    .maybeSingle();
+
+  return {
+    ...(data as any),
+    peso: priv?.peso ?? null,
+    altura: priv?.altura ?? null,
+    perfil: priv?.perfil ?? null,
+  } as PlayerProfile;
 }
 
 export interface PlayerHighlight {

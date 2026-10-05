@@ -88,7 +88,6 @@ export async function POST(req: Request) {
     await supabase
       .from("live_streams")
       .update({
-        stream_key: muxLiveStream.stream_key,
         playback_id: muxLiveStream.playback_ids?.[0]?.id ?? null,
         mux_live_stream_id: muxLiveStream.id,
       })
