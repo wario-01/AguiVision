@@ -2,9 +2,11 @@
 
 // components/PlayerInfoForm.tsx
 //
-// Formulario para capturar/editar número, posición, peso, altura y
-// perfil (pie dominante) de un jugador. Solo coach/asistente lo ven
-// (la página que lo renderiza ya filtra el acceso).
+// Formulario de jugador, para dos casos:
+//  - Crear (sin playerId, con teamId): nombre + número, posición, peso,
+//    altura y perfil (pie dominante).
+//  - Editar (con playerId): los mismos campos, ya llenos.
+// Solo coach/asistente lo ven (las páginas que lo renderizan filtran).
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,12 +32,15 @@ const PERFILES = [
 
 export default function PlayerInfoForm({
   playerId,
+  teamId,
   teamSlug,
   initial,
 }: {
-  playerId: string;
+  playerId?: string;
+  teamId?: string;
   teamSlug: string;
   initial: {
+    full_name: string;
     jersey_number: number | null;
     position: string | null;
     peso: number | null;
@@ -43,6 +48,8 @@ export default function PlayerInfoForm({
     perfil: string | null;
   };
 }) {
+  const isCreate = !playerId;
+  const [fullName, setFullName] = useState(initial.full_name);
   const [jersey, setJersey] = useState(initial.jersey_number?.toString() ?? "");
   const [position, setPosition] = useState(initial.position ?? "");
   const [peso, setPeso] = useState(initial.peso?.toString() ?? "");
@@ -57,11 +64,12 @@ export default function PlayerInfoForm({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/player-info", {
+      const res = await fetch(isCreate ? "/api/players" : "/api/player-info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          playerId,
+          ...(isCreate ? { teamId } : { playerId }),
+          full_name: fullName,
           jersey_number: jersey,
           position,
           peso,
@@ -69,12 +77,12 @@ export default function PlayerInfoForm({
           perfil,
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setError(data.error ?? "No se pudo guardar");
         return;
       }
-      router.push(`/${teamSlug}/jugador/${playerId}`);
+      router.push(isCreate ? `/${teamSlug}/equipo` : `/${teamSlug}/jugador/${playerId}`);
       router.refresh();
     } catch {
       setError("Ocurrió un error");
@@ -85,6 +93,18 @@ export default function PlayerInfoForm({
 
   return (
     <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-xl p-5 flex flex-col gap-4">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-muted">Nombre completo</span>
+        <input
+          required
+          maxLength={100}
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className="bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
+          placeholder="Ej. Mateo Ramírez"
+        />
+      </label>
+
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-muted">Número</span>
@@ -158,7 +178,7 @@ export default function PlayerInfoForm({
         </select>
       </label>
 
-      {error && <div className="text-xs text-red-400 font-semibold">{error}</div>}
+      {error && <div className="text-xs text-red font-semibold">{error}</div>}
 
       <div className="flex items-center gap-3">
         <button
@@ -166,7 +186,7 @@ export default function PlayerInfoForm({
           disabled={busy}
           className="bg-gold text-bg rounded-lg px-5 py-2.5 text-sm font-extrabold disabled:opacity-50"
         >
-          {busy ? "Guardando…" : "Guardar datos"}
+          {busy ? "Guardando…" : isCreate ? "Agregar jugador" : "Guardar datos"}
         </button>
       </div>
     </form>

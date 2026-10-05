@@ -27,7 +27,12 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("mux-signature");
 
-  if (isMuxConfigured && mux && process.env.MUX_WEBHOOK_SECRET && signature) {
+  if (isMuxConfigured && mux && process.env.MUX_WEBHOOK_SECRET) {
+    // Con la clave configurada, un evento SIN firma ya no pasa (antes se
+    // saltaba la verificación y cualquiera podía mandar eventos falsos).
+    if (!signature) {
+      return NextResponse.json({ error: "Falta la firma" }, { status: 400 });
+    }
     try {
       // TODO: si esta línea da error de tipos o de método no encontrado,
       // revisar el nombre exacto en la versión de @mux/mux-node instalada.

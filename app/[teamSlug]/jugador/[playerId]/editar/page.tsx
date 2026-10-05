@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import PlayerInfoForm from "@/components/PlayerInfoForm";
+import DeletePlayerButton from "@/components/DeletePlayerButton";
 import { getTeamBySlug } from "@/lib/data";
 import { getPlayerProfile } from "@/lib/data-evaluaciones";
 
@@ -37,6 +38,7 @@ export default async function EditarJugadorPage({
           playerId={player.id}
           teamSlug={team.slug}
           initial={{
+            full_name: player.full_name,
             jersey_number: player.jersey_number,
             position: player.position,
             peso: player.peso,
@@ -44,6 +46,10 @@ export default async function EditarJugadorPage({
             perfil: player.perfil,
           }}
         />
+
+        <div className="mt-6">
+          <DeletePlayerButton playerId={player.id} playerName={player.full_name} teamSlug={team.slug} />
+        </div>
       </div>
     </div>
   );

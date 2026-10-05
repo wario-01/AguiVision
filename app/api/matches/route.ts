@@ -18,14 +18,32 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
   }
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+  }
+
   const { data: match } = await supabase
     .from("matches")
-    .select("video_asset_id")
+    .select("team_id, video_asset_id")
     .eq("id", body.matchId)
     .single();
 
   if (!match) {
     return NextResponse.json({ error: "Partido no encontrado" }, { status: 404 });
+  }
+
+  // Verificar el rol ANTES de borrar nada en Mux (si no, cualquier miembro
+  // podía borrar videos y clips aunque la base de datos le negara el cambio).
+  const { data: membership } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", match.team_id)
+    .eq("profile_id", userData.user.id)
+    .maybeSingle();
+
+  if (!membership || (membership.role !== "coach" && membership.role !== "assistant")) {
+    return NextResponse.json({ error: "No tenés permiso para borrar este partido" }, { status: 403 });
   }
 
   // Borrar primero los clips de los highlights de este partido en Mux

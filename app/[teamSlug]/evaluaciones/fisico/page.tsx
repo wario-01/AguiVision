@@ -17,6 +17,8 @@ export default async function FisicoPage({
 }) {
   const team = await getTeamBySlug(params.teamSlug);
   if (!team) notFound();
+  // Datos de menores: solo entrenador/asistente.
+  if (team.role !== "coach" && team.role !== "assistant") notFound();
 
   const enabled = await getPhysicalEvalEnabled(team.id);
   if (!enabled) {

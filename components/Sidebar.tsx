@@ -75,7 +75,9 @@ export default async function Sidebar({
     .toUpperCase();
   const currentTeam = teams.find((t) => t.slug === currentTeamSlug);
 
-  const navItems = [
+  const isStaff = currentTeam?.role === "coach" || currentTeam?.role === "assistant";
+
+  const allNavItems = [
     { key: "inicio" as const, href: `/${currentTeamSlug}`, label: "Inicio", icon: NAV_ICONS.inicio },
     { key: "calendario" as const, href: `/${currentTeamSlug}/calendario`, label: "Calendario", icon: NAV_ICONS.calendario },
     { key: "subir" as const, href: `/${currentTeamSlug}/subir`, label: "Subir", icon: NAV_ICONS.subir },
@@ -84,6 +86,9 @@ export default async function Sidebar({
     { key: "equipo" as const, href: `/${currentTeamSlug}/equipo`, label: "Equipo", icon: NAV_ICONS.equipo },
     { key: "evaluaciones" as const, href: `/${currentTeamSlug}/evaluaciones`, label: "Evaluación", icon: NAV_ICONS.evaluaciones },
   ];
+
+  // Las evaluaciones son datos de menores: solo entrenador/asistente.
+  const navItems = allNavItems.filter((item) => item.key !== "evaluaciones" || isStaff);
 
   return (
     <>

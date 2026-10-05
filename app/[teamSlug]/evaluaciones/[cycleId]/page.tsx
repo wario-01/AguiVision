@@ -15,9 +15,12 @@ export default async function CicloDetallePage({
 }) {
   const team = await getTeamBySlug(params.teamSlug);
   if (!team) notFound();
+  // Datos de menores: solo entrenador/asistente.
+  if (team.role !== "coach" && team.role !== "assistant") notFound();
 
   const cycle = await getEvalCycle(params.cycleId);
   if (!cycle) notFound();
+  if (cycle.team_id !== team.id) notFound();
 
   const [players, curriculumItems] = await Promise.all([
     getPlayers(team.slug),

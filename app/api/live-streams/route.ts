@@ -123,11 +123,33 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
   }
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+  }
+
   const { data: liveStream } = await supabase
     .from("live_streams")
-    .select("mux_live_stream_id")
+    .select("team_id, mux_live_stream_id")
     .eq("id", body.liveStreamId)
     .single();
+
+  if (!liveStream) {
+    return NextResponse.json({ error: "Transmisión no encontrada" }, { status: 404 });
+  }
+
+  // Verificar el rol ANTES de tocar Mux (si no, cualquier miembro podría
+  // cortar la transmisión en Mux aunque la base de datos le niegue el cambio).
+  const { data: membership } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", liveStream.team_id)
+    .eq("profile_id", userData.user.id)
+    .maybeSingle();
+
+  if (!membership || (membership.role !== "coach" && membership.role !== "assistant")) {
+    return NextResponse.json({ error: "No tenés permiso para terminar esta transmisión" }, { status: 403 });
+  }
 
   if (isMuxConfigured && mux && liveStream?.mux_live_stream_id) {
     try {

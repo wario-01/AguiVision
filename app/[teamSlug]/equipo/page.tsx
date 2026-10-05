@@ -81,10 +81,20 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
           </div>
         )}
 
-        {canInvite && players.length > 0 && (
+        {canInvite && (
           <>
-            <div className="font-display text-lg font-semibold mb-3">Plantilla</div>
-            <div className="bg-panel border border-border rounded-2xl overflow-hidden mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-lg font-semibold">Plantilla</div>
+              <Link href={`/${team.slug}/jugador/nuevo`} className="text-xs font-bold text-gold hover:underline">
+                + Nuevo jugador
+              </Link>
+            </div>
+            {players.length === 0 && (
+              <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-6 text-center mb-8">
+                Este equipo todavía no tiene jugadores. Agrega el primero con el enlace + Nuevo jugador.
+              </div>
+            )}
+            <div className={`bg-panel border border-border rounded-2xl overflow-hidden mb-8 ${players.length === 0 ? "hidden" : ""}`}>
               {players.map((p, i) => (
                 <div
                   key={p.id}
