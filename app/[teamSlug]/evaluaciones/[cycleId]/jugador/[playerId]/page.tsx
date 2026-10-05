@@ -62,6 +62,21 @@ export default async function EvaluarJugadorPage({
             evaluaciones={evaluacionesSimples}
           />
         )}
+
+        <div className="flex items-center gap-3 mt-8">
+          <Link
+            href={`/${team.slug}/evaluaciones/${cycle.id}`}
+            className="bg-gold text-bg rounded-lg px-5 py-2.5 text-sm font-extrabold"
+          >
+            Volver a la lista
+          </Link>
+          <Link
+            href={`/${team.slug}/jugador/${player.id}`}
+            className="text-xs font-bold text-gold hover:underline"
+          >
+            Ver perfil
+          </Link>
+        </div>
       </div>
     </div>
   );
