@@ -7,6 +7,7 @@
 - Datos del jugador: número, posición, peso, altura y perfil (pie dominante).
 - Mover un partido/video a otro equipo.
 - Alta, edición y baja de jugadores desde la app.
+- Recuperar un video que quedó en Mux sin partido (Subir → Recuperarlo desde Mux).
 - Primera ronda de endurecimiento de seguridad (ver abajo).
 
 ## Siguiente: producto

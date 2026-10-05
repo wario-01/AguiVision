@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import UploadForm from "@/components/UploadForm";
@@ -14,6 +15,15 @@ export default async function SubirPage({ params }: { params: { teamSlug: string
         <div className="font-display text-2xl font-bold mb-1">Subir video</div>
         <div className="text-sm text-muted mb-7">{team.name} · sube el video completo del partido</div>
         <UploadForm teamSlug={team.slug} />
+
+        {(team.role === "coach" || team.role === "assistant") && (
+          <div className="mt-8 text-xs text-muted">
+            ¿Se cortó una transmisión y el video no aparece?{" "}
+            <Link href={`/${team.slug}/subir/recuperar`} className="font-bold text-gold hover:underline">
+              Recuperarlo desde Mux
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
