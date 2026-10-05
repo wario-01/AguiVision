@@ -13,5 +13,11 @@ export function createAdminClient() {
   if (!url || !serviceRoleKey) return null;
   return createSupabaseClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: {
+      // Next.js cachea `fetch` por defecto en Server Components — sin esto,
+      // las pantallas públicas (como /en-vivo) podían seguir mostrando datos
+      // viejos, por ejemplo un patrocinador agregado después de empezar.
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
 }
