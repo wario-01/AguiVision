@@ -76,6 +76,11 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
                       </span>
                     </div>
                     <div className="text-sm font-bold">{h.label} · {h.player_name}</div>
+                    {h.shared_with_team && (
+                      <span className="inline-block border border-goldBorderDim text-goldText text-[10px] font-extrabold px-2 py-0.5 rounded-full my-0.5">
+                        Compartido con el equipo
+                      </span>
+                    )}
                     <div className="text-xs text-muted">min {h.minute}</div>
                   </a>
                 ))}

@@ -9,6 +9,7 @@
 - Alta, edición y baja de jugadores desde la app.
 - Recuperar un video que quedó en Mux sin partido (Subir → Recuperarlo desde Mux).
 - Niños que juegan en 2 equipos: se vinculan desde "Editar datos" y los papás ven los highlights de las dos categorías juntos.
+- Compartir un highlight con todo el equipo (interruptor del entrenador en el highlight; los papás lo ven con la marca "Compartido").
 - Primera ronda de endurecimiento de seguridad (ver abajo).
 
 ## Siguiente: producto

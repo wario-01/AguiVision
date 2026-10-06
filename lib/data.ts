@@ -44,6 +44,8 @@ export type Highlight = {
   // Solo en la vista de papás/jugadores (que juntan highlights de varios equipos):
   team_id?: string;
   team_name?: string;
+  // El entrenador lo compartió con todo el equipo (lo ven también los papás de otros niños).
+  shared_with_team?: boolean;
 };
 
 export type LiveStream = {
@@ -169,7 +171,7 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
 
     let query = supabase
       .from("highlights")
-      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id, opponent, match_date)")
+      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, shared_with_team, players(full_name), matches!inner(team_id, opponent, match_date)")
       .eq("matches.team_id", team.id)
       .order("created_at", { ascending: false });
 
@@ -178,7 +180,7 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
     // equipo, los de todos sus equipos juntos. Entrenadores y asistentes
     // ven todos los de su equipo.
     if (team.role === "player" || team.role === "parent") {
-      return getLinkedPlayerHighlights(supabase);
+      return getLinkedPlayerHighlights(supabase, team.id);
     }
 
     const { data, error } = await query;
@@ -199,6 +201,7 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
         minute: Math.floor(row.start_seconds / 60),
         duration: `${mm}:${ss}`,
         clip_playback_id: row.clip_playback_id,
+        shared_with_team: Boolean(row.shared_with_team),
       };
     });
   }
@@ -210,7 +213,8 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
 // Usa el cliente de servicio porque el papá no es miembro del otro equipo;
 // la autorización sale de SUS propias filas de team_members.
 async function getLinkedPlayerHighlights(
-  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  currentTeamId: string
 ): Promise<Highlight[]> {
   if (!isAdminConfigured) return [];
   const admin = createAdminClient();
@@ -219,31 +223,41 @@ async function getLinkedPlayerHighlights(
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return [];
 
+  const SELECT =
+    "id, match_id, label, start_seconds, end_seconds, clip_playback_id, shared_with_team, created_at, players(full_name), matches!inner(team_id, opponent, match_date, teams(name))";
+
+  // 1) Highlights de SU niño (en todos los equipos donde juega)
+  let own: any[] = [];
   const { data: mine } = await supabase
     .from("team_members")
     .select("player_id")
     .eq("profile_id", userData.user.id)
     .not("player_id", "is", null);
   const myPlayerIds = (mine ?? []).map((r: any) => r.player_id as string);
-  if (myPlayerIds.length === 0) return [];
 
-  const { data: people } = await admin.from("players").select("person_id").in("id", myPlayerIds);
-  const personIds = Array.from(new Set((people ?? []).map((p: any) => p.person_id as string)));
-  if (personIds.length === 0) return [];
+  if (myPlayerIds.length > 0) {
+    const { data: people } = await admin.from("players").select("person_id").in("id", myPlayerIds);
+    const personIds = Array.from(new Set((people ?? []).map((p: any) => p.person_id as string)));
+    if (personIds.length > 0) {
+      const { data: sameKid } = await admin.from("players").select("id").in("person_id", personIds);
+      const playerIds = (sameKid ?? []).map((p: any) => p.id as string);
+      if (playerIds.length > 0) {
+        const { data } = await admin.from("highlights").select(SELECT).in("player_id", playerIds);
+        own = data ?? [];
+      }
+    }
+  }
 
-  const { data: sameKid } = await admin.from("players").select("id").in("person_id", personIds);
-  const playerIds = (sameKid ?? []).map((p: any) => p.id as string);
-  if (playerIds.length === 0) return [];
-
-  const { data, error } = await admin
+  // 2) Highlights que el entrenador compartió con todo ESTE equipo
+  const { data: sharedData } = await admin
     .from("highlights")
-    .select(
-      "id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id, opponent, match_date, teams(name))"
-    )
-    .in("player_id", playerIds)
-    .order("created_at", { ascending: false });
+    .select(SELECT)
+    .eq("shared_with_team", true)
+    .eq("matches.team_id", currentTeamId);
 
-  if (error || !data) return [];
+  const byId = new Map<string, any>();
+  for (const row of [...own, ...(sharedData ?? [])]) byId.set(row.id, row);
+  const data = Array.from(byId.values()).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 
   return data.map((row: any) => {
     const durationSeconds = Math.max(0, row.end_seconds - row.start_seconds);
@@ -261,6 +275,7 @@ async function getLinkedPlayerHighlights(
       clip_playback_id: row.clip_playback_id,
       team_id: row.matches?.team_id,
       team_name: row.matches?.teams?.name ?? undefined,
+      shared_with_team: Boolean(row.shared_with_team),
     };
   });
 }

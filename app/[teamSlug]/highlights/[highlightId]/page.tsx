@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import { getTeamBySlug, getHighlights } from "@/lib/data";
 import MatchPlayer from "@/components/MatchPlayer";
 import DeleteHighlightButton from "@/components/DeleteHighlightButton";
+import ShareHighlightToggle from "@/components/ShareHighlightToggle";
 
 export default async function HighlightPage({
   params,
@@ -49,6 +50,10 @@ export default async function HighlightPage({
           <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">
             Mux todavía está generando este clip — recargá la página en un rato.
           </div>
+        )}
+
+        {canDelete && (
+          <ShareHighlightToggle highlightId={highlight.id} initial={Boolean(highlight.shared_with_team)} />
         )}
 
         {canDelete && <DeleteHighlightButton highlightId={highlight.id} teamSlug={team.slug} />}
