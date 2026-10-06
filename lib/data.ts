@@ -41,6 +41,9 @@ export type Highlight = {
   minute: number;
   duration: string;
   clip_playback_id?: string | null;
+  // Solo en la vista de papás/jugadores (que juntan highlights de varios equipos):
+  team_id?: string;
+  team_name?: string;
 };
 
 export type LiveStream = {
@@ -171,10 +174,11 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
       .order("created_at", { ascending: false });
 
     // Un jugador o madre/padre vinculado a un jugador específico solo ve
-    // los highlights de ESE jugador. Entrenadores y asistentes ven todos.
+    // los highlights de ESE jugador — y, si el niño juega en más de un
+    // equipo, los de todos sus equipos juntos. Entrenadores y asistentes
+    // ven todos los de su equipo.
     if (team.role === "player" || team.role === "parent") {
-      if (!team.player_id) return []; // sin jugador vinculado todavía
-      query = query.eq("player_id", team.player_id);
+      return getLinkedPlayerHighlights(supabase);
     }
 
     const { data, error } = await query;
@@ -199,6 +203,66 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
     });
   }
   return SEED_HIGHLIGHTS[teamSlug] ?? [];
+}
+
+// Highlights de los jugadores a los que esta persona está vinculada, en TODOS
+// los equipos donde juega ese niño (los registros que comparten person_id).
+// Usa el cliente de servicio porque el papá no es miembro del otro equipo;
+// la autorización sale de SUS propias filas de team_members.
+async function getLinkedPlayerHighlights(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>
+): Promise<Highlight[]> {
+  if (!isAdminConfigured) return [];
+  const admin = createAdminClient();
+  if (!admin) return [];
+
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
+
+  const { data: mine } = await supabase
+    .from("team_members")
+    .select("player_id")
+    .eq("profile_id", userData.user.id)
+    .not("player_id", "is", null);
+  const myPlayerIds = (mine ?? []).map((r: any) => r.player_id as string);
+  if (myPlayerIds.length === 0) return [];
+
+  const { data: people } = await admin.from("players").select("person_id").in("id", myPlayerIds);
+  const personIds = Array.from(new Set((people ?? []).map((p: any) => p.person_id as string)));
+  if (personIds.length === 0) return [];
+
+  const { data: sameKid } = await admin.from("players").select("id").in("person_id", personIds);
+  const playerIds = (sameKid ?? []).map((p: any) => p.id as string);
+  if (playerIds.length === 0) return [];
+
+  const { data, error } = await admin
+    .from("highlights")
+    .select(
+      "id, match_id, label, start_seconds, end_seconds, clip_playback_id, players(full_name), matches!inner(team_id, opponent, match_date, teams(name))"
+    )
+    .in("player_id", playerIds)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return data.map((row: any) => {
+    const durationSeconds = Math.max(0, row.end_seconds - row.start_seconds);
+    const mm = Math.floor(durationSeconds / 60);
+    const ss = String(Math.round(durationSeconds % 60)).padStart(2, "0");
+    return {
+      id: row.id,
+      match_id: row.match_id,
+      match_opponent: row.matches?.opponent ?? "?",
+      match_date: row.matches?.match_date ?? "",
+      player_name: row.players?.full_name ?? "Jugador",
+      label: row.label,
+      minute: Math.floor(row.start_seconds / 60),
+      duration: `${mm}:${ss}`,
+      clip_playback_id: row.clip_playback_id,
+      team_id: row.matches?.team_id,
+      team_name: row.matches?.teams?.name ?? undefined,
+    };
+  });
 }
 
 export async function getLiveStreams(): Promise<LiveStream[]> {

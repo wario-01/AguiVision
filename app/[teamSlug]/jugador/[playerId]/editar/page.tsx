@@ -5,8 +5,10 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import PlayerInfoForm from "@/components/PlayerInfoForm";
 import DeletePlayerButton from "@/components/DeletePlayerButton";
+import LinkPlayerSection from "@/components/LinkPlayerSection";
 import { getTeamBySlug } from "@/lib/data";
 import { getPlayerProfile } from "@/lib/data-evaluaciones";
+import { getLinkOptions } from "@/lib/data-personas";
 
 export default async function EditarJugadorPage({
   params,
@@ -21,6 +23,8 @@ export default async function EditarJugadorPage({
 
   const player = await getPlayerProfile(params.playerId);
   if (!player || player.team_id !== team.id) notFound();
+
+  const { linked, candidates } = await getLinkOptions(player.person_id, team.id);
 
   return (
     <div className="flex h-screen w-full">
@@ -46,6 +50,8 @@ export default async function EditarJugadorPage({
             perfil: player.perfil,
           }}
         />
+
+        <LinkPlayerSection playerId={player.id} linked={linked} candidates={candidates} />
 
         <div className="mt-6">
           <DeletePlayerButton playerId={player.id} playerName={player.full_name} teamSlug={team.slug} />

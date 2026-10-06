@@ -10,10 +10,19 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
 
   // Agrupar por partido — el orden de aparición sigue el de getHighlights
   // (más recientes primero), así que los grupos ya quedan en ese orden.
-  const groups = new Map<string, { opponent: string; date: string; items: typeof highlights }>();
+  const groups = new Map<
+    string,
+    { opponent: string; date: string; teamId?: string; teamName?: string; items: typeof highlights }
+  >();
   for (const h of highlights) {
     if (!groups.has(h.match_id)) {
-      groups.set(h.match_id, { opponent: h.match_opponent, date: h.match_date, items: [] });
+      groups.set(h.match_id, {
+        opponent: h.match_opponent,
+        date: h.match_date,
+        teamId: h.team_id,
+        teamName: h.team_name,
+        items: [],
+      });
     }
     groups.get(h.match_id)!.items.push(h);
   }
@@ -28,15 +37,28 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
         <div className="flex flex-col gap-8 mb-8">
           {Array.from(groups.entries()).map(([matchId, group]) => (
             <div key={matchId}>
-              <a
-                href={`/${team.slug}/partidos/${matchId}`}
-                className="flex items-baseline gap-2 mb-3 hover:opacity-80"
-              >
-                <span className="font-display text-base font-semibold">vs {group.opponent}</span>
-                <span className="text-xs text-muted">
-                  {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : ""}
-                </span>
-              </a>
+              {/* El enlace al partido solo sirve si es de este equipo (papás de un
+                  niño que juega en 2 equipos ven highlights del otro equipo también). */}
+              {!group.teamId || group.teamId === team.id ? (
+                <a
+                  href={`/${team.slug}/partidos/${matchId}`}
+                  className="flex items-baseline gap-2 mb-3 hover:opacity-80"
+                >
+                  <span className="font-display text-base font-semibold">vs {group.opponent}</span>
+                  <span className="text-xs text-muted">
+                    {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                  </span>
+                  {group.teamName && <span className="text-xs text-gold">{group.teamName}</span>}
+                </a>
+              ) : (
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="font-display text-base font-semibold">vs {group.opponent}</span>
+                  <span className="text-xs text-muted">
+                    {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                  </span>
+                  {group.teamName && <span className="text-xs text-gold">{group.teamName}</span>}
+                </div>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {group.items.map((h) => (
                   <a href={`/${team.slug}/highlights/${h.id}`} key={h.id}>

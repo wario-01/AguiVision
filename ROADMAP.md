@@ -8,10 +8,12 @@
 - Mover un partido/video a otro equipo.
 - Alta, edición y baja de jugadores desde la app.
 - Recuperar un video que quedó en Mux sin partido (Subir → Recuperarlo desde Mux).
+- Niños que juegan en 2 equipos: se vinculan desde "Editar datos" y los papás ven los highlights de las dos categorías juntos.
 - Primera ronda de endurecimiento de seguridad (ver abajo).
 
 ## Siguiente: producto
-1. **Pasar jugadores de un equipo a otro** (cuando suben de categoría), conservando su historial.
+1. **Pasar jugadores de un equipo a otro** (cuando suben de categoría), conservando su historial. (Los niños que
+   juegan en 2 equipos a la vez ya se pueden vincular; falta el caso de cambio de categoría.)
 2. **Cierre de temporada**: archivar equipo o temporada sin perder el historial de evaluaciones.
 3. **Evaluación por tendencia**: en el perfil, comparar el último ciclo con el anterior (sube/baja por área).
 4. **PDF para papás**: que cada papá/jugador vea el perfil de su propio hijo y reciba el PDF por correo (Resend).

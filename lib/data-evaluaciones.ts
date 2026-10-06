@@ -355,6 +355,7 @@ export interface PlayerProfile {
   position: string | null;
   photo_url: string | null;
   team_id: string;
+  person_id: string;
   peso: number | null;
   altura: number | null;
   perfil: PerfilJugador | null;
@@ -368,7 +369,7 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
 
   const { data, error } = await supabase
     .from('players')
-    .select('id, full_name, jersey_number, position, photo_url, team_id')
+    .select('id, full_name, jersey_number, position, photo_url, team_id, person_id')
     .eq('id', playerId)
     .single();
 
