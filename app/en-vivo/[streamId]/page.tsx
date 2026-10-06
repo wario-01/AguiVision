@@ -76,7 +76,7 @@ export default async function WatchStreamPage({ params }: { params: { streamId: 
       {stream.sponsor_logo_url && (
         <div className="flex items-center gap-3 bg-panel border border-border rounded-xl px-4 py-3 mb-8 w-fit">
           <span className="text-xs text-muted font-semibold">Transmisión presentada por</span>
-          <img src={stream.sponsor_logo_url} alt="Patrocinador" className="h-6 object-contain" />
+          <img src={stream.sponsor_logo_url} alt="Patrocinador" className="h-12 md:h-16 object-contain" />
         </div>
       )}
 
