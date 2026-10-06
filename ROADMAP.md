@@ -10,11 +10,21 @@
 - Recuperar un video que quedó en Mux sin partido (Subir → Recuperarlo desde Mux).
 - Niños que juegan en 2 equipos: se vinculan desde "Editar datos" y los papás ven los highlights de las dos categorías juntos.
 - Compartir un highlight con todo el equipo (interruptor del entrenador en el highlight; los papás lo ven con la marca "Compartido").
+- Descargar el partido completo (botón en la página del partido, solo entrenador/asistente) y limpieza de partidos "fantasma" (sin video ni highlights) a los 6 meses.
 - Primera ronda de endurecimiento de seguridad (ver abajo).
 
 ## Siguiente: producto
-1. **Pasar jugadores de un equipo a otro** (cuando suben de categoría), conservando su historial. (Los niños que
-   juegan en 2 equipos a la vez ya se pueden vincular; falta el caso de cambio de categoría.)
+1. **Pasar jugadores de un equipo a otro** (cuando suben de categoría). Decisiones ya tomadas (5 oct 2026):
+   - El historial sigue al jugador: sus evaluaciones y mediciones físicas viajan con él al equipo nuevo, mostrando
+     de qué ciclo y equipo son. Nada se copia ni se borra.
+   - El entrenador nuevo ve el historial completo, pero solo a partir del momento en que se hace el cambio de equipo
+     (no antes). El papá y el jugador también lo ven.
+   - Datos del jugador (número, posición, peso, altura, perfil, foto) se conservan.
+   - Los partidos, videos y ciclos de evaluación se quedan en el equipo viejo (son del equipo). Los highlights del
+     jugador los sigue viendo su papá en la vista unificada.
+   - Requiere cuidado con los permisos (RLS): hoy las evaluaciones se ven por equipo del jugador. Hacerlo con SQL
+     primero, aditivo, sin perder datos, y probar paso a paso. Revisar antes que Supabase tenga respaldos activos (punto 6).
+   (Los niños que juegan en 2 equipos a la vez ya se pueden vincular; esto es el caso de cambio de categoría.)
 2. **Cierre de temporada**: archivar equipo o temporada sin perder el historial de evaluaciones.
 3. **Evaluación por tendencia**: en el perfil, comparar el último ciclo con el anterior (sube/baja por área).
 4. **PDF para papás**: que cada papá/jugador vea el perfil de su propio hijo y reciba el PDF por correo (Resend).

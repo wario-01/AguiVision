@@ -7,8 +7,11 @@ import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 // de Mux indefinidamente — los highlights ya generados NO se tocan (son
 // assets propios e independientes en Mux, y casi no pesan en el costo).
 //
-// El partido en sí no se borra de la base de datos (se conserva el rival,
-// la fecha, etc.) — solo se le saca el video y vuelve a video_status='none'.
+// Después del borrado el partido ya no tiene nada que mostrar:
+//  - si NO tiene highlights, se borra de la base de datos (no queda "fantasma");
+//  - si tiene highlights, se conserva (los highlights cuelgan de él) y las listas
+//    lo ocultan (ver isGhostMatch en lib/data.ts).
+// También limpia partidos fantasma que ya existían de antes.
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -59,5 +62,25 @@ export async function GET(req: Request) {
     results.push({ matchId: match.id, deleted: true });
   }
 
-  return NextResponse.json({ checked: oldMatches?.length ?? 0, cleaned: results.length });
+  // Partidos viejos sin video (los de recién y los de antes): borrar los que
+  // no tienen highlights.
+  const { data: ghosts } = await admin
+    .from("matches")
+    .select("id")
+    .eq("video_status", "none")
+    .lt("match_date", sixMonthsAgo.toISOString());
+
+  let removed = 0;
+  const ghostIds = (ghosts ?? []).map((g) => g.id as string);
+  if (ghostIds.length > 0) {
+    const { data: withHighlights } = await admin.from("highlights").select("match_id").in("match_id", ghostIds);
+    const keep = new Set((withHighlights ?? []).map((h) => h.match_id as string));
+    const toDelete = ghostIds.filter((id) => !keep.has(id));
+    if (toDelete.length > 0) {
+      const { error: delError } = await admin.from("matches").delete().in("id", toDelete);
+      if (!delError) removed = toDelete.length;
+    }
+  }
+
+  return NextResponse.json({ checked: oldMatches?.length ?? 0, cleaned: results.length, removed });
 }

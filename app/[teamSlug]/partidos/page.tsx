@@ -6,7 +6,7 @@ export default async function PartidosPage({ params }: { params: { teamSlug: str
   const team = await getTeamBySlug(params.teamSlug);
   if (!team) notFound();
 
-  const matches = await getMatches(team.slug);
+  const matches = await getMatches(team.slug, { hideGhosts: true });
 
   return (
     <div className="flex h-screen w-full">

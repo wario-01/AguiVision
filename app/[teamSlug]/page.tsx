@@ -17,7 +17,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
 
   const user = await getCurrentUser();
   const firstName = user?.full_name?.split(" ")[0] ?? "";
-  const matches = await getMatches(team.slug);
+  const matches = await getMatches(team.slug, { hideGhosts: true });
   const highlights = await getHighlights(team.slug);
   const upcomingEvents = await getUpcomingEvents(team.slug, 5);
 

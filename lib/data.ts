@@ -146,7 +146,21 @@ export async function getTeamBySlug(slug: string): Promise<Team | null> {
   return teams.find((t) => t.slug === slug) ?? null;
 }
 
-export async function getMatches(teamSlug: string): Promise<Match[]> {
+// Un partido "fantasma" es uno cuyo video ya se borró (pasaron 6 meses) y que no
+// tiene video: no tiene nada que mostrar, así que se oculta de las listas.
+export function isGhostMatch(m: Match): boolean {
+  if (m.video_status !== "none") return false;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 6);
+  return new Date(m.match_date) < cutoff;
+}
+
+export async function getMatches(teamSlug: string, opts?: { hideGhosts?: boolean }): Promise<Match[]> {
+  const all = await getAllMatches(teamSlug);
+  return opts?.hideGhosts ? all.filter((m) => !isGhostMatch(m)) : all;
+}
+
+async function getAllMatches(teamSlug: string): Promise<Match[]> {
   if (isSupabaseConfigured) {
     const team = await getTeamBySlug(teamSlug);
     const supabase = await createClient();

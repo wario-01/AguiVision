@@ -75,8 +75,10 @@ export async function POST(req: Request) {
     new_asset_settings: {
       playback_policy: ["public"],
       video_quality: "basic",
+      // Copia .mp4 descargable (botón "Descargar partido").
+      mp4_support: "capped-1080p",
       passthrough: `match:${match.id}`,
-    },
+    } as any,
   });
 
   await supabase.from("matches").update({ video_asset_id: upload.id }).eq("id", match.id);

@@ -75,7 +75,9 @@ export async function POST(req: Request) {
       new_asset_settings: {
         playback_policy: ["public"],
         video_quality: "plus",
-      },
+        // Copia .mp4 descargable (botón "Descargar partido").
+        mp4_support: "capped-1080p",
+      } as any,
       // Mux exige que la transmisión y la grabación que genera compartan el
       // MISMO passthrough — acá metemos los dos ids juntos (separados por
       // "|") y el webhook los separa según qué evento le llegue.

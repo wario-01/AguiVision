@@ -5,6 +5,7 @@ import MatchPlayer from "@/components/MatchPlayer";
 import HighlightForm from "@/components/HighlightForm";
 import DeleteMatchButtons from "@/components/DeleteMatchButtons";
 import MoveMatchForm from "@/components/MoveMatchForm";
+import DownloadMatchButton from "@/components/DownloadMatchButton";
 
 export default async function MatchPage({
   params,
@@ -44,6 +45,8 @@ export default async function MatchPage({
               : "Este partido todavía no tiene video subido."}
           </div>
         )}
+
+        {canMarkHighlights && match.video_status === "ready" && <DownloadMatchButton matchId={match.id} />}
 
         {canMarkHighlights && <DeleteMatchButtons matchId={match.id} teamSlug={team.slug} />}
 
