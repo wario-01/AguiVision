@@ -105,7 +105,13 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   }`}
                 >
                   <PlayerPhotoUpload playerId={p.id} currentUrl={p.photo_url ?? null} fullName={p.full_name} />
-                  <div className="text-sm font-bold flex-grow">{p.full_name}</div>
+                  <div className="flex-grow min-w-0">
+                    <div className="text-sm font-bold truncate">
+                      {p.jersey_number != null && <span className="text-gold">#{p.jersey_number} </span>}
+                      {p.full_name}
+                    </div>
+                    <div className="text-xs text-muted truncate">{p.position ? p.position : "Sin posición"}</div>
+                  </div>
                   <Link
                     href={`/${team.slug}/jugador/${p.id}/editar`}
                     className="text-xs font-bold text-gold hover:underline shrink-0"

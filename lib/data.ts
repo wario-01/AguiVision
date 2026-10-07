@@ -391,7 +391,13 @@ export async function getPendingInvitations(teamSlug: string): Promise<PendingIn
   }));
 }
 
-export type Player = { id: string; full_name: string; photo_url?: string | null };
+export type Player = {
+  id: string;
+  full_name: string;
+  photo_url?: string | null;
+  jersey_number?: number | null;
+  position?: string | null;
+};
 
 export async function getPlayers(teamSlug: string): Promise<Player[]> {
   if (!isSupabaseConfigured) return [];
@@ -401,7 +407,7 @@ export async function getPlayers(teamSlug: string): Promise<Player[]> {
 
   const { data, error } = await supabase
     .from("players")
-    .select("id, full_name, photo_url")
+    .select("id, full_name, photo_url, jersey_number, position")
     .eq("team_id", team.id)
     .order("full_name");
 
