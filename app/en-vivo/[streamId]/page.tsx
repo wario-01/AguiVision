@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getPublicLiveStreamById, getPublicLiveStreams, logPublicStreamView } from "@/lib/data";
+import { getPublicLiveStreamById, logPublicStreamView } from "@/lib/data";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import MatchPlayer from "@/components/MatchPlayer";
 import CopyLinkButton from "@/components/CopyLinkButton";
@@ -29,6 +29,7 @@ export async function generateMetadata({ params }: { params: { streamId: string 
   return {
     title,
     description,
+    robots: { index: false, follow: false }, // que Google no la indexe
     openGraph: {
       title,
       description,
@@ -43,14 +44,8 @@ export default async function WatchStreamPage({ params }: { params: { streamId: 
 
   logPublicStreamView(stream.id); // no bloquea el render; no identifica a la persona
 
-  const otherStreams = (await getPublicLiveStreams()).filter((s) => s.id !== stream.id);
-
   return (
     <div className="min-h-screen bg-bg px-5 py-8 md:p-11 max-w-5xl mx-auto">
-      <Link href="/en-vivo" className="text-sm text-muted font-semibold mb-5 inline-block">
-        ← Todas las transmisiones
-      </Link>
-
       {stream.playback_id ? (
         <div className="relative mb-2">
           <MatchPlayer playbackId={stream.playback_id} live />
@@ -78,24 +73,6 @@ export default async function WatchStreamPage({ params }: { params: { streamId: 
           <span className="text-xs text-muted font-semibold">Transmisión presentada por</span>
           <img src={stream.sponsor_logo_url} alt="Patrocinador" className="h-12 md:h-16 object-contain" />
         </div>
-      )}
-
-      {otherStreams.length > 0 && (
-        <>
-          <div className="font-display text-base font-semibold mb-3">Otras transmisiones en vivo</div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {otherStreams.map((s) => (
-              <Link
-                key={s.id}
-                href={`/en-vivo/${s.id}`}
-                className="bg-panel border border-border rounded-xl p-3.5 hover:border-borderMuted"
-              >
-                <div className="text-xs font-bold text-gold uppercase mb-1">{s.team_name}</div>
-                <div className="text-sm font-bold">{s.title}</div>
-              </Link>
-            ))}
-          </div>
-        </>
       )}
 
       <div className="mt-10 text-center">

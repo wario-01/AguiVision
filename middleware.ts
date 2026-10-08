@@ -11,21 +11,6 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // configurado, la app sigue en modo demo sin login.
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/en-vivo/"];
 
-// "Robots" de vista previa de links (Facebook, WhatsApp, etc.) — no tienen
-// sesión de usuario, así que los dejamos pasar sin redirigir a login para
-// que puedan leer el título/descripción de la página y armar una tarjeta
-// linda al compartir el link. No exponen el video en sí, solo esos textos.
-const CRAWLER_USER_AGENTS = [
-  "facebookexternalhit",
-  "Facebot",
-  "Twitterbot",
-  "LinkedInBot",
-  "WhatsApp",
-  "TelegramBot",
-  "Slackbot",
-  "Discordbot",
-];
-
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -59,10 +44,9 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
-    const userAgent = request.headers.get("user-agent") ?? "";
-    const isCrawler = CRAWLER_USER_AGENTS.some((ua) => userAgent.includes(ua));
-
-    if (!user && !isPublic && !isCrawler) {
+    // Facebook/WhatsApp pueden armar la tarjeta del link porque /en-vivo/<id>
+    // es pública. Ya no hay excepción por "user-agent" (era falsificable).
+    if (!user && !isPublic) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("next", request.nextUrl.pathname);
       return NextResponse.redirect(loginUrl);

@@ -14,7 +14,8 @@ import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 // También limpia partidos fantasma que ya existían de antes.
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Sin CRON_SECRET configurado NO se ejecuta (antes quedaba abierto a cualquiera).
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -36,7 +37,8 @@ export async function GET(req: Request) {
     .lt("match_date", sixMonthsAgo.toISOString());
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error en limpieza", error);
+    return NextResponse.json({ error: "Error consultando partidos" }, { status: 500 });
   }
 
   const results: { matchId: string; deleted: boolean }[] = [];

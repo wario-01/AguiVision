@@ -28,6 +28,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Faltan datos del highlight" }, { status: 400 });
   }
 
+  const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
+  const start = Number(body.startSeconds);
+  const end = Number(body.endSeconds);
+  if (!label || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end - start > 300) {
+    return NextResponse.json({ error: "Tiempos o etiqueta inválidos (máximo 5 minutos por clip)" }, { status: 400 });
+  }
+
   if (!isSupabaseConfigured) {
     return NextResponse.json({ error: "Modo demo: Supabase no está configurado." }, { status: 400 });
   }
@@ -73,9 +80,9 @@ export async function POST(req: Request) {
     .insert({
       match_id: match.id,
       player_id: player.id,
-      label: body.label,
-      start_seconds: body.startSeconds,
-      end_seconds: body.endSeconds,
+      label,
+      start_seconds: start,
+      end_seconds: end,
     })
     .select("id")
     .single();
@@ -103,9 +110,9 @@ export async function POST(req: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nidoaguilaatx.com";
     await sendEmail({
       to: emails,
-      subject: `Nuevo highlight de ${player.full_name} — ${body.label}`,
+      subject: `Nuevo highlight de ${player.full_name} — ${label}`,
       html: `
-        <p>Hay un highlight nuevo de <b>${escapeHtml(player.full_name)}</b> (${escapeHtml(team.name)}): <b>${escapeHtml(body.label)}</b>.</p>
+        <p>Hay un highlight nuevo de <b>${escapeHtml(player.full_name)}</b> (${escapeHtml(team.name)}): <b>${escapeHtml(label)}</b>.</p>
         <p><a href="${appUrl}/${team.slug}/highlights/${highlight.id}">Ver el highlight en AguiVision</a></p>
       `,
     });
@@ -125,8 +132,8 @@ export async function POST(req: Request) {
     input: [
       {
         url: `mux://assets/${match.video_asset_id}`,
-        start_time: body.startSeconds,
-        end_time: body.endSeconds,
+        start_time: start,
+        end_time: end,
       },
     ],
     playback_policy: ["public"],
@@ -163,8 +170,12 @@ export async function DELETE(req: Request) {
 
   // borra la fila primero: si RLS lo rechaza (no sos coach/assistant de ese
   // equipo), no llegamos a tocar nada en Mux
-  const { error } = await supabase.from("highlights").delete().eq("id", body.highlightId);
-  if (error) {
+  const { data: deleted, error } = await supabase
+    .from("highlights")
+    .delete()
+    .eq("id", body.highlightId)
+    .select("id");
+  if (error || !deleted || deleted.length === 0) {
     return NextResponse.json({ error: "No tenés permiso para borrar este highlight" }, { status: 403 });
   }
 

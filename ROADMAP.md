@@ -22,7 +22,11 @@
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
    - **Recibos de pago automatizados** (en espera, decidido 8 oct): generar el recibo desde la app. Pendiente definir qué se cobra (inscripción, mensualidad, torneos), quién registra el pago y si el recibo se envía por correo (Resend) o se descarga como PDF.
-   - **IA para análisis de video** (investigación de costos): análisis por jugador y armado de un video de reclutamiento (recruiting video). Siempre buscando la alternativa más barata.
+   - **IA para análisis de video** (costos investigados 8 oct 2026). Ruta más barata, en 3 pasos:
+     1. Ficha de jugador con estadísticas sacadas de las etiquetas de los highlights (goles, asistencias, atajadas): costo $0, sin IA.
+     2. "Reel" de reclutamiento: página compartible que reproduce seguidos los highlights del jugador: costo ~$0 (usa los clips que ya existen).
+     3. IA (Gemini 3.1 Flash-Lite, plan de pago): proponer momentos del partido completo y describir los clips de cada jugador. ~$0.07–0.14 por partido de 70 min, ~$1–10 al mes con 4 equipos. Probar primero con 2–3 partidos para medir qué tan bien funciona con cámara panorámica.
+     Opcional: bajar el reel como un solo MP4 con Shotstack (~$0.20–0.40 por video de 2 min). Revisar los términos de Google (API de 18+ y menores) antes de activar la IA.
    - **Standings como tabla propia** (opcional, más difícil): hoy es un botón que abre la liga; importar los datos a una tabla dentro de la app depende de que la liga permita leerlos.
 1. **Pasar jugadores de un equipo a otro** (cuando suben de categoría). Decisiones ya tomadas (5 oct 2026):
    - El historial sigue al jugador: sus evaluaciones y mediciones físicas viajan con él al equipo nuevo, mostrando
@@ -71,3 +75,14 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Papás y jugadores ya no ven los correos de los demás miembros del equipo.
 - Las subidas de imágenes validan tipo (JPG/PNG/WEBP/GIF) y tamaño (5 MB); crear eventos exige ser entrenador/asistente antes de subir nada.
 - Los correos de aviso escapan el texto (nombres, títulos) para evitar inyección de HTML.
+
+## Seguridad — pendientes (ronda 3, 8 oct)
+- Sin límite de intentos (rate limiting) en las APIs; requiere servicio externo (Upstash/Vercel Firewall).
+- Video de menores con reproducción pública en Mux (cualquiera con el link del video); mejora: playback firmado.
+- `matches/recover` acepta cualquier assetId de la cuenta Mux compartida.
+- Bucket `photos` público (URLs no adivinables, pero abiertas).
+- Rastreadores (user-agent) saltan el login: falsificable, las páginas igual validan membresía.
+- Política de `profiles` permite editar el propio email; cors "*" como respaldo si falta NEXT_PUBLIC_APP_URL.
+- Plan gratuito de Supabase se pausa tras una semana sin uso; revisar plan antes de la temporada.
+- Supabase plan gratuito: sin copias de seguridad automáticas. Hacer una exportación manual periódica (Dashboard → Database → Backups no existe en Free; usar `pg_dump` o exportar tablas a CSV) o pasar a Pro antes de la temporada.
+- Opcional: interruptor "transmisión pública / solo equipo" por cada vivo.

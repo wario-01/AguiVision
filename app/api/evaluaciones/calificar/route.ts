@@ -46,14 +46,36 @@ export async function POST(req: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+  }
+
+  const notas = typeof body.notas === 'string' ? body.notas.trim().slice(0, 1000) : '';
+
+  // El jugador y el ítem del currículo tienen que ser del MISMO equipo
+  // (la RLS solo mira el jugador; esto evita mezclar equipos).
+  const { data: player } = await supabase
+    .from('players')
+    .select('team_id')
+    .eq('id', body.player_id)
+    .maybeSingle();
+  const { data: item } = await supabase
+    .from('eval_curriculum_items')
+    .select('id, eval_cycles(team_id)')
+    .eq('id', body.curriculum_item_id)
+    .maybeSingle();
+  const itemTeam = (item as any)?.eval_cycles?.team_id;
+  if (!player || !item || !itemTeam || itemTeam !== player.team_id) {
+    return NextResponse.json({ error: 'Jugador o ítem inválido' }, { status: 400 });
+  }
 
   const { error } = await supabase.from('formative_evaluations').upsert(
     {
       player_id: body.player_id,
       curriculum_item_id: body.curriculum_item_id,
       nivel: body.nivel,
-      notas: body.notas ?? null,
-      evaluated_by: user?.id ?? null,
+      notas: notas || null,
+      evaluated_by: user.id,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'player_id,curriculum_item_id' }
@@ -61,7 +83,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('Error guardando evaluación', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'No se pudo guardar (¿tenés permiso de entrenador?)' }, { status: 403 });
   }
 
   return NextResponse.json({ ok: true });

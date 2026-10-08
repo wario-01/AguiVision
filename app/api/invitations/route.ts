@@ -15,6 +15,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Modo demo: Supabase no está configurado." }, { status: 400 });
   }
 
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
+    return NextResponse.json({ error: "Correo inválido" }, { status: 400 });
+  }
+  if (!["coach", "assistant", "player", "parent"].includes(body.role)) {
+    return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+  }
+
   const supabase = await createClient();
   if (!supabase) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
@@ -35,8 +43,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Equipo no encontrado" }, { status: 404 });
   }
 
+  // Solo el entrenador principal puede dar rol de entrenador o asistente;
+  // un asistente solo puede invitar jugadores y familias.
+  const { data: me } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", team.id)
+    .eq("profile_id", userData.user.id)
+    .maybeSingle();
+  if (!me || (me.role !== "coach" && me.role !== "assistant")) {
+    return NextResponse.json({ error: "No tenés permiso para invitar a este equipo" }, { status: 403 });
+  }
+  if (me.role === "assistant" && (body.role === "coach" || body.role === "assistant")) {
+    return NextResponse.json({ error: "Solo el entrenador puede invitar entrenadores o asistentes" }, { status: 403 });
+  }
+
   let playerId: string | null = null;
-  const playerName = typeof body.playerName === "string" ? body.playerName.trim() : "";
+  const playerName = typeof body.playerName === "string" ? body.playerName.trim().slice(0, 100) : "";
   if (playerName) {
     const { data: existingPlayer } = await supabase
       .from("players")
@@ -62,7 +85,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabase.from("team_invitations").insert({
     team_id: team.id,
-    email: body.email.trim().toLowerCase(),
+    email,
     role: body.role,
     player_id: playerId,
   });
@@ -87,8 +110,12 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
   }
 
-  const { error } = await supabase.from("team_invitations").delete().eq("id", body.invitationId);
-  if (error) {
+  const { data: deleted, error } = await supabase
+    .from("team_invitations")
+    .delete()
+    .eq("id", body.invitationId)
+    .select("id");
+  if (error || !deleted || deleted.length === 0) {
     return NextResponse.json({ error: "No se pudo borrar la invitación" }, { status: 403 });
   }
 

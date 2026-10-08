@@ -17,6 +17,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
 
+  const typeRaw = formData.get("type") ?? "game";
+  if (typeof typeRaw !== "string" || !["game", "practice", "tournament", "other"].includes(typeRaw)) {
+    return NextResponse.json({ error: "Tipo de evento inválido" }, { status: 400 });
+  }
+  if (isNaN(Date.parse(startAt))) {
+    return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
+  }
+  const endRaw = formData.get("endAt");
+  if (typeof endRaw === "string" && endRaw && isNaN(Date.parse(endRaw))) {
+    return NextResponse.json({ error: "Fecha de fin inválida" }, { status: 400 });
+  }
+  const txt = (k: string, max: number) => {
+    const v = formData.get(k);
+    return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+  };
+
   const supabase = await createClient();
   if (!supabase) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
@@ -72,15 +88,15 @@ export async function POST(req: Request) {
     .from("events")
     .insert({
       team_id: team.id,
-      type: formData.get("type") ?? "game",
-      title: formData.get("title") || null,
-      opponent: formData.get("opponent") || null,
+      type: typeRaw,
+      title: txt("title", 120),
+      opponent: txt("opponent", 120),
       opponent_logo_url: opponentLogoUrl,
-      league: formData.get("league") || null,
-      location: formData.get("location") || null,
+      league: txt("league", 160),
+      location: txt("location", 200),
       start_at: startAt,
-      end_at: formData.get("endAt") || null,
-      notes: formData.get("notes") || null,
+      end_at: typeof endRaw === "string" && endRaw ? endRaw : null,
+      notes: txt("notes", 1000),
     })
     .select("id")
     .single();
@@ -102,11 +118,11 @@ export async function POST(req: Request) {
 
   if (emails.length > 0) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nidoaguilaatx.com";
-    const type = formData.get("type") ?? "game";
+    const type = typeRaw;
     const what =
       type === "game"
-        ? `partido vs ${formData.get("opponent") || "?"}`
-        : (formData.get("title") as string) || "evento nuevo";
+        ? `partido vs ${txt("opponent", 120) || "?"}`
+        : txt("title", 120) || "evento nuevo";
     const when = new Date(startAt).toLocaleString("es-MX", {
       weekday: "long",
       day: "numeric",
@@ -141,8 +157,8 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
   }
 
-  const { error } = await supabase.from("events").delete().eq("id", body.eventId);
-  if (error) {
+  const { data: deleted, error } = await supabase.from("events").delete().eq("id", body.eventId).select("id");
+  if (error || !deleted || deleted.length === 0) {
     return NextResponse.json({ error: "No tenés permiso para borrar este evento" }, { status: 403 });
   }
 

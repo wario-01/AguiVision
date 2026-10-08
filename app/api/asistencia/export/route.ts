@@ -15,7 +15,9 @@ import {
 //  - sin "detalle": una fila por jugador con sus porcentajes.
 //  - con detalle=1: una fila por jugador y por evento (historial completo).
 function csvCell(v: string | number | null) {
-  const s = v === null ? "" : String(v);
+  let s = v === null ? "" : String(v);
+  // Evita "inyección de fórmulas" en Excel (celdas que empiezan con = + - @).
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 function line(cells: (string | number | null)[]) {

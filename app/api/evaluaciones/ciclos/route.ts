@@ -40,12 +40,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
   }
 
+  const name = String(body.name).trim().slice(0, 100);
+  const periodos = Array.isArray(body.periodos) ? body.periodos.slice(0, 12) : [];
+  if (!name) {
+    return NextResponse.json({ error: 'Falta el nombre' }, { status: 400 });
+  }
+  if (isNaN(Date.parse(body.start_date)) || isNaN(Date.parse(body.end_date))) {
+    return NextResponse.json({ error: 'Fechas inválidas' }, { status: 400 });
+  }
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+  }
+
   // 1) Crear el ciclo
   const { data: cycle, error: cycleError } = await supabase
     .from('eval_cycles')
     .insert({
       team_id: body.team_id,
-      name: body.name,
+      name,
       period_type: body.period_type || 'trimestral',
       start_date: body.start_date,
       end_date: body.end_date,
@@ -56,21 +69,21 @@ export async function POST(req: NextRequest) {
   if (cycleError || !cycle) {
     console.error('Error creando ciclo', cycleError);
     return NextResponse.json(
-      { error: cycleError?.message || 'No se pudo crear el ciclo' },
-      { status: 500 }
+      { error: 'No se pudo crear el ciclo (¿tenés permiso de entrenador?)' },
+      { status: 403 }
     );
   }
 
   // 2) Crear los items de currículo (puede venir vacío si lo cargan después)
-  const rows = (body.periodos || []).flatMap((p) =>
-    p.items
-      .filter((it) => it.descripcion && it.descripcion.trim().length > 0)
+  const rows = periodos.flatMap((p) =>
+    (Array.isArray(p.items) ? p.items.slice(0, 40) : [])
+      .filter((it) => typeof it.descripcion === 'string' && it.descripcion.trim().length > 0)
       .map((it) => ({
         cycle_id: cycle.id,
-        period_label: p.period_label,
+        period_label: String(p.period_label ?? '').slice(0, 60),
         period_order: p.period_order,
-        area: it.area,
-        descripcion: it.descripcion.trim(),
+        area: String(it.area ?? '').slice(0, 60),
+        descripcion: it.descripcion.trim().slice(0, 300),
       }))
   );
 
@@ -79,7 +92,7 @@ export async function POST(req: NextRequest) {
     if (itemsError) {
       console.error('Error creando currículo', itemsError);
       return NextResponse.json(
-        { error: itemsError.message, cycle_id: cycle.id },
+        { error: 'El ciclo se creó pero falló el currículo', cycle_id: cycle.id },
         { status: 500 }
       );
     }
