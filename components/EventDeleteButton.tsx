@@ -8,7 +8,7 @@ export default function EventDeleteButton({ eventId }: { eventId: string }) {
   const router = useRouter();
 
   async function handleDelete() {
-    if (!confirm("¿Borrar este evento?")) return;
+    if (!confirm("¿Borrar este evento? Si ya tomaste asistencia, también se borra la asistencia de ese evento.")) return;
     setBusy(true);
     try {
       const res = await fetch("/api/events", {

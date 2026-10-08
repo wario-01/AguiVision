@@ -10,6 +10,8 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import PrintButton from "@/components/PrintButton";
 import GrowthSection from "@/components/GrowthSection";
+import AttendanceSummary from "@/components/AttendanceSummary";
+import { getPlayerAttendance } from "@/lib/data-asistencia";
 import { getMeasurements } from "@/lib/data-crecimiento";
 import { formatHeight } from "@/lib/bmi";
 import { getTeamBySlug } from "@/lib/data";
@@ -44,6 +46,8 @@ export default async function PerfilJugadorPage({
 
   const physicalEnabled = await getPhysicalEvalEnabled(team.id);
   const measurements = await getMeasurements(player.id);
+  const attYear = new Date().getFullYear();
+  const attendance = await getPlayerAttendance(player.id, attYear);
 
   const [formativeSnapshot, highlights, metrics] = await Promise.all([
     getLatestFormativeSnapshot(player.id, team.id),
@@ -119,6 +123,17 @@ export default async function PerfilJugadorPage({
             )}
             <PrintButton />
           </div>
+        </div>
+
+        {/* ---------- Asistencia ---------- */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-bold">Asistencia {attYear}</div>
+            <Link href={`/${team.slug}/asistencia`} className="no-print text-xs font-bold text-gold hover:underline">
+              Reporte del equipo
+            </Link>
+          </div>
+          <AttendanceSummary records={attendance} year={attYear} />
         </div>
 
         {/* ---------- Crecimiento (IMC) ---------- */}

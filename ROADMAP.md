@@ -16,11 +16,11 @@
 - IMC con historial en el perfil del jugador (peso en libras, altura en pies/pulgadas). Cada cambio de peso o altura guarda una medición. La familia ve el de su hijo (menú Crecimiento), con gráfica de percentiles del CDC. No se guarda fecha de nacimiento (solo la edad al medir). El aviso "conviene hablar con el pediatra" combina el IMC, la relación cintura/altura (0.5) y la tendencia: un IMC alto con cintura en rango se muestra como informativo (probable músculo), sin aviso.
 - Pendiente opcional del IMC: interruptor por jugador para apagar el aviso de Inicio.
 - Borrar un ciclo de evaluación (botón al final de la página del ciclo, solo entrenador) y borrar un resultado físico-técnico del historial.
+- Asistencia: se toma desde el Calendario (botón "Tomar asistencia" en cada evento: presente, tarde, ausente, justificado). Reporte del equipo por año y mes con % de entrenamientos, juegos y total, descarga en Excel (resumen y detalle por evento), historial anual, ficha del jugador y vista para la familia de su propio jugador. "Justificado" no baja el porcentaje.
 - Primera ronda de endurecimiento de seguridad (ver abajo).
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
-   - **Asistencia** (siguiente): área administrativa donde entrenadores y asistentes toman asistencia de los jugadores de la Plantilla (por entrenamiento/partido) y generan reportes de asistencia.
    - **Recibos de pago automatizados** (en espera, decidido 8 oct): generar el recibo desde la app. Pendiente definir qué se cobra (inscripción, mensualidad, torneos), quién registra el pago y si el recibo se envía por correo (Resend) o se descarga como PDF.
    - **IA para análisis de video** (investigación de costos): análisis por jugador y armado de un video de reclutamiento (recruiting video). Siempre buscando la alternativa más barata.
    - **Standings como tabla propia** (opcional, más difícil): hoy es un botón que abre la liga; importar los datos a una tabla dentro de la app depende de que la liga permita leerlos.

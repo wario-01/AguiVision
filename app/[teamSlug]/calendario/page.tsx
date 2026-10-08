@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import NewEventToggle from "@/components/NewEventToggle";
 import EventDeleteButton from "@/components/EventDeleteButton";
 import { getTeamBySlug, getEvents, getMyTeams } from "@/lib/data";
+import { getEventsWithAttendance } from "@/lib/data-asistencia";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -45,6 +46,7 @@ export default async function CalendarioPage({
   const [y, m] = (searchParams.m ?? `${now.getFullYear()}-${now.getMonth()}`).split("-").map(Number);
   const range = monthRange(y, m);
   const events = await getEvents(team.slug, range);
+  const withAttendance = canEdit ? await getEventsWithAttendance(events.map((e) => e.id)) : new Set<string>();
 
   const prevM = m === 0 ? 11 : m - 1;
   const prevY = m === 0 ? y - 1 : y;
@@ -85,6 +87,14 @@ export default async function CalendarioPage({
             Siguiente ›
           </Link>
         </div>
+
+        {canEdit && (
+          <div className="mb-4">
+            <Link href={`/${team.slug}/asistencia`} className="text-xs font-bold text-gold hover:underline">
+              Ver reporte de asistencia →
+            </Link>
+          </div>
+        )}
 
         {canEdit && <NewEventToggle teamSlug={team.slug} teams={managedTeams} />}
 
@@ -129,6 +139,14 @@ export default async function CalendarioPage({
                           {ev.league ? ` · ${ev.league}` : ""}
                         </div>
                       </div>
+                      {canEdit && ev.type !== "other" && (
+                        <Link
+                          href={`/${team.slug}/asistencia/evento/${ev.id}`}
+                          className="text-xs font-bold text-gold hover:underline shrink-0"
+                        >
+                          {withAttendance.has(ev.id) ? "Asistencia ✓" : "Tomar asistencia"}
+                        </Link>
+                      )}
                       {canEdit && <EventDeleteButton eventId={ev.id} />}
                     </div>
                   ))}

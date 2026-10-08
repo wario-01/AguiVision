@@ -41,6 +41,12 @@ const NAV_ICONS = {
       <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  asistencia: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h4" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
   crecimiento: (
     <>
       <path d="M3 17l5-5 4 3 8-9" strokeLinecap="round" strokeLinejoin="round" />
@@ -69,7 +75,7 @@ export default async function Sidebar({
   active,
 }: {
   currentTeamSlug: string;
-  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario" | "evaluaciones" | "crecimiento";
+  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario" | "evaluaciones" | "crecimiento" | "asistencia";
 }) {
   const teams: Team[] = await getMyTeams();
   const user = await getCurrentUser();
@@ -91,6 +97,7 @@ export default async function Sidebar({
     { key: "vivo" as const, href: `/en-vivo`, label: "En vivo", icon: NAV_ICONS.vivo },
     { key: "equipo" as const, href: `/${currentTeamSlug}/equipo`, label: "Equipo", icon: NAV_ICONS.equipo },
     { key: "evaluaciones" as const, href: `/${currentTeamSlug}/evaluaciones`, label: "Evaluación", icon: NAV_ICONS.evaluaciones },
+    { key: "asistencia" as const, href: `/${currentTeamSlug}/asistencia`, label: "Asistencia", icon: NAV_ICONS.asistencia },
     { key: "crecimiento" as const, href: `/${currentTeamSlug}/crecimiento`, label: "Crecimiento", icon: NAV_ICONS.crecimiento },
   ];
   const isFamily = (currentTeam?.role === "parent" || currentTeam?.role === "player") && !!currentTeam?.player_id;
@@ -203,14 +210,14 @@ export default async function Sidebar({
         )}
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-sidebar border-t border-border flex items-stretch justify-around pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-sidebar border-t border-border flex items-stretch overflow-x-auto no-scrollbar pb-[env(safe-area-inset-bottom,0px)]">
         {navItems.map((item) => {
           const isActive = active === item.key;
           return (
             <Link
               key={item.key}
               href={item.href}
-              className="flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-0"
+              className="flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-[68px] shrink-0"
             >
               <Icon path={item.icon} active={isActive} size={18} />
               <span className={`text-[10px] font-semibold truncate ${isActive ? "text-gold" : "text-muted"}`}>
