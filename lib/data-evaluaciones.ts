@@ -358,7 +358,9 @@ export interface PlayerProfile {
   person_id: string;
   peso: number | null;
   altura: number | null;
+  cintura: number | null;
   perfil: PerfilJugador | null;
+  sex: 'M' | 'F' | null;
 }
 
 // lib/data.ts solo trae id/full_name/photo_url en su tipo Player — para
@@ -379,7 +381,7 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
   // entrenador/asistente (datos de menores).
   const { data: priv } = await supabase
     .from('player_private')
-    .select('peso, altura, perfil')
+    .select('peso, altura, cintura, perfil, sex')
     .eq('player_id', playerId)
     .maybeSingle();
 
@@ -387,7 +389,9 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile 
     ...(data as any),
     peso: priv?.peso ?? null,
     altura: priv?.altura ?? null,
+    cintura: priv?.cintura ?? null,
     perfil: priv?.perfil ?? null,
+    sex: priv?.sex ?? null,
   } as PlayerProfile;
 }
 

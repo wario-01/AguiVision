@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import Link from "next/link";
+import { getMeasurements } from "@/lib/data-crecimiento";
 import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingEvents } from "@/lib/data";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -21,6 +23,16 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
   const highlights = await getHighlights(team.slug);
   const upcomingEvents = await getUpcomingEvents(team.slug, 5);
 
+  // Aviso de IMC para la familia: solo si la última medición pide atención.
+  let growthAlert: string | null = null;
+  if ((team.role === "parent" || team.role === "player") && team.player_id) {
+    const ms = await getMeasurements(team.player_id);
+    const last = ms[ms.length - 1];
+    if (last?.assessment?.needsAttention) {
+      growthAlert = last.assessment.title;
+    }
+  }
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
@@ -30,16 +42,41 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             <div className="font-display text-2xl font-bold">Hola, {firstName}</div>
             <div className="text-muted text-sm mt-0.5">{team.name} · temporada 2026</div>
           </div>
-          {(team.role === "coach" || team.role === "assistant") && (
-            <a
-              href={`/${team.slug}/transmitir`}
-              className="flex items-center gap-2 bg-red text-redText rounded-lg px-4 py-2.5 text-sm font-extrabold"
-            >
-              <span className="w-2 h-2 rounded-full bg-redText" />
-              Transmitir en vivo
-            </a>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {team.standings_url && (
+              <a
+                href={team.standings_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-panel border border-borderMuted text-gold rounded-lg px-4 py-2.5 text-sm font-extrabold"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Standings
+              </a>
+            )}
+            {(team.role === "coach" || team.role === "assistant") && (
+              <a
+                href={`/${team.slug}/transmitir`}
+                className="flex items-center gap-2 bg-red text-redText rounded-lg px-4 py-2.5 text-sm font-extrabold"
+              >
+                <span className="w-2 h-2 rounded-full bg-redText" />
+                Transmitir en vivo
+              </a>
+            )}
+          </div>
         </div>
+
+        {growthAlert && (
+          <Link
+            href={`/${team.slug}/crecimiento`}
+            className="block bg-goldBgDim border border-goldBorderDim rounded-2xl px-5 py-4 mb-7"
+          >
+            <div className="text-sm font-bold text-gold">Aviso de crecimiento: {growthAlert}</div>
+            <div className="text-xs text-muted mt-0.5">Toca para ver el detalle y la gráfica.</div>
+          </Link>
+        )}
 
         {upcomingEvents.length > 0 && (
           <>

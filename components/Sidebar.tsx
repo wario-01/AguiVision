@@ -41,6 +41,12 @@ const NAV_ICONS = {
       <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  crecimiento: (
+    <>
+      <path d="M3 17l5-5 4 3 8-9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 6h5v5" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
   evaluaciones: (
     <>
       <path d="M9 3h6a2 2 0 012 2v1H7V5a2 2 0 012-2z" strokeLinecap="round" strokeLinejoin="round" />
@@ -63,7 +69,7 @@ export default async function Sidebar({
   active,
 }: {
   currentTeamSlug: string;
-  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario" | "evaluaciones";
+  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario" | "evaluaciones" | "crecimiento";
 }) {
   const teams: Team[] = await getMyTeams();
   const user = await getCurrentUser();
@@ -85,10 +91,17 @@ export default async function Sidebar({
     { key: "vivo" as const, href: `/en-vivo`, label: "En vivo", icon: NAV_ICONS.vivo },
     { key: "equipo" as const, href: `/${currentTeamSlug}/equipo`, label: "Equipo", icon: NAV_ICONS.equipo },
     { key: "evaluaciones" as const, href: `/${currentTeamSlug}/evaluaciones`, label: "Evaluación", icon: NAV_ICONS.evaluaciones },
+    { key: "crecimiento" as const, href: `/${currentTeamSlug}/crecimiento`, label: "Crecimiento", icon: NAV_ICONS.crecimiento },
   ];
+  const isFamily = (currentTeam?.role === "parent" || currentTeam?.role === "player") && !!currentTeam?.player_id;
 
   // Las evaluaciones son datos de menores: solo entrenador/asistente.
-  const navItems = allNavItems.filter((item) => item.key !== "evaluaciones" || isStaff);
+  // Crecimiento (IMC): lo ve la familia/jugador vinculado (el cuerpo técnico lo ve en el perfil del jugador).
+  const navItems = allNavItems.filter((item) => {
+    if (item.key === "evaluaciones") return isStaff;
+    if (item.key === "crecimiento") return isFamily;
+    return true;
+  });
 
   return (
     <>

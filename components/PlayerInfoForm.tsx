@@ -45,7 +45,10 @@ export default function PlayerInfoForm({
     position: string | null;
     peso: number | null;
     altura: number | null;
+    cintura: number | null;
     perfil: string | null;
+    age_months: number | null; // edad estimada hoy, en meses
+    sex: "M" | "F" | null;
   };
 }) {
   const isCreate = !playerId;
@@ -53,7 +56,15 @@ export default function PlayerInfoForm({
   const [jersey, setJersey] = useState(initial.jersey_number?.toString() ?? "");
   const [position, setPosition] = useState(initial.position ?? "");
   const [peso, setPeso] = useState(initial.peso?.toString() ?? "");
-  const [altura, setAltura] = useState(initial.altura?.toString() ?? "");
+  // La altura se guarda en pulgadas totales; en el formulario se captura en pies + pulgadas.
+  const [pies, setPies] = useState(initial.altura != null ? String(Math.floor(initial.altura / 12)) : "");
+  const [pulg, setPulg] = useState(
+    initial.altura != null ? String(Math.round((initial.altura - Math.floor(initial.altura / 12) * 12) * 10) / 10) : ""
+  );
+  const [cintura, setCintura] = useState(initial.cintura?.toString() ?? "");
+  const [edadAnios, setEdadAnios] = useState(initial.age_months != null ? String(Math.floor(initial.age_months / 12)) : "");
+  const [edadMeses, setEdadMeses] = useState(initial.age_months != null ? String(Math.floor(initial.age_months % 12)) : "");
+  const [sex, setSex] = useState<string>(initial.sex ?? "");
   const [perfil, setPerfil] = useState(initial.perfil ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +74,12 @@ export default function PlayerInfoForm({
     e.preventDefault();
     setBusy(true);
     setError(null);
+    if ((pies !== "" || pulg !== "") && pies === "") {
+      setError("Faltan los pies de la altura (por ejemplo 4 pies 11 pulgadas)");
+      setBusy(false);
+      return;
+    }
+    const altura = pies === "" ? "" : String(Number(pies) * 12 + Number(pulg || 0));
     try {
       const res = await fetch(isCreate ? "/api/players" : "/api/player-info", {
         method: "POST",
@@ -74,7 +91,11 @@ export default function PlayerInfoForm({
           position,
           peso,
           altura,
+          cintura,
           perfil,
+          edad_anios: edadAnios,
+          edad_meses: edadMeses,
+          sex,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -136,7 +157,7 @@ export default function PlayerInfoForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted">Peso (kg)</span>
+          <span className="text-xs font-bold text-muted">Peso (libras)</span>
           <input
             type="number"
             step="0.1"
@@ -144,21 +165,92 @@ export default function PlayerInfoForm({
             value={peso}
             onChange={(e) => setPeso(e.target.value)}
             className="bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
-            placeholder="Ej. 45.5"
+            placeholder="Ej. 85"
           />
         </label>
 
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-muted">Altura</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={8}
+              value={pies}
+              onChange={(e) => setPies(e.target.value)}
+              aria-label="Pies"
+              className="w-full bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
+              placeholder="4"
+            />
+            <span className="text-xs text-muted">pies</span>
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              max={11.9}
+              value={pulg}
+              onChange={(e) => setPulg(e.target.value)}
+              aria-label="Pulgadas"
+              className="w-full bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
+              placeholder="11"
+            />
+            <span className="text-xs text-muted">pulg</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-muted">Edad hoy (para el IMC)</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={3}
+              max={20}
+              value={edadAnios}
+              onChange={(e) => setEdadAnios(e.target.value)}
+              aria-label="Años"
+              className="w-full bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
+              placeholder="11"
+            />
+            <span className="text-xs text-muted">años</span>
+            <input
+              type="number"
+              min={0}
+              max={11}
+              value={edadMeses}
+              onChange={(e) => setEdadMeses(e.target.value)}
+              aria-label="Meses"
+              className="w-full bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
+              placeholder="4"
+            />
+            <span className="text-xs text-muted">meses</span>
+          </div>
+        </div>
+
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted">Altura (cm)</span>
+          <span className="text-xs font-bold text-muted">Cintura (pulgadas, opcional)</span>
           <input
             type="number"
             step="0.1"
             min={0}
-            value={altura}
-            onChange={(e) => setAltura(e.target.value)}
+            value={cintura}
+            onChange={(e) => setCintura(e.target.value)}
             className="bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
-            placeholder="Ej. 150"
+            placeholder="Ej. 25"
           />
+          <span className="text-[11px] text-muted">Con cinta, a la altura del ombligo, sin apretar.</span>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-muted">Sexo (para el IMC)</span>
+          <select
+            value={sex}
+            onChange={(e) => setSex(e.target.value as "M" | "F" | "")}
+            className="bg-panel2 border border-borderMuted rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="">Sin especificar</option>
+            <option value="M">Niño</option>
+            <option value="F">Niña</option>
+          </select>
         </label>
       </div>
 
@@ -179,6 +271,11 @@ export default function PlayerInfoForm({
       </label>
 
       {error && <div className="text-xs text-red font-semibold">{error}</div>}
+
+      <div className="text-xs text-muted">
+        Peso, altura, edad y sexo sirven para calcular el IMC y compararlo con el CDC. No se guarda la fecha de nacimiento: la
+        edad queda con cada medición. Revisa la edad cada vez que cambies el peso o la altura.
+      </div>
 
       <div className="flex items-center gap-3">
         <button

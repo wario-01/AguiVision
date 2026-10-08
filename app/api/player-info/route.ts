@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { parsePlayerFields, parseFullName } from "@/lib/playerFields";
+import { syncMeasurements } from "@/lib/measurements";
 
 // POST /api/player-info
 // json: { playerId, full_name?, jersey_number, position, peso, altura, perfil }
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Falta configurar el servidor" }, { status: 500 });
   }
 
-  const { jersey_number, position, peso, altura, perfil } = parsed.fields;
+  const { jersey_number, position, peso, altura, cintura, perfil, age_months, sex } = parsed.fields;
 
   const update: Record<string, unknown> = { jersey_number, position };
   if (newName) update.full_name = newName;
@@ -68,12 +69,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
   }
 
-  // Peso, altura y perfil van a una tabla aparte, solo visible para staff.
-  const { error: privateError } = await admin
+  // Peso, altura, perfil y sexo van a una tabla aparte, solo visible para staff.
+  const { data: prev } = await admin
     .from("player_private")
-    .upsert({ player_id: player.id, peso, altura, perfil, updated_at: new Date().toISOString() });
+    .select("peso, altura, cintura")
+    .eq("player_id", player.id)
+    .maybeSingle();
+
+  const { error: privateError } = await admin.from("player_private").upsert({
+    player_id: player.id,
+    peso,
+    altura,
+    cintura,
+    perfil,
+    sex,
+    updated_at: new Date().toISOString(),
+  });
   if (privateError) {
     return NextResponse.json({ error: "No se pudo guardar" }, { status: 500 });
+  }
+
+  const sync = await syncMeasurements(
+    admin,
+    player.id,
+    { peso, altura, cintura, age_months, sex },
+    prev
+      ? {
+          peso: prev.peso === null ? null : Number(prev.peso),
+          altura: prev.altura === null ? null : Number(prev.altura),
+          cintura: prev.cintura === null ? null : Number(prev.cintura),
+        }
+      : null
+  );
+  if (sync.error) {
+    return NextResponse.json({ error: sync.error }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

@@ -9,6 +9,7 @@ import LinkPlayerSection from "@/components/LinkPlayerSection";
 import { getTeamBySlug } from "@/lib/data";
 import { getPlayerProfile } from "@/lib/data-evaluaciones";
 import { getLinkOptions } from "@/lib/data-personas";
+import { getMeasurements } from "@/lib/data-crecimiento";
 
 export default async function EditarJugadorPage({
   params,
@@ -25,6 +26,19 @@ export default async function EditarJugadorPage({
   if (!player || player.team_id !== team.id) notFound();
 
   const { linked, candidates } = await getLinkOptions(player.person_id, team.id);
+
+  // Edad estimada hoy: la de la última medición + los meses que han pasado desde entonces.
+  const measurements = await getMeasurements(player.id);
+  const lastWithAge = [...measurements].reverse().find((m) => m.age_months !== null);
+  let ageToday: number | null = null;
+  if (lastWithAge && lastWithAge.age_months !== null) {
+    const monthsSince = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(lastWithAge.measured_on + "T00:00:00Z").getTime()) / (30.4375 * 24 * 3600 * 1000))
+    );
+    ageToday = Math.floor(lastWithAge.age_months) + monthsSince;
+  }
+  const sexToday = player.sex ?? lastWithAge?.sex ?? null;
 
   return (
     <div className="flex h-screen w-full">
@@ -47,7 +61,10 @@ export default async function EditarJugadorPage({
             position: player.position,
             peso: player.peso,
             altura: player.altura,
+            cintura: player.cintura,
             perfil: player.perfil,
+            age_months: ageToday,
+            sex: sexToday,
           }}
         />
 

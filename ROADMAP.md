@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 5 de octubre de 2026.
+Última actualización: 8 de octubre de 2026.
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U14), con perfil unificado y PDF.
@@ -11,9 +11,19 @@
 - Niños que juegan en 2 equipos: se vinculan desde "Editar datos" y los papás ven los highlights de las dos categorías juntos.
 - Compartir un highlight con todo el equipo (interruptor del entrenador en el highlight; los papás lo ven con la marca "Compartido").
 - Descargar el partido completo (botón en la página del partido, solo entrenador/asistente) y limpieza de partidos "fantasma" (sin video ni highlights) a los 6 meses.
+- Sub-12 con evaluación físico-técnica (mismas 5 pruebas que Sub-14).
+- Botón "Standings" en Inicio de cada equipo, con el enlace de la liga que el cuerpo técnico puede cambiar (Equipo → Tabla de posiciones).
+- IMC con historial en el perfil del jugador (peso en libras, altura en pies/pulgadas). Cada cambio de peso o altura guarda una medición. La familia ve el de su hijo (menú Crecimiento), con gráfica de percentiles del CDC. No se guarda fecha de nacimiento (solo la edad al medir). El aviso "conviene hablar con el pediatra" combina el IMC, la relación cintura/altura (0.5) y la tendencia: un IMC alto con cintura en rango se muestra como informativo (probable músculo), sin aviso.
+- Pendiente opcional del IMC: interruptor por jugador para apagar el aviso de Inicio.
+- Borrar un ciclo de evaluación (botón al final de la página del ciclo, solo entrenador) y borrar un resultado físico-técnico del historial.
 - Primera ronda de endurecimiento de seguridad (ver abajo).
 
 ## Siguiente: producto
+0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
+   - **Asistencia** (siguiente): área administrativa donde entrenadores y asistentes toman asistencia de los jugadores de la Plantilla (por entrenamiento/partido) y generan reportes de asistencia.
+   - **Recibos de pago automatizados** (en espera, decidido 8 oct): generar el recibo desde la app. Pendiente definir qué se cobra (inscripción, mensualidad, torneos), quién registra el pago y si el recibo se envía por correo (Resend) o se descarga como PDF.
+   - **IA para análisis de video** (investigación de costos): análisis por jugador y armado de un video de reclutamiento (recruiting video). Siempre buscando la alternativa más barata.
+   - **Standings como tabla propia** (opcional, más difícil): hoy es un botón que abre la liga; importar los datos a una tabla dentro de la app depende de que la liga permita leerlos.
 1. **Pasar jugadores de un equipo a otro** (cuando suben de categoría). Decisiones ya tomadas (5 oct 2026):
    - El historial sigue al jugador: sus evaluaciones y mediciones físicas viajan con él al equipo nuevo, mostrando
      de qué ciclo y equipo son. Nada se copia ni se borra.

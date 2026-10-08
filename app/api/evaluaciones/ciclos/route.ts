@@ -87,3 +87,33 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ cycle_id: cycle.id });
 }
+
+// DELETE /api/evaluaciones/ciclos
+// json: { cycleId }
+// Borra el ciclo con su currículo y las calificaciones formativas de ese ciclo
+// (en cascada). Los resultados físico-técnicos NO se borran: solo pierden la
+// asociación con el ciclo. La RLS exige ser coach del equipo.
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 });
+  }
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body.cycleId !== 'string') {
+    return NextResponse.json({ error: 'Faltan datos' }, { status: 400 });
+  }
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+  }
+
+  const { data, error } = await supabase.from('eval_cycles').delete().eq('id', body.cycleId).select('id');
+  if (error) {
+    console.error('Error borrando ciclo', error);
+    return NextResponse.json({ error: 'No se pudo borrar el ciclo' }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'No tenés permiso para borrar este ciclo, o ya no existe' }, { status: 403 });
+  }
+  return NextResponse.json({ ok: true });
+}

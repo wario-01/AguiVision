@@ -37,6 +37,25 @@ export default function PhysicalResultForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  async function borrarResultado(id: string) {
+    if (!confirm("¿Borrar este resultado? No se puede deshacer.")) return;
+    try {
+      const res = await fetch("/api/evaluaciones/fisico", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resultId: id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo borrar el resultado.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    }
+  }
+
   function setValor(metricId: string, valor: string) {
     setValores((v) => ({ ...v, [metricId]: valor }));
     setSuccess(false);
@@ -146,8 +165,17 @@ export default function PhysicalResultForm({
                     {rows.map((r) => (
                       <div key={r.id} className="flex items-center justify-between text-sm">
                         <span className="text-muted">{r.fecha}</span>
-                        <span className="font-bold">
-                          {r.valor} {m.unidad}
+                        <span className="flex items-center gap-3">
+                          <span className="font-bold">
+                            {r.valor} {m.unidad}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => borrarResultado(r.id)}
+                            className="text-xs font-bold text-red hover:opacity-80"
+                          >
+                            Borrar
+                          </button>
                         </span>
                       </div>
                     ))}

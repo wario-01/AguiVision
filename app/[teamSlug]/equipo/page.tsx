@@ -5,6 +5,7 @@ import InviteForm from "@/components/InviteForm";
 import RemoveMemberButton from "@/components/RemoveMemberButton";
 import CancelInvitationButton from "@/components/CancelInvitationButton";
 import SponsorLogoForm from "@/components/SponsorLogoForm";
+import StandingsLinkForm from "@/components/StandingsLinkForm";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import PlayerPhotoUpload from "@/components/PlayerPhotoUpload";
 import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers, getMyTeams } from "@/lib/data";
@@ -70,6 +71,12 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
         {canInvite && (
           <div className="mb-8">
             <SponsorLogoForm teamSlug={team.slug} currentUrl={team.sponsor_logo_url ?? null} />
+          </div>
+        )}
+
+        {canInvite && (
+          <div className="mb-8">
+            <StandingsLinkForm teamSlug={team.slug} currentUrl={team.standings_url ?? null} />
           </div>
         )}
 

@@ -9,6 +9,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import PrintButton from "@/components/PrintButton";
+import GrowthSection from "@/components/GrowthSection";
+import { getMeasurements } from "@/lib/data-crecimiento";
+import { formatHeight } from "@/lib/bmi";
 import { getTeamBySlug } from "@/lib/data";
 import {
   getPlayerProfile,
@@ -40,6 +43,7 @@ export default async function PerfilJugadorPage({
   const canEdit = team.role === "coach" || team.role === "assistant";
 
   const physicalEnabled = await getPhysicalEvalEnabled(team.id);
+  const measurements = await getMeasurements(player.id);
 
   const [formativeSnapshot, highlights, metrics] = await Promise.all([
     getLatestFormativeSnapshot(player.id, team.id),
@@ -96,9 +100,9 @@ export default async function PerfilJugadorPage({
                 {player.position && ` · ${player.position}`}
               </div>
               <div className="text-xs text-muted mt-0.5">
-                {player.peso != null && `${player.peso} kg`}
+                {player.peso != null && `${player.peso} lb`}
                 {player.peso != null && player.altura != null && " · "}
-                {player.altura != null && `${player.altura} cm`}
+                {player.altura != null && formatHeight(player.altura)}
                 {(player.peso != null || player.altura != null) && player.perfil && " · "}
                 {player.perfil && PERFIL_LABELS[player.perfil]}
               </div>
@@ -115,6 +119,12 @@ export default async function PerfilJugadorPage({
             )}
             <PrintButton />
           </div>
+        </div>
+
+        {/* ---------- Crecimiento (IMC) ---------- */}
+        <div className="mb-8">
+          <div className="text-sm font-bold mb-3">Crecimiento (IMC)</div>
+          <GrowthSection measurements={measurements} audience="staff" />
         </div>
 
         {/* ---------- Evaluación formativa ---------- */}

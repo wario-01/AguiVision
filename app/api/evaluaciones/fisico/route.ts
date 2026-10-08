@@ -56,3 +56,31 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, guardados: rows.length });
 }
+
+// DELETE /api/evaluaciones/fisico
+// json: { resultId }
+// Borra un resultado físico-técnico. La RLS exige ser coach del equipo del jugador.
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase no está configurado" }, { status: 500 });
+  }
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body.resultId !== "string") {
+    return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+  }
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+  }
+
+  const { data, error } = await supabase.from("physical_results").delete().eq("id", body.resultId).select("id");
+  if (error) {
+    console.error("Error borrando resultado físico", error);
+    return NextResponse.json({ error: "No se pudo borrar el resultado" }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: "No tenés permiso para borrar este resultado, o ya no existe" }, { status: 403 });
+  }
+  return NextResponse.json({ ok: true });
+}

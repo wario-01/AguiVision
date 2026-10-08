@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import DeleteCycleButton from "@/components/DeleteCycleButton";
 import { getTeamBySlug, getPlayers } from "@/lib/data";
 import {
   getEvalCycle,
@@ -83,6 +84,12 @@ export default async function CicloDetallePage({
             </div>
           )}
         </div>
+
+        {team.role === "coach" && (
+          <div className="mt-8">
+            <DeleteCycleButton cycleId={cycle.id} cycleName={cycle.name} teamSlug={team.slug} />
+          </div>
+        )}
       </div>
     </div>
   );

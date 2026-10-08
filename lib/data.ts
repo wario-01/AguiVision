@@ -10,6 +10,7 @@ export type Team = {
   age_category: string;
   active: boolean;
   sponsor_logo_url?: string | null;
+  standings_url?: string | null; // enlace a la tabla de posiciones de la liga
   role?: Role; // presente cuando viene de getMyTeams()
   player_id?: string | null; // el jugador vinculado, si el rol es player/parent
 };
@@ -131,7 +132,7 @@ export async function getMyTeams(): Promise<Team[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("role, player_id, teams(id, slug, name, age_category, active, sponsor_logo_url)")
+    .select("role, player_id, teams(id, slug, name, age_category, active, sponsor_logo_url, standings_url)")
     .eq("profile_id", userData.user.id);
 
   if (error || !data) return [];

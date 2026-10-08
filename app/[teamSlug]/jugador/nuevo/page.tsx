@@ -26,7 +26,7 @@ export default async function NuevoJugadorPage({ params }: { params: { teamSlug:
         <PlayerInfoForm
           teamId={team.id}
           teamSlug={team.slug}
-          initial={{ full_name: "", jersey_number: null, position: null, peso: null, altura: null, perfil: null }}
+          initial={{ full_name: "", jersey_number: null, position: null, peso: null, altura: null, cintura: null, perfil: null, age_months: null, sex: null }}
         />
       </div>
     </div>

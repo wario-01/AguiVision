@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { parsePlayerFields, parseFullName } from "@/lib/playerFields";
+import { syncMeasurements } from "@/lib/measurements";
 
 // Devuelve el usuario y verifica que sea coach/assistant del equipo dado.
 async function requireStaff(teamId: string) {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
   const auth = await requireStaff(body.teamId);
   if ("error" in auth) return auth.error;
 
-  const { jersey_number, position, peso, altura, perfil } = parsed.fields;
+  const { jersey_number, position, peso, altura, cintura, perfil, age_months, sex } = parsed.fields;
 
   const { data, error } = await auth.admin
     .from("players")
@@ -63,12 +64,16 @@ export async function POST(req: Request) {
   }
 
   // Peso, altura y perfil van a una tabla aparte, solo visible para staff.
-  if (peso !== null || altura !== null || perfil !== null) {
+  if (peso !== null || altura !== null || perfil !== null || sex !== null || cintura !== null) {
     const { error: privateError } = await auth.admin
       .from("player_private")
-      .insert({ player_id: data.id, peso, altura, perfil });
+      .insert({ player_id: data.id, peso, altura, cintura, perfil, sex });
     if (privateError) {
       return NextResponse.json({ error: "El jugador se creó, pero no se pudieron guardar peso/altura/perfil" }, { status: 500 });
+    }
+    const sync = await syncMeasurements(auth.admin, data.id, { peso, altura, cintura, age_months, sex }, null);
+    if (sync.error) {
+      return NextResponse.json({ error: "El jugador se creó, pero no se pudo guardar la medición" }, { status: 500 });
     }
   }
 
