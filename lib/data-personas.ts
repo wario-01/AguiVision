@@ -17,14 +17,14 @@ export interface PlayerLinkRow {
 export async function getLinkOptions(
   personId: string,
   currentTeamId: string
-): Promise<{ linked: PlayerLinkRow[]; candidates: PlayerLinkRow[] }> {
+): Promise<{ linked: PlayerLinkRow[]; candidates: PlayerLinkRow[]; teams: { id: string; name: string }[] }> {
   const supabase = await createClient();
-  if (!supabase) return { linked: [], candidates: [] };
+  if (!supabase) return { linked: [], candidates: [], teams: [] };
 
   const teams = (await getMyTeams()).filter(
     (t) => t.id !== currentTeamId && (t.role === "coach" || t.role === "assistant")
   );
-  if (teams.length === 0) return { linked: [], candidates: [] };
+  if (teams.length === 0) return { linked: [], candidates: [], teams: [] };
 
   const { data } = await supabase
     .from("players")
@@ -43,6 +43,7 @@ export async function getLinkOptions(
   }));
 
   return {
+    teams: teams.map((t) => ({ id: t.id, name: t.name })),
     linked: rows.filter((r) => r.person_id === personId).map(({ id, full_name, team_name }) => ({ id, full_name, team_name })),
     candidates: rows
       .filter((r) => r.person_id !== personId)

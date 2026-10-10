@@ -13,14 +13,31 @@ type Row = { id: string; full_name: string; team_name: string };
 
 export default function LinkPlayerSection({
   playerId,
+  playerName,
   linked,
   candidates,
+  teams: teamOptions,
 }: {
   playerId: string;
+  playerName: string;
   linked: Row[];
   candidates: Row[];
+  teams: { id: string; name: string }[];
 }) {
+  const [teamName, setTeamName] = useState("");
   const [otherId, setOtherId] = useState("");
+  const selectedTeam = teamOptions.find((t) => t.name === teamName);
+  const inTeam = candidates.filter((c) => c.team_name === teamName);
+  const CREATE = "__crear__";
+
+  function pickTeam(name: string) {
+    setTeamName(name);
+    // Si en ese equipo hay un jugador con el mismo nombre, queda elegido solo.
+    const same = candidates.find(
+      (c) => c.team_name === name && c.full_name.trim().toLowerCase() === playerName.trim().toLowerCase()
+    );
+    setOtherId(same ? same.id : "");
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -40,6 +57,7 @@ export default function LinkPlayerSection({
         return;
       }
       setOtherId("");
+      setTeamName("");
       router.refresh();
     } catch {
       setError("Ocurrió un error");
@@ -48,7 +66,7 @@ export default function LinkPlayerSection({
     }
   }
 
-  if (linked.length === 0 && candidates.length === 0) return null;
+  if (linked.length === 0 && teamOptions.length === 0) return null;
 
   return (
     <div className="bg-panel border border-border rounded-xl p-5 mt-6 flex flex-col gap-3">
@@ -78,26 +96,43 @@ export default function LinkPlayerSection({
         </div>
       )}
 
-      {candidates.length > 0 && (
+      {teamOptions.length > 0 && (
         <div className="flex items-center gap-3 flex-wrap">
           <select
-            value={otherId}
-            onChange={(e) => setOtherId(e.target.value)}
+            value={teamName}
+            onChange={(e) => pickTeam(e.target.value)}
             className="bg-panel2 border border-borderMuted rounded-lg px-3 py-1.5 text-xs"
           >
-            <option value="">Vincular con…</option>
-            {candidates.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.full_name} — {c.team_name}
+            <option value="">Equipo con el que vincular…</option>
+            {teamOptions.map((t) => (
+              <option key={t.id} value={t.name}>
+                {t.name}
               </option>
             ))}
           </select>
+          {teamName && (
+            <select
+              value={otherId}
+              onChange={(e) => setOtherId(e.target.value)}
+              className="bg-panel2 border border-borderMuted rounded-lg px-3 py-1.5 text-xs"
+            >
+              <option value="">Jugador de ese equipo…</option>
+              <option value={CREATE}>➕ No está: crearlo en ese equipo</option>
+              {inTeam.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.full_name}
+                </option>
+              ))}
+            </select>
+          )}
           <button
-            onClick={() => send({ otherPlayerId: otherId })}
+            onClick={() =>
+              otherId === CREATE ? send({ createInTeamId: selectedTeam?.id }) : send({ otherPlayerId: otherId })
+            }
             disabled={busy || !otherId}
             className="text-xs font-bold text-gold hover:underline disabled:opacity-50"
           >
-            {busy ? "Guardando…" : "Vincular"}
+            {busy ? "Guardando…" : otherId === CREATE ? "Crear y vincular" : "Vincular"}
           </button>
         </div>
       )}

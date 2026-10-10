@@ -13,7 +13,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
   const unlink = body.unlink === true;
-  if (!unlink && typeof body.otherPlayerId !== "string") {
+  const createInTeamId = typeof body.createInTeamId === "string" ? body.createInTeamId : null;
+  if (!unlink && !createInTeamId && typeof body.otherPlayerId !== "string") {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
   if (!unlink && body.otherPlayerId === body.playerId) {
@@ -30,15 +31,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
   }
 
-  const ids = unlink ? [body.playerId] : [body.playerId, body.otherPlayerId];
-  const { data: players } = await supabase.from("players").select("id, team_id, person_id").in("id", ids);
+  const needsOther = !unlink && !createInTeamId;
+  const ids = needsOther ? [body.playerId, body.otherPlayerId] : [body.playerId];
+  const { data: players } = await supabase
+    .from("players")
+    .select("id, team_id, person_id, full_name, position")
+    .in("id", ids);
   const mine = players?.find((p) => p.id === body.playerId);
-  const other = unlink ? null : players?.find((p) => p.id === body.otherPlayerId);
-  if (!mine || (!unlink && !other)) {
+  const other = needsOther ? players?.find((p) => p.id === body.otherPlayerId) : null;
+  if (!mine || (needsOther && !other)) {
     return NextResponse.json({ error: "Jugador no encontrado" }, { status: 404 });
   }
+  if (createInTeamId && createInTeamId === mine.team_id) {
+    return NextResponse.json({ error: "Elige otro equipo" }, { status: 400 });
+  }
 
-  const teamIds = Array.from(new Set([mine.team_id, ...(other ? [other.team_id] : [])]));
+  const teamIds = Array.from(
+    new Set([mine.team_id, ...(other ? [other.team_id] : []), ...(createInTeamId ? [createInTeamId] : [])])
+  );
   const { data: memberships } = await supabase
     .from("team_members")
     .select("team_id, role")
@@ -61,6 +71,32 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   if (!admin) {
     return NextResponse.json({ error: "Falta configurar el servidor" }, { status: 500 });
+  }
+
+  // Crear el mismo niño en el otro equipo (mismo person_id = quedan vinculados).
+  if (createInTeamId) {
+    const { data: dup } = await admin
+      .from("players")
+      .select("id")
+      .eq("team_id", createInTeamId)
+      .ilike("full_name", mine.full_name)
+      .maybeSingle();
+    if (dup) {
+      return NextResponse.json(
+        { error: "Ese equipo ya tiene un jugador con ese nombre: elígelo en la lista para vincularlo" },
+        { status: 400 }
+      );
+    }
+    const { error: createError } = await admin.from("players").insert({
+      team_id: createInTeamId,
+      full_name: mine.full_name,
+      position: mine.position,
+      person_id: mine.person_id,
+    });
+    if (createError) {
+      return NextResponse.json({ error: "No se pudo crear el jugador en ese equipo" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const newPersonId = unlink ? randomUUID() : other!.person_id;

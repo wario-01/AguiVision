@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
@@ -9,8 +9,43 @@ function LoginForm() {
   const [fullName, setFullName] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [code, setCode] = useState("");
+  const [codeMsg, setCodeMsg] = useState("");
+  const [checking, setChecking] = useState(false);
   const params = useSearchParams();
-  const next = params.get("next") ?? "/";
+  const router = useRouter();
+  const rawNext = params.get("next") ?? "/";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const linkFailed = params.get("error") === "link";
+
+  async function handleCode(e: React.FormEvent) {
+    e.preventDefault();
+    setChecking(true);
+    setCodeMsg("");
+    try {
+      const supabase = createClient();
+      if (!supabase) {
+        setCodeMsg("Supabase todavía no está configurado en este entorno.");
+        setChecking(false);
+        return;
+      }
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: code.replace(/\s/g, ""),
+        type: "email",
+      });
+      if (!error) {
+        await fetch("/auth/linked", { method: "POST" }).catch(() => null);
+        router.replace(next);
+        router.refresh();
+        return;
+      }
+      setCodeMsg("Código incorrecto o vencido. Pide uno nuevo.");
+    } catch {
+      setCodeMsg("Error de conexión. Intenta de nuevo.");
+    }
+    setChecking(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,12 +79,38 @@ function LoginForm() {
           <div className="font-display text-2xl font-bold text-text">AguiVision</div>
         </div>
 
+        {linkFailed && status !== "sent" && (
+          <div className="mb-4 bg-panel border border-border rounded-xl p-4 text-sm text-muted">
+            <span className="text-text font-bold">El enlace no funcionó en este navegador.</span> Pasa a veces cuando
+            se abre desde la app de Gmail. Pide un acceso nuevo y usa el <b>código de 6 dígitos</b> del correo.
+          </div>
+        )}
         {status === "sent" ? (
           <div className="bg-panel border border-border rounded-2xl p-6 text-center">
-            <div className="text-text font-bold text-sm mb-2">Revisá tu correo</div>
-            <div className="text-muted text-sm">
-              Te mandamos un enlace de acceso a <span className="text-text font-semibold">{email}</span>. Abrilo desde este mismo dispositivo para entrar.
+            <div className="text-text font-bold text-sm mb-2">Revisa tu correo</div>
+            <div className="text-muted text-sm mb-4">
+              Te mandamos un acceso a <span className="text-text font-semibold">{email}</span>. Toca el enlace, o
+              escribe aquí el <b>código de 6 dígitos</b> que viene en el mismo correo.
             </div>
+            <form onSubmit={handleCode}>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Código"
+                className="w-full box-border bg-bg border border-border rounded-lg px-3.5 py-2.5 text-center text-lg tracking-widest font-bold text-text mb-3"
+              />
+              <button
+                type="submit"
+                disabled={checking || code.trim().length < 6}
+                className="w-full bg-gold text-bg rounded-xl py-3 text-sm font-extrabold disabled:opacity-60"
+              >
+                {checking ? "Entrando..." : "Entrar con el código"}
+              </button>
+              {codeMsg && <div className="mt-3 text-sm text-red">{codeMsg}</div>}
+            </form>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-6">

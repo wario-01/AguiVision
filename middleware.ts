@@ -9,7 +9,7 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // alguien que llega por un link compartido pueda mirar sin cuenta). Todo
 // lo demás requiere sesión cuando Supabase está configurado; si no está
 // configurado, la app sigue en modo demo sin login.
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/en-vivo/"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/auth/confirm", "/auth/linked", "/en-vivo/"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

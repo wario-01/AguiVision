@@ -25,7 +25,7 @@ export default async function EditarJugadorPage({
   const player = await getPlayerProfile(params.playerId);
   if (!player || player.team_id !== team.id) notFound();
 
-  const { linked, candidates } = await getLinkOptions(player.person_id, team.id);
+  const { linked, candidates, teams: otherTeams } = await getLinkOptions(player.person_id, team.id);
 
   // Edad estimada hoy: la de la última medición + los meses que han pasado desde entonces.
   const measurements = await getMeasurements(player.id);
@@ -68,7 +68,7 @@ export default async function EditarJugadorPage({
           }}
         />
 
-        <LinkPlayerSection playerId={player.id} linked={linked} candidates={candidates} />
+        <LinkPlayerSection playerId={player.id} playerName={player.full_name} linked={linked} candidates={candidates} teams={otherTeams} />
 
         <div className="mt-6">
           <DeletePlayerButton playerId={player.id} playerName={player.full_name} teamSlug={team.slug} />
