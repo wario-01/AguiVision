@@ -67,7 +67,7 @@ export default function UploadForm({ teamSlug }: { teamSlug: string }) {
           </svg>
         </div>
         <div className="text-sm font-bold text-center">Arrastrá el video del partido</div>
-        <div className="text-xs text-muted text-center">o seleccioná un archivo · MP4, MOV hasta 4 GB</div>
+        <div className="text-xs text-muted text-center">o seleccioná un archivo · MP4, MOV · partidos completos, sin límite de tamaño práctico (no cierres la página mientras sube)</div>
         <label className="mt-1 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold cursor-pointer">
           {file?.name ?? "Elegir archivo"}
           <input
