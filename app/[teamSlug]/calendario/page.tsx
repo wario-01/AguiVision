@@ -147,6 +147,14 @@ export default async function CalendarioPage({
                           {withAttendance.has(ev.id) ? "Asistencia ✓" : "Tomar asistencia"}
                         </Link>
                       )}
+                      {canEdit && (
+                        <Link
+                          href={`/${team.slug}/calendario/evento/${ev.id}/editar`}
+                          className="text-xs font-bold text-gold hover:underline shrink-0"
+                        >
+                          Editar
+                        </Link>
+                      )}
                       {canEdit && <EventDeleteButton eventId={ev.id} />}
                     </div>
                   ))}
