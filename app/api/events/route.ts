@@ -129,6 +129,7 @@ export async function POST(req: Request) {
       month: "long",
       hour: "numeric",
       minute: "2-digit",
+      timeZone: "America/Chicago",
     });
     await sendEmail({
       to: emails,

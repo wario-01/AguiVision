@@ -46,7 +46,7 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
                 >
                   <span className="font-display text-base font-semibold">vs {group.opponent}</span>
                   <span className="text-xs text-muted">
-                    {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                    {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Chicago" }) : ""}
                   </span>
                   {group.teamName && <span className="text-xs text-gold">{group.teamName}</span>}
                 </a>
@@ -54,7 +54,7 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
                 <div className="flex items-baseline gap-2 mb-3">
                   <span className="font-display text-base font-semibold">vs {group.opponent}</span>
                   <span className="text-xs text-muted">
-                    {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                    {group.date ? new Date(group.date).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Chicago" }) : ""}
                   </span>
                   {group.teamName && <span className="text-xs text-gold">{group.teamName}</span>}
                 </div>

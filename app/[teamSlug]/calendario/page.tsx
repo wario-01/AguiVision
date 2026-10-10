@@ -5,6 +5,7 @@ import NewEventToggle from "@/components/NewEventToggle";
 import EventDeleteButton from "@/components/EventDeleteButton";
 import { getTeamBySlug, getEvents, getMyTeams } from "@/lib/data";
 import { getEventsWithAttendance } from "@/lib/data-asistencia";
+import { clubParts, clubTime } from "@/lib/tz";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -19,9 +20,11 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Evento",
 };
 
+// Se pide un día de más por cada lado y después se filtra por el mes en hora
+// de Texas, para no perder eventos de la noche del último día del mes.
 function monthRange(year: number, month: number) {
-  const from = new Date(Date.UTC(year, month, 1)).toISOString();
-  const to = new Date(Date.UTC(year, month + 1, 1)).toISOString();
+  const from = new Date(Date.UTC(year, month, 1) - 24 * 3600 * 1000).toISOString();
+  const to = new Date(Date.UTC(year, month + 1, 1) + 24 * 3600 * 1000).toISOString();
   return { from, to };
 }
 
@@ -42,10 +45,13 @@ export default async function CalendarioPage({
         .map((t) => ({ slug: t.slug, name: t.name }))
     : [];
 
-  const now = new Date();
-  const [y, m] = (searchParams.m ?? `${now.getFullYear()}-${now.getMonth()}`).split("-").map(Number);
+  const nowParts = clubParts(new Date());
+  const [y, m] = (searchParams.m ?? `${nowParts.year}-${nowParts.month}`).split("-").map(Number);
   const range = monthRange(y, m);
-  const events = await getEvents(team.slug, range);
+  const events = (await getEvents(team.slug, range)).filter((ev) => {
+    const p = clubParts(ev.start_at);
+    return p.year === y && p.month === m;
+  });
   const withAttendance = canEdit ? await getEventsWithAttendance(events.map((e) => e.id)) : new Set<string>();
 
   const prevM = m === 0 ? 11 : m - 1;
@@ -56,8 +62,7 @@ export default async function CalendarioPage({
   // Agrupar por día
   const byDay = new Map<string, typeof events>();
   for (const ev of events) {
-    const d = new Date(ev.start_at);
-    const key = d.toISOString().slice(0, 10);
+    const key = clubParts(ev.start_at).ymd;
     if (!byDay.has(key)) byDay.set(key, []);
     byDay.get(key)!.push(ev);
   }
@@ -134,7 +139,7 @@ export default async function CalendarioPage({
                           {ev.type === "game" ? `vs ${ev.opponent ?? "?"}` : ev.title || TYPE_LABELS[ev.type]}
                         </div>
                         <div className="text-xs text-muted truncate">
-                          {new Date(ev.start_at).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}
+                          {clubTime(ev.start_at)}
                           {ev.location ? ` · ${ev.location}` : ""}
                           {ev.league ? ` · ${ev.league}` : ""}
                         </div>

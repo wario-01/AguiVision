@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
 import { getMeasurements } from "@/lib/data-crecimiento";
+import { clubParts, clubTime } from "@/lib/tz";
 import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingEvents } from "@/lib/data";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -104,8 +105,8 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                       <div className="flex-grow min-w-0">
                         <div className="text-sm font-bold truncate">{g.title || TYPE_LABELS[g.type] || "Evento"}</div>
                         <div className="text-xs text-muted truncate">
-                          {DIAS[d.getDay()]}, {d.getDate()} {MESES[d.getMonth()]} ·{" "}
-                          {d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}
+                          {DIAS[clubParts(d).dow]}, {clubParts(d).day} {MESES[clubParts(d).month]} ·{" "}
+                          {clubTime(d)}
                           {g.location ? ` · ${g.location}` : ""}
                         </div>
                       </div>
@@ -125,10 +126,10 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                       </div>
                       <div className="flex-grow text-center">
                         <div className="font-display text-2xl font-bold">
-                          {d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}
+                          {clubTime(d)}
                         </div>
                         <div className="text-xs text-muted mt-0.5">
-                          {DIAS[d.getDay()]}, {d.getDate()} {MESES[d.getMonth()]}
+                          {DIAS[clubParts(d).dow]}, {clubParts(d).day} {MESES[clubParts(d).month]}
                         </div>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
