@@ -82,6 +82,7 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
                       </span>
                     )}
                     <div className="text-xs text-muted">min {h.minute}</div>
+                    {h.notas && <div className="text-xs text-muted mt-0.5 line-clamp-2">{h.notas}</div>}
                   </a>
                 ))}
               </div>

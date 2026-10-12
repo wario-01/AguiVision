@@ -17,7 +17,9 @@ function parseTimeToSeconds(value: string): number | null {
 }
 
 export default function HighlightForm({ matchId, players }: { matchId: string; players: Player[] }) {
-  const [playerId, setPlayerId] = useState(players[0]?.id ?? "");
+  const [playerId, setPlayerId] = useState(players[0]?.id ?? ""); // "" = todo el equipo
+  const [shared, setShared] = useState(false);
+  const [notas, setNotas] = useState("");
   const [label, setLabel] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -29,9 +31,9 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
     const startSeconds = parseTimeToSeconds(start);
     const endSeconds = parseTimeToSeconds(end);
 
-    if (!playerId || !label || startSeconds === null || endSeconds === null) {
+    if (!label || startSeconds === null || endSeconds === null) {
       setStatus("error");
-      setMessage("Completá jugador, etiqueta, y los tiempos en formato mm:ss (ej: 34:20).");
+      setMessage("Completá la etiqueta y los tiempos en formato mm:ss (ej: 34:20).");
       return;
     }
     if (endSeconds <= startSeconds) {
@@ -47,7 +49,15 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
       const res = await fetch("/api/highlights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId, playerId, label, startSeconds, endSeconds }),
+        body: JSON.stringify({
+          matchId,
+          playerId: playerId || null,
+          label,
+          startSeconds,
+          endSeconds,
+          shared: playerId ? shared : true,
+          notas,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo crear el highlight");
@@ -57,22 +67,11 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
       setLabel("");
       setStart("");
       setEnd("");
+      setNotas("");
     } catch (err: any) {
       setStatus("error");
       setMessage(err.message ?? "Ocurrió un error");
     }
-  }
-
-  if (players.length === 0) {
-    return (
-      <div className="bg-panel border border-border rounded-2xl p-5 mt-6">
-        <div className="font-display text-base font-semibold mb-2">Marcar highlight</div>
-        <div className="text-sm text-muted">
-          Todavía no hay jugadores en este equipo. Agregalos invitando a un jugador o madre/padre desde{" "}
-          <b>Equipo</b> — ahí se les vincula un jugador, y recién aparecen acá para poder etiquetarlos.
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -87,6 +86,7 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
             onChange={(e) => setPlayerId(e.target.value)}
             className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold"
           >
+            <option value="">Todo el equipo (sin jugador)</option>
             {players.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name}
@@ -128,6 +128,30 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
           />
         </div>
       </div>
+
+      <div className="mb-3">
+        <label className="block text-xs font-bold text-muted mb-1.5">Nota (opcional)</label>
+        <textarea
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+          rows={2}
+          maxLength={500}
+          placeholder="Describe la jugada o agrega un comentario"
+          className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold resize-none"
+        />
+      </div>
+
+      <label className="flex items-center gap-2 text-xs font-bold text-muted mb-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={playerId ? shared : true}
+          disabled={!playerId}
+          onChange={(e) => setShared(e.target.checked)}
+        />
+        {playerId
+          ? "Compartir con todo el equipo (lo verán también las demás familias)"
+          : "Se comparte con todo el equipo (no tiene jugador)"}
+      </label>
 
       <button
         type="submit"

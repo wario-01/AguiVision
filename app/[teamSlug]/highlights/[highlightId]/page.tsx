@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { getTeamBySlug, getHighlights } from "@/lib/data";
 import MatchPlayer from "@/components/MatchPlayer";
+import Link from "next/link";
 import DeleteHighlightButton from "@/components/DeleteHighlightButton";
 import ShareHighlightToggle from "@/components/ShareHighlightToggle";
 
@@ -26,7 +27,13 @@ export default async function HighlightPage({
         <div className="font-display text-2xl font-bold mb-1">
           {highlight.label} · {highlight.player_name}
         </div>
-        <div className="text-sm text-muted mb-7">min {highlight.minute} · {highlight.duration}</div>
+        <div className="text-sm text-muted mb-4">min {highlight.minute} · {highlight.duration}</div>
+        {highlight.notas && (
+          <div className="bg-panel border border-border rounded-xl px-4 py-3 mb-6">
+            <div className="text-xs font-bold text-muted mb-1">Nota del entrenador</div>
+            <div className="text-sm whitespace-pre-wrap">{highlight.notas}</div>
+          </div>
+        )}
 
         {highlight.clip_playback_id ? (
           <>
@@ -50,6 +57,15 @@ export default async function HighlightPage({
           <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">
             Mux todavía está generando este clip — recargá la página en un rato.
           </div>
+        )}
+
+        {canDelete && (
+          <Link
+            href={`/${team.slug}/highlights/${highlight.id}/editar`}
+            className="inline-block mt-6 bg-panel border border-border rounded-lg px-4 py-2.5 text-sm font-bold hover:border-borderMuted"
+          >
+            Editar highlight
+          </Link>
         )}
 
         {canDelete && (

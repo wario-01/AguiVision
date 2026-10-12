@@ -47,6 +47,8 @@ export type Highlight = {
   team_name?: string;
   // El entrenador lo compartió con todo el equipo (lo ven también los papás de otros niños).
   shared_with_team?: boolean;
+  // Nota del entrenador sobre la jugada.
+  notas?: string | null;
 };
 
 export type LiveStream = {
@@ -186,7 +188,7 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
 
     let query = supabase
       .from("highlights")
-      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, shared_with_team, players(full_name), matches!inner(team_id, opponent, match_date)")
+      .select("id, match_id, label, start_seconds, end_seconds, clip_playback_id, shared_with_team, notas, players(full_name), matches!inner(team_id, opponent, match_date)")
       .eq("matches.team_id", team.id)
       .order("created_at", { ascending: false });
 
@@ -211,12 +213,13 @@ export async function getHighlights(teamSlug: string): Promise<Highlight[]> {
         match_id: row.match_id,
         match_opponent: row.matches?.opponent ?? "?",
         match_date: row.matches?.match_date ?? "",
-        player_name: row.players?.full_name ?? "Jugador",
+        player_name: row.players?.full_name ?? "Todo el equipo",
         label: row.label,
         minute: Math.floor(row.start_seconds / 60),
         duration: `${mm}:${ss}`,
         clip_playback_id: row.clip_playback_id,
         shared_with_team: Boolean(row.shared_with_team),
+        notas: row.notas ?? null,
       };
     });
   }
@@ -239,7 +242,7 @@ async function getLinkedPlayerHighlights(
   if (!userData.user) return [];
 
   const SELECT =
-    "id, match_id, label, start_seconds, end_seconds, clip_playback_id, shared_with_team, created_at, players(full_name), matches!inner(team_id, opponent, match_date, teams(name))";
+    "id, match_id, label, start_seconds, end_seconds, clip_playback_id, shared_with_team, notas, created_at, players(full_name), matches!inner(team_id, opponent, match_date, teams(name))";
 
   // 1) Highlights de SU niño (en todos los equipos donde juega)
   let own: any[] = [];
@@ -283,7 +286,7 @@ async function getLinkedPlayerHighlights(
       match_id: row.match_id,
       match_opponent: row.matches?.opponent ?? "?",
       match_date: row.matches?.match_date ?? "",
-      player_name: row.players?.full_name ?? "Jugador",
+      player_name: row.players?.full_name ?? "Todo el equipo",
       label: row.label,
       minute: Math.floor(row.start_seconds / 60),
       duration: `${mm}:${ss}`,
@@ -291,6 +294,7 @@ async function getLinkedPlayerHighlights(
       team_id: row.matches?.team_id,
       team_name: row.matches?.teams?.name ?? undefined,
       shared_with_team: Boolean(row.shared_with_team),
+      notas: row.notas ?? null,
     };
   });
 }

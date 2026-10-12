@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mux, isMuxConfigured } from "@/lib/mux";
+import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { escapeHtml } from "@/lib/escapeHtml";
 
@@ -20,7 +21,6 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (
     !body?.matchId ||
-    !body?.playerId ||
     !body?.label ||
     body?.startSeconds === undefined ||
     body?.endSeconds === undefined
@@ -28,6 +28,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Faltan datos del highlight" }, { status: 400 });
   }
 
+  // Sin jugador = highlight de todo el equipo (siempre queda compartido).
+  const playerIdRaw = typeof body.playerId === "string" && body.playerId ? body.playerId : null;
+  const shared = playerIdRaw === null ? true : body.shared === true;
+  const notas = typeof body.notas === "string" ? body.notas.trim().slice(0, 500) : "";
   const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
   const start = Number(body.startSeconds);
   const end = Number(body.endSeconds);
@@ -64,22 +68,27 @@ export async function POST(req: Request) {
 
   // Confirma que el jugador elegido sea realmente de este equipo (y no de
   // otro, pasado por error o a propósito).
-  const { data: player } = await supabase
-    .from("players")
-    .select("id, full_name")
-    .eq("id", body.playerId)
-    .eq("team_id", match.team_id)
-    .maybeSingle();
-
-  if (!player) {
-    return NextResponse.json({ error: "Ese jugador no pertenece a este equipo" }, { status: 400 });
+  let player: { id: string; full_name: string } | null = null;
+  if (playerIdRaw) {
+    const { data } = await supabase
+      .from("players")
+      .select("id, full_name")
+      .eq("id", playerIdRaw)
+      .eq("team_id", match.team_id)
+      .maybeSingle();
+    if (!data) {
+      return NextResponse.json({ error: "Ese jugador no pertenece a este equipo" }, { status: 400 });
+    }
+    player = data;
   }
 
   const { data: highlight, error: highlightError } = await supabase
     .from("highlights")
     .insert({
       match_id: match.id,
-      player_id: player.id,
+      player_id: player?.id ?? null,
+      shared_with_team: shared,
+      notas: notas || null,
       label,
       start_seconds: start,
       end_seconds: end,
@@ -91,28 +100,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No tenés permiso para crear highlights en este equipo" }, { status: 403 });
   }
 
-  // Avisarle por correo a la madre/padre (o al jugador) vinculado a este
-  // jugador puntual — no a todo el equipo. Si el correo falla, no afecta
-  // el resto: el highlight ya quedó guardado.
+  // Avisos por correo: si el highlight es de un jugador, a su madre/padre (o
+  // al jugador); si es de todo el equipo (sin jugador), a todo el equipo.
+  // Si el correo falla, no afecta el resto: el highlight ya quedó guardado.
   const { data: team } = await supabase.from("teams").select("slug, name").eq("id", match.team_id).single();
-  const { data: recipients } = await supabase
+  let recipientsQuery = supabase
     .from("team_members")
-    .select("profiles(email)")
-    .eq("team_id", match.team_id)
-    .eq("player_id", player.id)
-    .in("role", ["player", "parent"]);
+    .select("profile_id, profiles(email)")
+    .eq("team_id", match.team_id);
+  recipientsQuery = player
+    ? recipientsQuery.eq("player_id", player.id).in("role", ["player", "parent"])
+    : recipientsQuery;
+  const { data: recipients } = await recipientsQuery;
 
   const emails = (recipients ?? [])
+    .filter((r: any) => r.profile_id !== userData.user!.id)
     .map((r: any) => r.profiles?.email)
     .filter((e: string | undefined): e is string => Boolean(e));
 
   if (emails.length > 0 && team) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nidoaguilaatx.com";
+    const who = player ? player.full_name : team.name;
     await sendEmail({
       to: emails,
-      subject: `Nuevo highlight de ${player.full_name} — ${label}`,
+      subject: `Nuevo highlight de ${who} — ${label}`,
       html: `
-        <p>Hay un highlight nuevo de <b>${escapeHtml(player.full_name)}</b> (${escapeHtml(team.name)}): <b>${escapeHtml(label)}</b>.</p>
+        <p>Hay un highlight nuevo de <b>${escapeHtml(who)}</b> (${escapeHtml(team.name)}): <b>${escapeHtml(label)}</b>.</p>
+        ${notas ? `<p>${escapeHtml(notas)}</p>` : ""}
         <p><a href="${appUrl}/${team.slug}/highlights/${highlight.id}">Ver el highlight en AguiVision</a></p>
       `,
     });
@@ -144,7 +158,12 @@ export async function POST(req: Request) {
     passthrough: `highlight:${highlight.id}`,
   } as any);
 
-  await supabase.from("highlights").update({ clip_asset_id: (clipAsset as any).id }).eq("id", highlight.id);
+  // No existe política de UPDATE en highlights para el cliente normal, por eso
+  // se guarda con el cliente de servicio (la autorización ya se verificó arriba).
+  const adminForClip = isAdminConfigured ? createAdminClient() : null;
+  if (adminForClip) {
+    await adminForClip.from("highlights").update({ clip_asset_id: (clipAsset as any).id }).eq("id", highlight.id);
+  }
 
   return NextResponse.json({ highlightId: highlight.id });
 }
@@ -188,4 +207,118 @@ export async function DELETE(req: Request) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+// PATCH /api/highlights
+// body: { highlightId, label, playerId|null, shared, notas, startSeconds, endSeconds }
+// Solo entrenador/asistente del equipo. Si cambian los tiempos se genera un clip
+// nuevo en Mux y se borra el anterior; lo demás (etiqueta, nota, jugador,
+// compartido) se corrige al instante.
+export async function PATCH(req: Request) {
+  const body = await req.json().catch(() => null);
+  if (!body?.highlightId || !body?.label || body?.startSeconds === undefined || body?.endSeconds === undefined) {
+    return NextResponse.json({ error: "Faltan datos del highlight" }, { status: 400 });
+  }
+  const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) : "";
+  const start = Number(body.startSeconds);
+  const end = Number(body.endSeconds);
+  if (!label || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end - start > 300) {
+    return NextResponse.json({ error: "Tiempos o etiqueta inválidos (máximo 5 minutos por clip)" }, { status: 400 });
+  }
+  const playerIdRaw = typeof body.playerId === "string" && body.playerId ? body.playerId : null;
+  const shared = playerIdRaw === null ? true : body.shared === true;
+  const notas = typeof body.notas === "string" ? body.notas.trim().slice(0, 500) : "";
+
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
+  }
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+  }
+
+  const { data: hl } = await supabase
+    .from("highlights")
+    .select("id, start_seconds, end_seconds, clip_asset_id, matches(team_id, video_asset_id, video_status)")
+    .eq("id", body.highlightId)
+    .maybeSingle();
+  const match = (hl as any)?.matches as { team_id: string; video_asset_id: string | null; video_status: string } | undefined;
+  if (!hl || !match) {
+    return NextResponse.json({ error: "Highlight no encontrado" }, { status: 404 });
+  }
+
+  const { data: membership } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", match.team_id)
+    .eq("profile_id", userData.user.id)
+    .maybeSingle();
+  if (!membership || (membership.role !== "coach" && membership.role !== "assistant")) {
+    return NextResponse.json({ error: "No tenés permiso para editar este highlight" }, { status: 403 });
+  }
+
+  if (playerIdRaw) {
+    const { data: player } = await supabase
+      .from("players")
+      .select("id")
+      .eq("id", playerIdRaw)
+      .eq("team_id", match.team_id)
+      .maybeSingle();
+    if (!player) {
+      return NextResponse.json({ error: "Ese jugador no pertenece a este equipo" }, { status: 400 });
+    }
+  }
+
+  const admin = isAdminConfigured ? createAdminClient() : null;
+  if (!admin) {
+    return NextResponse.json({ error: "Falta configurar el servidor" }, { status: 500 });
+  }
+
+  const update: Record<string, unknown> = {
+    label,
+    player_id: playerIdRaw,
+    shared_with_team: shared,
+    notas: notas || null,
+  };
+
+  // Si cambian los tiempos, se corta un clip nuevo (primero el nuevo, así si
+  // falla no se pierde el que ya existía).
+  const timesChanged = start !== hl.start_seconds || end !== hl.end_seconds;
+  let oldAssetId: string | null = null;
+  if (timesChanged) {
+    if (!isMuxConfigured || !mux || match.video_status !== "ready" || !match.video_asset_id) {
+      return NextResponse.json(
+        { error: "No se pueden cambiar los tiempos: el video completo de este partido ya no está disponible" },
+        { status: 400 }
+      );
+    }
+    const clipAsset = await mux.video.assets.create({
+      input: [{ url: `mux://assets/${match.video_asset_id}`, start_time: start, end_time: end }],
+      playback_policy: ["public"],
+      video_quality: "basic",
+      mp4_support: "capped-1080p",
+      passthrough: `highlight:${hl.id}`,
+    } as any);
+    oldAssetId = hl.clip_asset_id ?? null;
+    update.start_seconds = start;
+    update.end_seconds = end;
+    update.clip_asset_id = (clipAsset as any).id;
+    update.clip_playback_id = null; // el webhook lo completa cuando el clip nuevo esté listo
+  }
+
+  const { error } = await admin.from("highlights").update(update).eq("id", hl.id);
+  if (error) {
+    return NextResponse.json({ error: "No se pudo guardar el cambio" }, { status: 500 });
+  }
+
+  if (oldAssetId) {
+    try {
+      await mux!.video.assets.delete(oldAssetId);
+    } catch (err) {
+      console.error("No se pudo borrar el clip anterior en Mux:", err);
+    }
+  }
+
+  return NextResponse.json({ ok: true, regenerating: timesChanged });
 }
