@@ -92,25 +92,6 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
             <div className="text-sm text-muted">Todavía no hay highlights para este equipo.</div>
           )}
         </div>
-
-        {/* Evaluación del jugador — roadmap V2, no funcional todavía */}
-        <div className="border border-dashed border-borderMuted rounded-2xl p-6 bg-sidebar max-w-2xl">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#8CA0C7" strokeWidth={2}>
-                <rect x="5" y="4" width="14" height="17" rx="2" />
-                <path d="M9 4V3a1 1 0 011-1h4a1 1 0 011 1v1M9 11l2 2 4-4" />
-              </svg>
-              <span className="font-display text-base font-semibold">Evaluación del jugador</span>
-            </div>
-            <span className="border border-goldBorderDim text-goldText text-[11px] font-extrabold px-2.5 py-1 rounded-full">
-              Próximamente · en el roadmap
-            </span>
-          </div>
-          <div className="text-sm text-muted leading-relaxed">
-            Calificar técnica, actitud y progreso después de cada partido, con notas visibles para el jugador y sus padres.
-          </div>
-        </div>
       </div>
     </div>
   );
