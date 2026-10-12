@@ -2,24 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { parseTimeToSeconds, formatSeconds } from "@/lib/timeParse";
 
-function parseTimeToSeconds(value: string): number | null {
-  if (value.includes(":")) {
-    const [mm, ss] = value.split(":");
-    const m = parseInt(mm, 10);
-    const s = parseInt(ss, 10);
-    if (isNaN(m) || isNaN(s)) return null;
-    return m * 60 + s;
-  }
-  const n = parseInt(value, 10);
-  return isNaN(n) ? null : n;
-}
-
-function fmt(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+const fmt = formatSeconds;
 
 export default function HighlightEditForm({
   teamSlug,
@@ -56,7 +41,7 @@ export default function HighlightEditForm({
     const endSeconds = parseTimeToSeconds(end);
     if (!label.trim() || startSeconds === null || endSeconds === null) {
       setStatus("error");
-      setMessage("Completa la etiqueta y los tiempos en formato mm:ss (ej: 34:20).");
+      setMessage("Completa la etiqueta y los tiempos en formato mm:ss o h:mm:ss (ej: 34:20 o 1:41:15).");
       return;
     }
     if (endSeconds <= startSeconds) {
@@ -112,11 +97,11 @@ export default function HighlightEditForm({
 
       <div className="grid grid-cols-2 gap-3 mb-1">
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Desde (mm:ss)</label>
+          <label className="block text-xs font-bold text-muted mb-1.5">Desde (mm:ss o h:mm:ss)</label>
           <input type="text" value={start} onChange={(e) => setStart(e.target.value)} className={input} />
         </div>
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Hasta (mm:ss)</label>
+          <label className="block text-xs font-bold text-muted mb-1.5">Hasta (mm:ss o h:mm:ss)</label>
           <input type="text" value={end} onChange={(e) => setEnd(e.target.value)} className={input} />
         </div>
       </div>

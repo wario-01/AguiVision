@@ -2,19 +2,7 @@
 
 import { useState } from "react";
 import type { Player } from "@/lib/data";
-
-function parseTimeToSeconds(value: string): number | null {
-  // acepta "34:20" (mm:ss) o "204" (segundos sueltos)
-  if (value.includes(":")) {
-    const [mm, ss] = value.split(":");
-    const m = parseInt(mm, 10);
-    const s = parseInt(ss, 10);
-    if (isNaN(m) || isNaN(s)) return null;
-    return m * 60 + s;
-  }
-  const n = parseInt(value, 10);
-  return isNaN(n) ? null : n;
-}
+import { parseTimeToSeconds, formatSeconds } from "@/lib/timeParse";
 
 export default function HighlightForm({ matchId, players }: { matchId: string; players: Player[] }) {
   const [playerId, setPlayerId] = useState(players[0]?.id ?? ""); // "" = todo el equipo
@@ -33,7 +21,7 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
 
     if (!label || startSeconds === null || endSeconds === null) {
       setStatus("error");
-      setMessage("Completá la etiqueta y los tiempos en formato mm:ss (ej: 34:20).");
+      setMessage("Completá la etiqueta y los tiempos en formato mm:ss o h:mm:ss (ej: 34:20 o 1:41:15).");
       return;
     }
     if (endSeconds <= startSeconds) {
@@ -108,7 +96,7 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Desde (mm:ss)</label>
+          <label className="block text-xs font-bold text-muted mb-1.5">Desde (mm:ss o h:mm:ss)</label>
           <input
             type="text"
             value={start}
@@ -118,7 +106,7 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Hasta (mm:ss)</label>
+          <label className="block text-xs font-bold text-muted mb-1.5">Hasta (mm:ss o h:mm:ss)</label>
           <input
             type="text"
             value={end}
