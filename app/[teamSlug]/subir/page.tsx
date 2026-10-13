@@ -7,6 +7,8 @@ import { getTeamBySlug } from "@/lib/data";
 export default async function SubirPage({ params }: { params: { teamSlug: string } }) {
   const team = await getTeamBySlug(params.teamSlug);
   if (!team) notFound();
+  // Solo entrenador/asistente pueden subir video.
+  if (team.role !== "coach" && team.role !== "assistant") notFound();
 
   return (
     <div className="flex h-screen w-full">

@@ -131,6 +131,31 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
           </>
         )}
 
+        {!canInvite && players.length > 0 && (
+          <>
+            <div className="font-display text-lg font-semibold mb-3">Plantilla</div>
+            <div className="bg-panel border border-border rounded-2xl overflow-hidden mb-8">
+              {players.map((p, i) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-3 px-5 py-3 ${
+                    i < players.length - 1 ? "border-b border-border" : ""
+                  }`}
+                >
+                  <MemberAvatar url={p.photo_url} name={p.full_name} />
+                  <div className="flex-grow min-w-0">
+                    <div className="text-sm font-bold truncate">
+                      {p.jersey_number != null && <span className="text-gold">#{p.jersey_number} </span>}
+                      {p.full_name}
+                    </div>
+                    <div className="text-xs text-muted truncate">{p.position ? p.position : "Sin posición"}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         <div className="font-display text-lg font-semibold mb-3">Miembros</div>
         <div className="bg-panel border border-border rounded-2xl overflow-hidden mb-8">
           {members.map((m, i) => {
