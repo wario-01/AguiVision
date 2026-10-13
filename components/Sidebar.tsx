@@ -180,6 +180,11 @@ export default async function Sidebar({
             <img src="/logo.png" alt="Nido Águila" className="w-[28px] h-[28px] rounded-full object-contain" />
             <div className="font-display text-base font-bold">AguiVision</div>
           </div>
+          <div className="flex items-center gap-3">
+          <LogoutButton
+            label="Cerrar sesión"
+            className="text-[11px] font-bold text-muted border border-borderMuted rounded-full px-2.5 py-1"
+          />
           <Link
             href={`/${currentTeamSlug}/equipo`}
             className="w-[28px] h-[28px] rounded-full bg-panel2 border border-borderMuted flex items-center justify-center font-display text-[10px] font-bold text-muted overflow-hidden"
@@ -190,6 +195,7 @@ export default async function Sidebar({
               initials
             )}
           </Link>
+          </div>
         </div>
         {teams.length > 0 && (
           <div className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 no-scrollbar">
