@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import PrintButton from "@/components/PrintButton";
+import PlayerReportPrint from "@/components/PlayerReportPrint";
 import GrowthSection from "@/components/GrowthSection";
 import AttendanceSummary from "@/components/AttendanceSummary";
 import { getPlayerAttendance } from "@/lib/data-asistencia";
@@ -82,11 +83,11 @@ export default async function PerfilJugadorPage({
     .toUpperCase();
 
   return (
-    <div className="flex h-screen w-full">
+    <div className="print-root flex h-screen w-full">
       <div className="no-print">
         <Sidebar currentTeamSlug={team.slug} active="evaluaciones" />
       </div>
-      <div className="print-area flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-3xl">
+      <div className="screen-only flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-3xl">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center font-display text-lg font-bold text-muted overflow-hidden shrink-0">
@@ -224,6 +225,21 @@ export default async function PerfilJugadorPage({
           )}
         </div>
       </div>
+
+      <PlayerReportPrint
+        teamName={team.name}
+        playerName={player.full_name}
+        jerseyNumber={player.jersey_number ?? null}
+        position={player.position ?? null}
+        photoUrl={player.photo_url ?? null}
+        attendance={attendance}
+        attYear={attYear}
+        cycleName={formativeSnapshot?.cycleName ?? null}
+        areas={formativeSnapshot?.areas ?? null}
+        metrics={metrics.map((m) => ({ id: m.id, nombre: m.nombre, unidad: m.unidad }))}
+        historial={historial}
+        teamAverages={teamAverages}
+      />
     </div>
   );
 }

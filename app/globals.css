@@ -35,3 +35,35 @@ body {
     border-color: #d9d2be !important;
   }
 }
+
+/* Informe oficial del jugador (Descargar PDF): en pantalla está oculto;
+   al imprimir se muestra solo el informe, en hoja carta y con colores. */
+.print-only {
+  display: none;
+}
+@media print {
+  @page {
+    size: letter;
+    margin: 0.55in;
+  }
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-root {
+    display: block !important;
+    height: auto !important;
+  }
+  .screen-only {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
