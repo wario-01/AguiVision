@@ -104,8 +104,14 @@ export default async function Sidebar({
 
   // Las evaluaciones son datos de menores: solo entrenador/asistente.
   // Crecimiento (IMC): lo ve la familia/jugador vinculado (el cuerpo técnico lo ve en el perfil del jugador).
-  const navItems = allNavItems.filter((item) => {
-    if (item.key === "evaluaciones") return isStaff;
+  const navItems = allNavItems
+    .map((item) =>
+      item.key === "evaluaciones" && !isStaff
+        ? { ...item, href: `/${currentTeamSlug}/mi-evaluacion` }
+        : item
+    )
+    .filter((item) => {
+    if (item.key === "evaluaciones") return isStaff || isFamily;
     // Subir video de partidos: solo cuerpo técnico (la base de datos también lo exige).
     if (item.key === "subir") return isStaff;
     if (item.key === "crecimiento") return isFamily;

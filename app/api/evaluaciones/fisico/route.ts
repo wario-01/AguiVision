@@ -84,3 +84,33 @@ export async function DELETE(req: NextRequest) {
   }
   return NextResponse.json({ ok: true });
 }
+
+// PATCH /api/evaluaciones/fisico
+// json: { playerId, published: boolean }
+// Publica (o despublica) TODOS los resultados físico-técnicos de un jugador
+// para que su familia los vea. La RLS exige ser entrenador/asistente del equipo.
+export async function PATCH(req: NextRequest) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase no está configurado" }, { status: 500 });
+  }
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body.playerId !== "string" || typeof body.published !== "boolean") {
+    return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+  }
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+  }
+
+  const { data, error } = await supabase
+    .from("physical_results")
+    .update({ published: body.published })
+    .eq("player_id", body.playerId)
+    .select("id");
+  if (error) {
+    console.error("Error publicando resultados físicos", error);
+    return NextResponse.json({ error: "No se pudo cambiar la publicación" }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, cambiados: data?.length ?? 0 });
+}

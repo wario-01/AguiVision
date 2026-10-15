@@ -33,6 +33,7 @@ export interface EvalCycle {
   start_date: string;
   end_date: string;
   created_at: string;
+  published?: boolean;
 }
 
 export interface CurriculumItem {
@@ -227,6 +228,7 @@ export interface PhysicalResult {
   metric_id: string;
   valor: number;
   fecha: string;
+  published?: boolean;
 }
 
 // Las métricas configuradas para el equipo (solo si tiene activada la

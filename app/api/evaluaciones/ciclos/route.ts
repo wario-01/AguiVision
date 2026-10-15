@@ -130,3 +130,36 @@ export async function DELETE(req: NextRequest) {
   }
   return NextResponse.json({ ok: true });
 }
+
+// PATCH /api/evaluaciones/ciclos
+// json: { cycleId, published: boolean }
+// Publica (o despublica) un ciclo para que las familias vean la evaluación de
+// su hijo. La RLS exige ser entrenador/asistente del equipo.
+export async function PATCH(req: NextRequest) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 });
+  }
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body.cycleId !== 'string' || typeof body.published !== 'boolean') {
+    return NextResponse.json({ error: 'Faltan datos' }, { status: 400 });
+  }
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+  }
+
+  const { data, error } = await supabase
+    .from('eval_cycles')
+    .update({ published: body.published })
+    .eq('id', body.cycleId)
+    .select('id');
+  if (error) {
+    console.error('Error publicando ciclo', error);
+    return NextResponse.json({ error: 'No se pudo cambiar la publicación' }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'No tenés permiso para publicar este ciclo' }, { status: 403 });
+  }
+  return NextResponse.json({ ok: true });
+}

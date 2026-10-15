@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import DeleteCycleButton from "@/components/DeleteCycleButton";
+import PublishToggle from "@/components/PublishToggle";
 import { getTeamBySlug, getPlayers } from "@/lib/data";
 import {
   getEvalCycle,
@@ -52,6 +53,14 @@ export default async function CicloDetallePage({
           {totalItems} ítems de currículo cargados
           {totalItems === 0 && " — agrega currículo antes de calificar"}
         </div>
+
+        <PublishToggle
+          endpoint="/api/evaluaciones/ciclos"
+          idField="cycleId"
+          idValue={cycle.id}
+          published={Boolean(cycle.published)}
+          disabled={totalItems === 0}
+        />
 
         <div className="flex flex-col gap-2">
           {playersWithProgress.map((player) => (

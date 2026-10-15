@@ -64,7 +64,7 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 
 ## Ya corregido en la ronda de octubre 2026
 - Un papá o jugador ya no puede borrar videos/clips ni terminar transmisiones (el rol se verifica antes de tocar Mux).
-- Las evaluaciones y el perfil del jugador son solo para entrenador/asistente (páginas y base de datos).
+- Las evaluaciones y el perfil del jugador son solo para entrenador/asistente (páginas y base de datos). Excepción desde oct 2026: la familia ve la evaluación de SU hijo solo cuando el entrenador la publica (`supabase/evaluaciones-familias.sql`).
 - `live_stream_views` ahora tiene RLS activado.
 - El inicio de sesión ya no acepta redirecciones a otros sitios.
 - Un ciclo de evaluación solo se abre desde su propio equipo.

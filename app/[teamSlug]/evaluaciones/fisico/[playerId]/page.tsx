@@ -10,6 +10,7 @@ import {
   getPhysicalResultsForPlayer,
 } from "@/lib/data-evaluaciones";
 import PhysicalResultForm from "@/components/PhysicalResultForm";
+import PublishToggle from "@/components/PublishToggle";
 
 export default async function FisicoJugadorPage({
   params,
@@ -43,6 +44,25 @@ export default async function FisicoJugadorPage({
           </Link>
         </div>
         <div className="font-display text-2xl font-bold mb-6">{player.full_name}</div>
+
+        {(() => {
+          const todos = Object.values(historial).flat();
+          if (todos.length === 0) return null;
+          const sinPublicar = todos.filter((r) => !r.published).length;
+          return (
+            <PublishToggle
+              endpoint="/api/evaluaciones/fisico"
+              idField="playerId"
+              idValue={player.id}
+              published={sinPublicar < todos.length}
+              pendingNote={
+                sinPublicar > 0 && sinPublicar < todos.length
+                  ? `${sinPublicar} resultado(s) nuevo(s) sin publicar`
+                  : undefined
+              }
+            />
+          );
+        })()}
 
         {metrics.length === 0 ? (
           <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-8 text-center">
