@@ -20,6 +20,7 @@ import {
   getPlayerProfile,
   getPlayerHighlights,
   getLatestFormativeSnapshot,
+  getLatestFormativeNotes,
   getPhysicalEvalEnabled,
   getPhysicalMetrics,
   getPhysicalResultsForPlayer,
@@ -50,8 +51,9 @@ export default async function PerfilJugadorPage({
   const attYear = new Date().getFullYear();
   const attendance = await getPlayerAttendance(player.id, attYear);
 
-  const [formativeSnapshot, highlights, metrics] = await Promise.all([
+  const [formativeSnapshot, formativeNotes, highlights, metrics] = await Promise.all([
     getLatestFormativeSnapshot(player.id, team.id),
+    getLatestFormativeNotes(player.id, team.id),
     getPlayerHighlights(player.id, 5),
     physicalEnabled ? getPhysicalMetrics(team.id) : Promise.resolve([]),
   ]);
@@ -239,6 +241,7 @@ export default async function PerfilJugadorPage({
         metrics={metrics.map((m) => ({ id: m.id, nombre: m.nombre, unidad: m.unidad }))}
         historial={historial}
         teamAverages={teamAverages}
+        notes={formativeNotes}
       />
     </div>
   );

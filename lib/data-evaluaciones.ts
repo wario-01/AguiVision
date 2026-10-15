@@ -450,3 +450,59 @@ export async function getLatestFormativeSnapshot(
   const { ciclo, ...areas } = ultimo as any;
   return { cycleName: ciclo, areas };
 }
+
+// Comentarios del entrenador (notas) del ciclo formativo más reciente del
+// jugador — para el informe oficial en PDF.
+export interface FormativeNote {
+  periodo: string;
+  area: string;
+  descripcion: string;
+  nivel: string;
+  notas: string;
+}
+
+export async function getLatestFormativeNotes(
+  playerId: string,
+  teamId: string
+): Promise<FormativeNote[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('formative_evaluations')
+    .select(
+      'nivel, notas, eval_curriculum_items!inner(area, descripcion, period_label, period_order, cycle_id, eval_cycles!inner(start_date, team_id))'
+    )
+    .eq('player_id', playerId);
+
+  if (error || !data) {
+    if (error) console.error('getLatestFormativeNotes error', error);
+    return [];
+  }
+
+  const rows = (data as any[]).filter((r) => r.eval_curriculum_items?.eval_cycles?.team_id === teamId);
+  if (rows.length === 0) return [];
+
+  // Ciclo más reciente por fecha de inicio
+  let latestCycle = '';
+  let latestStart = '';
+  for (const r of rows) {
+    const it = r.eval_curriculum_items;
+    const start = it.eval_cycles.start_date as string;
+    if (start >= latestStart) {
+      latestStart = start;
+      latestCycle = it.cycle_id as string;
+    }
+  }
+
+  return rows
+    .filter((r) => r.eval_curriculum_items.cycle_id === latestCycle && typeof r.notas === 'string' && r.notas.trim())
+    .sort((a, b) => a.eval_curriculum_items.period_order - b.eval_curriculum_items.period_order)
+    .map((r) => ({
+      periodo: r.eval_curriculum_items.period_label as string,
+      area: r.eval_curriculum_items.area as string,
+      descripcion: r.eval_curriculum_items.descripcion as string,
+      nivel: r.nivel as string,
+      notas: (r.notas as string).trim(),
+    }));
+}

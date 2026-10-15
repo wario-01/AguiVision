@@ -6,7 +6,8 @@
 // espacio para observaciones y firmas.
 
 import { CLUB_TZ } from "@/lib/tz";
-import { NIVELES, AREAS } from "@/lib/data-evaluaciones";
+import { NIVELES, AREAS, FormativeNote } from "@/lib/data-evaluaciones";
+import { PrintRadar, PrintCompareBar, PrintLine } from "@/components/charts/PrintCharts";
 import { statsOf, AttRecord, Counts } from "@/lib/asistencia";
 
 type Metric = { id: string; nombre: string; unidad: string };
@@ -45,6 +46,7 @@ export default function PlayerReportPrint({
   metrics,
   historial,
   teamAverages,
+  notes,
 }: {
   teamName: string;
   playerName: string;
@@ -58,6 +60,7 @@ export default function PlayerReportPrint({
   metrics: Metric[];
   historial: Record<string, Result[]>; // más reciente primero
   teamAverages: Record<string, number>;
+  notes: FormativeNote[];
 }) {
   const hoy = new Date().toLocaleDateString("es-MX", {
     timeZone: CLUB_TZ,
@@ -67,6 +70,12 @@ export default function PlayerReportPrint({
   });
   const att = attendance.length > 0 ? statsOf(attendance) : null;
   const filasFisicas = metrics.filter((m) => (historial[m.id] ?? []).length > 0);
+  const compareData = filasFisicas.map((m) => ({
+    metrica: m.nombre,
+    jugador: historial[m.id][0].valor,
+    equipo: teamAverages[m.id] ?? 0,
+  }));
+  const lineMetrics = filasFisicas.filter((m) => historial[m.id].length >= 2);
   const th = "text-left text-[10px] font-bold uppercase tracking-wide text-[#0A1830] border-b-2 border-[#B8963A] px-2 py-1.5";
   const td = "px-2 py-1.5 border-b border-[#d9d2be] text-[12px]";
 
@@ -154,6 +163,8 @@ export default function PlayerReportPrint({
         <SectionTitle>Evaluación formativa{cycleName ? ` · ${cycleName}` : ""}</SectionTitle>
         {areas && Object.keys(areas).length > 0 ? (
           <>
+            <div className="flex items-center gap-4">
+            <div className="flex-grow">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
@@ -188,6 +199,11 @@ export default function PlayerReportPrint({
                 })}
               </tbody>
             </table>
+            </div>
+            <div className="shrink-0">
+              <PrintRadar areas={areas} />
+            </div>
+            </div>
             <div className="text-[10px] text-[#6b6450] mt-1.5">
               Escala: 1 Emergente · 2 En desarrollo · 3 Consistente · 4 Autónomo funcional · 5 Competente.
             </div>
@@ -199,7 +215,7 @@ export default function PlayerReportPrint({
 
       {/* Evaluación físico-técnica */}
       {filasFisicas.length > 0 && (
-        <div className="mb-5 break-inside-avoid">
+        <div className="mb-5">
           <SectionTitle>Evaluación físico-técnica</SectionTitle>
           <table className="w-full border-collapse">
             <thead>
@@ -229,12 +245,50 @@ export default function PlayerReportPrint({
               })}
             </tbody>
           </table>
+          {compareData.length > 0 && (
+            <div className="mt-3 break-inside-avoid">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[#0A1830] mb-1">
+                Jugador vs. promedio del equipo
+              </div>
+              <PrintCompareBar data={compareData} />
+            </div>
+          )}
+          {lineMetrics.length > 0 && (
+            <div className="mt-3">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[#0A1830] mb-1">
+                Progreso en el tiempo
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {lineMetrics.map((m) => (
+                  <div key={m.id} className="break-inside-avoid">
+                    <div className="text-[10px] font-bold text-[#6b6450] mb-0.5">
+                      {m.nombre} ({m.unidad})
+                    </div>
+                    <PrintLine data={historial[m.id]} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Observaciones */}
       <div className="mb-8 break-inside-avoid">
-        <SectionTitle>Observaciones del entrenador</SectionTitle>
+        <SectionTitle>Comentarios y observaciones del entrenador</SectionTitle>
+        {notes.length > 0 && (
+          <div className="mb-2">
+            {notes.map((n, i) => (
+              <div key={i} className="border-b border-[#d9d2be] py-1.5 break-inside-avoid">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-[#6b6450]">
+                  {n.periodo} · {AREAS.find((a) => a.value === n.area)?.label ?? n.area} ·{" "}
+                  {NIVELES.find((x) => x.value === n.nivel)?.label ?? n.nivel}
+                </div>
+                <div className="text-[12px] leading-snug">{n.notas}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="h-[22px] border-b border-[#9b9378]" />
         <div className="h-[22px] border-b border-[#9b9378]" />
         <div className="h-[22px] border-b border-[#9b9378]" />
