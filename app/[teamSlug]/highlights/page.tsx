@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import MuxThumb from "@/components/MuxThumb";
 import { getTeamBySlug, getHighlights } from "@/lib/data";
 
 export default async function HighlightsPage({ params }: { params: { teamSlug: string } }) {
@@ -62,19 +63,11 @@ export default async function HighlightsPage({ params }: { params: { teamSlug: s
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {group.items.map((h) => (
                   <a href={`/${team.slug}/highlights/${h.id}`} key={h.id}>
-                    <div className="w-full h-[110px] rounded-xl bg-panel2 border border-borderMuted relative mb-2 flex items-center justify-center">
-                      {h.clip_playback_id ? (
-                        <svg viewBox="0 0 24 24" width="26" height="26">
-                          <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)" />
-                          <path d="M10 8l6 4-6 4z" fill="#F5EFD6" />
-                        </svg>
-                      ) : (
-                        <span className="text-[10px] font-bold text-muted">Procesando...</span>
-                      )}
+                    <MuxThumb playbackId={h.clip_playback_id} className="w-full h-[110px] rounded-xl mb-2">
                       <span className="absolute bottom-1.5 right-2 bg-black/60 text-text text-[10px] font-bold px-1.5 py-0.5 rounded">
                         {h.duration}
                       </span>
-                    </div>
+                    </MuxThumb>
                     <div className="text-sm font-bold">{h.label} · {h.player_name}</div>
                     {h.shared_with_team && (
                       <span className="inline-block border border-goldBorderDim text-goldText text-[10px] font-extrabold px-2 py-0.5 rounded-full my-0.5">
