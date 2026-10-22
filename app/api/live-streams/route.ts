@@ -85,6 +85,11 @@ export async function POST(req: Request) {
       // Baja el retraso de ~30s a ~12-20s. Si la conexión de la cámara es
       // estable, se puede probar "low" (hasta 5s) más adelante.
       latency_mode: "reduced",
+      // Si la cámara/teléfono pierde la conexión (wifi, datos, batería), Mux
+      // espera este tiempo (en segundos) a que vuelva ANTES de cerrar la
+      // grabación. Con el valor por defecto (60 s) un corte más largo partía
+      // el partido en varios videos y la app solo mostraba el último pedazo.
+      reconnect_window: 1800,
     });
 
     await supabase

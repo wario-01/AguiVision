@@ -72,6 +72,24 @@ export async function POST(req: Request) {
         const playbackId = asset.playback_ids?.[0]?.id ?? null;
 
         if (tags.match) {
+          // Si el partido se grabó en varios pedazos (corte de conexión), cada
+          // pedazo llega como un video aparte. No dejamos que un pedazo más
+          // corto reemplace a uno más largo que ya estaba guardado.
+          const newDuration = asset.duration ? Math.round(asset.duration) : null;
+          const { data: current } = await admin
+            .from("matches")
+            .select("duration_seconds, video_status")
+            .eq("id", tags.match)
+            .maybeSingle();
+          if (
+            current?.video_status === "ready" &&
+            (current.duration_seconds ?? 0) > (newDuration ?? 0)
+          ) {
+            console.warn(
+              `Pedazo más corto ignorado para el partido ${tags.match}: ${newDuration}s < ${current.duration_seconds}s (asset ${asset.id})`
+            );
+            return NextResponse.json({ received: true, ignored: "shorter_segment" });
+          }
           await admin
             .from("matches")
             .update({
