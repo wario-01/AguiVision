@@ -15,6 +15,7 @@ const ROLE_LABELS: Record<string, string> = {
   assistant: "Asistente",
   player: "Jugador",
   parent: "Madre/Padre",
+  collaborator: "Colaborador",
 };
 
 function MemberAvatar({ url, name }: { url: string | null | undefined; name: string }) {

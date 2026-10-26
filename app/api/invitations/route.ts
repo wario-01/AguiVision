@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
     return NextResponse.json({ error: "Correo inválido" }, { status: 400 });
   }
-  if (!["coach", "assistant", "player", "parent"].includes(body.role)) {
+  if (!["coach", "assistant", "player", "parent", "collaborator"].includes(body.role)) {
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
   }
 

@@ -7,11 +7,19 @@ const ROLE_LABELS: Record<string, string> = {
   assistant: "Asistente",
   player: "Jugador",
   parent: "Madre/Padre",
+  collaborator: "Colaborador",
 };
 
 const NAV_ICONS = {
   inicio: <path d="M3 11l9-8 9 8M5 10v10h14V10" strokeLinecap="round" strokeLinejoin="round" />,
   subir: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" strokeLinecap="round" strokeLinejoin="round" />,
+  fotos: (
+    <>
+      <rect x="3" y="5" width="18" height="15" rx="2" />
+      <circle cx="12" cy="12.5" r="3.5" />
+      <path d="M8 5l1.5-2h5L16 5" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
   highlights: (
     <path
       d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"
@@ -75,7 +83,7 @@ export default async function Sidebar({
   active,
 }: {
   currentTeamSlug: string;
-  active: "inicio" | "subir" | "highlights" | "equipo" | "calendario" | "evaluaciones" | "crecimiento" | "asistencia";
+  active: "inicio" | "subir" | "fotos" | "highlights" | "equipo" | "calendario" | "evaluaciones" | "crecimiento" | "asistencia";
 }) {
   const teams: Team[] = await getMyTeams();
   const user = await getCurrentUser();
@@ -88,11 +96,14 @@ export default async function Sidebar({
   const currentTeam = teams.find((t) => t.slug === currentTeamSlug);
 
   const isStaff = currentTeam?.role === "coach" || currentTeam?.role === "assistant";
+  // Fotos: cuerpo técnico y colaboradores.
+  const canPhotos = isStaff || currentTeam?.role === "collaborator";
 
   const allNavItems = [
     { key: "inicio" as const, href: `/${currentTeamSlug}`, label: "Inicio", icon: NAV_ICONS.inicio },
     { key: "calendario" as const, href: `/${currentTeamSlug}/calendario`, label: "Calendario", icon: NAV_ICONS.calendario },
     { key: "subir" as const, href: `/${currentTeamSlug}/subir`, label: "Subir", icon: NAV_ICONS.subir },
+    { key: "fotos" as const, href: `/${currentTeamSlug}/fotos`, label: "Fotos", icon: NAV_ICONS.fotos },
     { key: "highlights" as const, href: `/${currentTeamSlug}/highlights`, label: "Highlights", icon: NAV_ICONS.highlights },
     { key: "vivo" as const, href: `/en-vivo`, label: "En vivo", icon: NAV_ICONS.vivo },
     { key: "equipo" as const, href: `/${currentTeamSlug}/equipo`, label: "Equipo", icon: NAV_ICONS.equipo },
@@ -113,7 +124,8 @@ export default async function Sidebar({
     .filter((item) => {
     if (item.key === "evaluaciones") return isStaff || isFamily;
     // Subir video de partidos: solo cuerpo técnico (la base de datos también lo exige).
-    if (item.key === "subir") return isStaff;
+    if (item.key === "subir") return canPhotos; // el colaborador solo ve la pestaña de fotos dentro de Subir
+    if (item.key === "fotos") return canPhotos;
     if (item.key === "crecimiento") return isFamily;
     return true;
   });

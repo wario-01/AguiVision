@@ -1,7 +1,7 @@
 import { createClient, isSupabaseConfigured } from "./supabase/server";
 import { createAdminClient, isAdminConfigured } from "./supabase/admin";
 
-export type Role = "coach" | "assistant" | "player" | "parent";
+export type Role = "coach" | "assistant" | "player" | "parent" | "collaborator";
 
 export type Team = {
   id: string;

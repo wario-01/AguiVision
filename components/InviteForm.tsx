@@ -9,6 +9,7 @@ const ROLES = [
   { value: "assistant", label: "Asistente" },
   { value: "player", label: "Jugador" },
   { value: "parent", label: "Madre/Padre" },
+  { value: "collaborator", label: "Colaborador (solo fotos)" },
 ];
 
 export default function InviteForm({

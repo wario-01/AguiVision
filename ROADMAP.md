@@ -86,3 +86,10 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Plan gratuito de Supabase se pausa tras una semana sin uso; revisar plan antes de la temporada.
 - Supabase plan gratuito: sin copias de seguridad automáticas. Hacer una exportación manual periódica (Dashboard → Database → Backups no existe en Free; usar `pg_dump` o exportar tablas a CSV) o pasar a Pro antes de la temporada.
 - Opcional: interruptor "transmisión pública / solo equipo" por cada vivo.
+
+## Fotos (oct 2026)
+- Fotos en Cloudflare R2 (privado, URLs firmadas). Tablas/políticas: `supabase/fotos-1-rol.sql` y `fotos-2-tablas.sql`.
+- Rol nuevo `collaborator`: sube y ve fotos, nada más.
+- Se borran solas a los 60 días (cron `cleanup-fotos`) salvo las marcadas "Guardar".
+- Pendiente: copia automática R2 → Buffalo (rclone, solo copiar, nunca espejo) al menos cada semana, para que la Buffalo conserve lo que la app borra.
+- Pendiente: galería para familias (decidir si ven todo o solo a su hijo).
