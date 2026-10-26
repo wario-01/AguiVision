@@ -18,9 +18,10 @@ export default async function SubirPage({
   const isStaff = team.role === "coach" || team.role === "assistant";
   const isCollab = team.role === "collaborator";
   // Video: solo entrenador/asistente. Fotos: también colaboradores.
-  if (!isStaff && !isCollab) notFound();
+  const hasPhotoAccess = isCollab || !!team.photo_access;
+  if (!isStaff && !hasPhotoAccess) notFound();
 
-  const tab = isCollab || searchParams.tab === "fotos" ? "fotos" : "video";
+  const tab = !isStaff || searchParams.tab === "fotos" ? "fotos" : "video";
 
   let matchOpts: { id: string; label: string }[] = [];
   if (tab === "fotos") {

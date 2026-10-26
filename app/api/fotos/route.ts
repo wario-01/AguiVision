@@ -29,12 +29,12 @@ async function context(teamSlug: unknown) {
   if (!team) return { error: "Equipo no encontrado", status: 404 } as const;
   const { data: me } = await supabase
     .from("team_members")
-    .select("role")
+    .select("role, photo_access")
     .eq("team_id", team.id)
     .eq("profile_id", userData.user.id)
     .maybeSingle();
   const role = me?.role as string | undefined;
-  if (!role || !["coach", "assistant", "collaborator"].includes(role)) {
+  if (!role || !(["coach", "assistant", "collaborator"].includes(role) || me?.photo_access === true)) {
     return { error: "No tenés permiso para las fotos de este equipo", status: 403 } as const;
   }
   return { supabase, user: userData.user, team, role } as const;

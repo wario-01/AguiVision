@@ -7,6 +7,7 @@ import CancelInvitationButton from "@/components/CancelInvitationButton";
 import SponsorLogoForm from "@/components/SponsorLogoForm";
 import StandingsLinkForm from "@/components/StandingsLinkForm";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
+import PhotoAccessToggle from "@/components/PhotoAccessToggle";
 import PlayerPhotoUpload from "@/components/PlayerPhotoUpload";
 import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers, getMyTeams } from "@/lib/data";
 
@@ -181,6 +182,9 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
+                  {canInvite && m.role === "parent" && (
+                    <PhotoAccessToggle memberId={m.id} enabled={!!m.photo_access} />
+                  )}
                   <span className="text-xs font-bold text-gold">{ROLE_LABELS[m.role] ?? m.role}</span>
                   {(canInvite || isSelf) && (
                     <RemoveMemberButton memberId={m.id} memberName={m.full_name} isSelf={isSelf} />

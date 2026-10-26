@@ -97,7 +97,7 @@ export default async function Sidebar({
 
   const isStaff = currentTeam?.role === "coach" || currentTeam?.role === "assistant";
   // Fotos: cuerpo técnico y colaboradores.
-  const canPhotos = isStaff || currentTeam?.role === "collaborator";
+  const canPhotos = isStaff || currentTeam?.role === "collaborator" || !!currentTeam?.photo_access;
 
   const allNavItems = [
     { key: "inicio" as const, href: `/${currentTeamSlug}`, label: "Inicio", icon: NAV_ICONS.inicio },

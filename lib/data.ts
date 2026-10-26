@@ -13,6 +13,7 @@ export type Team = {
   standings_url?: string | null; // enlace a la tabla de posiciones de la liga
   role?: Role; // presente cuando viene de getMyTeams()
   player_id?: string | null; // el jugador vinculado, si el rol es player/parent
+  photo_access?: boolean; // permiso extra de fotos (sin cambiar el rol)
 };
 
 export type CurrentUser = {
@@ -134,13 +135,13 @@ export async function getMyTeams(): Promise<Team[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("role, player_id, teams(id, slug, name, age_category, active, sponsor_logo_url, standings_url)")
+    .select("role, player_id, photo_access, teams(id, slug, name, age_category, active, sponsor_logo_url, standings_url)")
     .eq("profile_id", userData.user.id);
 
   if (error || !data) return [];
 
   return data
-    .map((row: any) => (row.teams ? { ...row.teams, role: row.role, player_id: row.player_id } : null))
+    .map((row: any) => (row.teams ? { ...row.teams, role: row.role, player_id: row.player_id, photo_access: row.photo_access ?? false } : null))
     .filter(Boolean) as Team[];
 }
 
@@ -338,6 +339,7 @@ export type TeamMember = {
   id: string;
   profile_id: string;
   role: Role;
+  photo_access?: boolean;
   full_name: string;
   email: string;
   player_name?: string | null;
@@ -360,7 +362,7 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
 
   const { data, error } = await supabase
     .from("team_members")
-    .select("id, profile_id, role, profiles(full_name, email, avatar_url), players(full_name)")
+    .select("id, profile_id, role, photo_access, profiles(full_name, email, avatar_url), players(full_name)")
     .eq("team_id", team.id);
 
   if (error || !data) return [];
@@ -368,6 +370,7 @@ export async function getTeamMembers(teamSlug: string): Promise<TeamMember[]> {
     id: row.id,
     profile_id: row.profile_id,
     role: row.role,
+    photo_access: row.photo_access ?? false,
     full_name: row.profiles?.full_name ?? "—",
     email: row.profiles?.email ?? "—",
     player_name: row.players?.full_name ?? null,

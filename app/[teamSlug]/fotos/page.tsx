@@ -9,7 +9,7 @@ export default async function FotosPage({ params }: { params: { teamSlug: string
   const team = await getTeamBySlug(params.teamSlug);
   if (!team) notFound();
   const isStaff = team.role === "coach" || team.role === "assistant";
-  if (!isStaff && team.role !== "collaborator") notFound();
+  if (!isStaff && team.role !== "collaborator" && !team.photo_access) notFound();
 
   const user = await getCurrentUser();
   let photos: GalleryPhoto[] = [];
