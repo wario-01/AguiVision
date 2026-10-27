@@ -45,7 +45,7 @@ export default async function RecibosPage({
     return `/recibos?${p}`;
   };
   const pill = (on: boolean) =>
-    `text-xs font-bold rounded-full px-3 py-1.5 border whitespace-nowrap ${on ? "bg-panel border-border text-text" : "border-borderMuted text-muted"}`;
+    `text-xs font-bold rounded-full px-3 py-1.5 border whitespace-nowrap ${on ? "bg-cream border-cream text-bg" : "border-borderMuted text-muted"}`;
 
   // ---------- resumen por motivo (arriba de todo) ----------
   const paidBy = (reason: string) => valid.filter((r) => r.reason === reason).reduce((n, r) => n + r.amount_cents, 0);

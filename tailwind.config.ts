@@ -12,6 +12,7 @@ const config: Config = {
         border: "#234070",
         borderMuted: "#2A4A7E",
         text: "#F5EFD6",
+        cream: "#EFE6C2", // resalte de lo seleccionado (equipo / pestaña)
         muted: "#8CA0C7",
         mutedDim: "#4A5A7E",
         gold: "#F0D875",

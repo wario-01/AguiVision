@@ -56,7 +56,7 @@ export default async function PagosAnteriores({
   }
 
   const pill = (on: boolean) =>
-    `text-xs font-bold rounded-full px-3 py-1.5 border whitespace-nowrap ${on ? "bg-panel border-border text-text" : "border-borderMuted text-muted"}`;
+    `text-xs font-bold rounded-full px-3 py-1.5 border whitespace-nowrap ${on ? "bg-cream border-cream text-bg" : "border-borderMuted text-muted"}`;
   const link = (over: Record<string, string>) =>
     `/recibos/anteriores?${new URLSearchParams({ team: team?.id ?? "", reason, season, ...over })}`;
 

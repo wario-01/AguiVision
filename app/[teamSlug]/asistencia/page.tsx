@@ -71,7 +71,7 @@ export default async function AsistenciaPage({
                 key={y}
                 href={`${base}?y=${y}`}
                 className={`text-xs font-bold rounded-full px-3 py-1.5 border ${
-                  y === year ? "bg-panel border-border text-text" : "border-borderMuted text-muted"
+                  y === year ? "bg-cream border-cream text-bg" : "border-borderMuted text-muted"
                 }`}
               >
                 {y}
@@ -124,7 +124,7 @@ export default async function AsistenciaPage({
                 key={y}
                 href={qs(y, month)}
                 className={`text-xs font-bold rounded-full px-3 py-1.5 border ${
-                  y === year ? "bg-panel border-border text-text" : "border-borderMuted text-muted"
+                  y === year ? "bg-cream border-cream text-bg" : "border-borderMuted text-muted"
                 }`}
               >
                 {y}
@@ -135,7 +135,7 @@ export default async function AsistenciaPage({
             <Link
               href={qs(year, null)}
               className={`text-xs font-bold rounded-full px-3 py-1.5 border ${
-                !month ? "bg-panel border-border text-text" : "border-borderMuted text-muted"
+                !month ? "bg-cream border-cream text-bg" : "border-borderMuted text-muted"
               }`}
             >
               Todo el año
@@ -145,7 +145,7 @@ export default async function AsistenciaPage({
                 key={label}
                 href={qs(year, i + 1)}
                 className={`text-xs font-bold rounded-full px-3 py-1.5 border ${
-                  month === i + 1 ? "bg-panel border-border text-text" : "border-borderMuted text-muted"
+                  month === i + 1 ? "bg-cream border-cream text-bg" : "border-borderMuted text-muted"
                 }`}
               >
                 {label}

@@ -19,7 +19,7 @@ export default async function RecibosShell({
   const back = teams.length > 0 ? `/${teams[0].slug}` : null;
   const tab = (on: boolean) =>
     `text-sm font-bold rounded-full px-4 py-2 border whitespace-nowrap ${
-      on ? "bg-panel border-border text-gold" : "border-transparent text-muted hover:text-text"
+      on ? "bg-cream border-cream text-bg" : "border-transparent text-muted hover:text-text"
     }`;
   return (
     <div className="min-h-screen bg-bg">

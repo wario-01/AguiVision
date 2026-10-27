@@ -79,7 +79,7 @@ const NAV_ICONS = {
 
 function Icon({ path, active, size = 19 }: { path: React.ReactNode; active: boolean; size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={active ? "#F0D875" : "#8CA0C7"} strokeWidth={2}>
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={active ? "#0A1830" : "#8CA0C7"} strokeWidth={2}>
       {path}
     </svg>
   );
@@ -157,7 +157,7 @@ export default async function Sidebar({
               href={`/${team.slug}`}
               className={`text-xs font-bold rounded-lg px-3 py-2 border ${
                 team.slug === currentTeamSlug
-                  ? "bg-panel border-border text-text"
+                  ? "bg-cream border-cream text-bg"
                   : "border-transparent text-muted hover:text-text"
               }`}
             >
@@ -176,10 +176,10 @@ export default async function Sidebar({
               <Link
                 key={item.key}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isActive ? "bg-panel" : ""}`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isActive ? "bg-cream" : ""}`}
               >
                 <Icon path={item.icon} active={isActive} />
-                <span className={`text-sm font-semibold ${isActive ? "text-gold" : "text-muted"}`}>{item.label}</span>
+                <span className={`text-sm font-semibold ${isActive ? "text-bg font-extrabold" : "text-muted"}`}>{item.label}</span>
               </Link>
             );
           })}
@@ -236,7 +236,7 @@ export default async function Sidebar({
                 href={`/${team.slug}`}
                 className={`shrink-0 text-xs font-bold rounded-full px-3 py-1.5 border ${
                   team.slug === currentTeamSlug
-                    ? "bg-panel border-border text-text"
+                    ? "bg-cream border-cream text-bg"
                     : "border-borderMuted text-muted"
                 }`}
               >
@@ -254,10 +254,10 @@ export default async function Sidebar({
             <Link
               key={item.key}
               href={item.href}
-              className="flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-[68px] shrink-0"
+              className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-[68px] shrink-0 ${isActive ? "bg-cream" : ""}`}
             >
               <Icon path={item.icon} active={isActive} size={18} />
-              <span className={`text-[10px] font-semibold truncate ${isActive ? "text-gold" : "text-muted"}`}>
+              <span className={`text-[10px] font-semibold truncate ${isActive ? "text-bg font-extrabold" : "text-muted"}`}>
                 {item.label}
               </span>
             </Link>
