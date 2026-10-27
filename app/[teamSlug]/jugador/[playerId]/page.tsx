@@ -28,6 +28,11 @@ import {
   PERFIL_LABELS,
 } from "@/lib/data-evaluaciones";
 import FormativeRadarChart from "@/components/charts/FormativeRadarChart";
+import FormativeProgress from "@/components/FormativeProgress";
+import PhysicalProgress from "@/components/PhysicalProgress";
+import PlayerCard from "@/components/PlayerCard";
+import { getFicha } from "@/lib/data-ficha";
+import { cardName, positionAbbr, isGoalkeeper } from "@/lib/ficha-shared";
 import PhysicalLineChart from "@/components/charts/PhysicalLineChart";
 import PhysicalCompareBar from "@/components/charts/PhysicalCompareBar";
 
@@ -58,6 +63,7 @@ export default async function PerfilJugadorPage({
     physicalEnabled ? getPhysicalMetrics(team.id) : Promise.resolve([]),
   ]);
 
+  const ficha = await getFicha(player, team.id);
   const historial = physicalEnabled ? await getPhysicalResultsForPlayer(player.id) : {};
   const teamAverages =
     physicalEnabled && metrics.length > 0
@@ -128,6 +134,31 @@ export default async function PerfilJugadorPage({
           </div>
         </div>
 
+        {/* ---------- Ficha técnica ---------- */}
+        <div className="no-print mb-8 flex items-center gap-6 flex-wrap">
+          <div className="w-[220px] shrink-0">
+            <PlayerCard
+              uid="perfil"
+              ovr={ficha.ovr}
+              pos={positionAbbr(player.position)}
+              team={team.age_category}
+              name={cardName(player.full_name)}
+              sub={[player.jersey_number != null ? `#${player.jersey_number}` : null, isGoalkeeper(player.position) ? "Portero" : player.position].filter(Boolean).join(" · ") || "Nido Austin"}
+              photoUrl={player.photo_url}
+              stats={ficha.stats}
+            />
+          </div>
+          <div className="flex flex-col gap-2 max-w-xs">
+            <div className="text-sm font-bold">Ficha técnica</div>
+            <div className="text-xs text-muted leading-relaxed">
+              Cada dato va de 40 a 99 y sale de las pruebas físicas y de la evaluación. Los “--” aún no tienen resultados.
+            </div>
+            <Link href={`/${team.slug}/jugador/${player.id}/ficha`} className="text-xs font-bold text-gold hover:underline">
+              Ver e imprimir la ficha
+            </Link>
+          </div>
+        </div>
+
         {/* ---------- Asistencia ---------- */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -153,7 +184,14 @@ export default async function PerfilJugadorPage({
               <div className="text-xs text-muted mb-2">
                 Último ciclo: <span className="font-bold text-text">{formativeSnapshot.cycleName}</span>
               </div>
-              <FormativeRadarChart areas={formativeSnapshot.areas} />
+              <FormativeRadarChart areas={formativeSnapshot.areas} previous={formativeSnapshot.previous?.areas ?? null} />
+              {formativeSnapshot.previous && (
+                <FormativeProgress
+                  current={formativeSnapshot.areas}
+                  previous={formativeSnapshot.previous.areas}
+                  previousName={formativeSnapshot.previous.cycleName}
+                />
+              )}
             </div>
           ) : (
             <div className="text-sm text-muted border border-dashed border-borderMuted rounded-2xl p-6 text-center">
@@ -172,6 +210,7 @@ export default async function PerfilJugadorPage({
               </div>
             ) : (
               <>
+                <PhysicalProgress metrics={metrics} historial={historial} />
                 <div className="bg-panel border border-border rounded-xl p-4 mb-4">
                   <div className="text-xs text-muted mb-2">Jugador vs. promedio del equipo</div>
                   <PhysicalCompareBar data={compareData} />

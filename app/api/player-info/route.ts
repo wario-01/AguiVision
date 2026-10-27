@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+    return NextResponse.json({ error: "Tienes que iniciar sesión" }, { status: 401 });
   }
 
   const { data: player } = await supabase.from("players").select("id, team_id").eq("id", body.playerId).single();
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (!membership || (membership.role !== "coach" && membership.role !== "assistant")) {
-    return NextResponse.json({ error: "No tenés permiso para editar este jugador" }, { status: 403 });
+    return NextResponse.json({ error: "No tienes permiso para editar este jugador" }, { status: 403 });
   }
 
   if (!isAdminConfigured) {

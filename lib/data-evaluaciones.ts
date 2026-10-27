@@ -20,6 +20,10 @@ export const AREAS = [
   { value: 'tecnico', label: 'Técnico' },
   { value: 'fisico', label: 'Físico' },
   { value: 'actitudinal', label: 'Actitudinal' },
+  { value: 'tactico_cognitivo', label: 'Táctico-técnico-cognitiva' },
+  { value: 'condicional_motriz', label: 'Condicional motriz' },
+  { value: 'transversales', label: 'Criterios transversales' },
+  { value: 'portero', label: 'Portero' },
 ] as const;
 
 export type Nivel = typeof NIVELES[number]['value'];
@@ -41,6 +45,7 @@ export interface CurriculumItem {
   cycle_id: string;
   period_label: string;
   period_order: number;
+  item_order?: number;
   area: Area;
   descripcion: string;
 }
@@ -100,7 +105,8 @@ export async function getCurriculumItems(cycleId: string): Promise<CurriculumIte
     .from('eval_curriculum_items')
     .select('*')
     .eq('cycle_id', cycleId)
-    .order('period_order', { ascending: true });
+    .order('period_order', { ascending: true })
+    .order('item_order', { ascending: true });
 
   if (error || !data) {
     if (error) console.error('getCurriculumItems error', error);
@@ -220,6 +226,9 @@ export interface PhysicalMetric {
   mejor_direccion: 'menor' | 'mayor';
   orden: number;
   activo: boolean;
+  grupo?: string | null; // vel | res | pot | flx (para la ficha)
+  valor_bajo?: number | null; // resultado que vale 40
+  valor_alto?: number | null; // resultado que vale 99
 }
 
 export interface PhysicalResult {
@@ -443,12 +452,20 @@ export async function getPlayerHighlights(playerId: string, limit = 5): Promise<
 export async function getLatestFormativeSnapshot(
   playerId: string,
   teamId: string
-): Promise<{ cycleName: string; areas: Record<string, number> } | null> {
+): Promise<{
+  cycleName: string;
+  areas: Record<string, number>;
+  previous: { cycleName: string; areas: Record<string, number> } | null;
+} | null> {
   const progreso = await getProgresoFormativo(playerId, teamId);
   if (progreso.length === 0) return null;
-  const ultimo = progreso[progreso.length - 1];
-  const { ciclo, ...areas } = ultimo as any;
-  return { cycleName: ciclo, areas };
+  const { ciclo, ...areas } = progreso[progreso.length - 1] as any;
+  let previous: { cycleName: string; areas: Record<string, number> } | null = null;
+  if (progreso.length >= 2) {
+    const { ciclo: pc, ...pa } = progreso[progreso.length - 2] as any;
+    previous = { cycleName: pc, areas: pa };
+  }
+  return { cycleName: ciclo, areas, previous };
 }
 
 // Comentarios del entrenador (notas) del ciclo formativo más reciente del

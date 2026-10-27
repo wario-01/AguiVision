@@ -13,24 +13,22 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
 } from "recharts";
+import { AREA_LABELS } from "@/lib/eval-shared";
 
-const AREA_LABELS: Record<string, string> = {
-  tactico: "Táctico",
-  tecnico: "Técnico",
-  fisico: "Físico",
-  actitudinal: "Actitudinal",
-};
 
 const NIVEL_LABELS = ["", "Emergente", "En desarrollo", "Consistente", "Autónomo", "Competente"];
 
 export default function FormativeRadarChart({
   areas,
+  previous,
 }: {
   areas: Record<string, number>;
+  previous?: Record<string, number> | null;
 }) {
   const data = Object.entries(areas).map(([area, valor]) => ({
     area: AREA_LABELS[area] ?? area,
     nivel: valor,
+    anterior: previous?.[area] ?? undefined,
   }));
 
   return (
@@ -44,6 +42,9 @@ export default function FormativeRadarChart({
           tick={{ fill: "#4A5A7E", fontSize: 10 }}
           tickFormatter={(v) => NIVEL_LABELS[v] ?? ""}
         />
+        {previous && (
+          <Radar dataKey="anterior" stroke="#8CA0C7" strokeDasharray="5 4" fill="#8CA0C7" fillOpacity={0.12} />
+        )}
         <Radar dataKey="nivel" stroke="#F0D875" fill="#F0D875" fillOpacity={0.35} />
       </RadarChart>
     </ResponsiveContainer>

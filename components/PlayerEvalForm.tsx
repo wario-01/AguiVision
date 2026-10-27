@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AREA_LABELS } from "@/lib/eval-shared";
 
 const NIVELES = [
   { value: "emergente", label: "Emergente" },
@@ -10,12 +11,6 @@ const NIVELES = [
   { value: "competente", label: "Competente" },
 ];
 
-const AREA_LABELS: Record<string, string> = {
-  tactico: "Táctico",
-  tecnico: "Técnico",
-  fisico: "Físico",
-  actitudinal: "Actitudinal",
-};
 
 interface CurriculumItem {
   id: string;
@@ -91,13 +86,17 @@ export default function PlayerEvalForm({
             {group.period_label}
           </div>
           <div className="flex flex-col gap-3">
-            {group.items.map((item) => {
+            {group.items.map((item, idx) => {
               const valor = valores[item.id] || { nivel: "", notas: "" };
+              const newArea = idx === 0 || group.items[idx - 1].area !== item.area;
               return (
-                <div key={item.id} className="bg-panel border border-border rounded-xl p-4">
-                  <div className="text-[11px] font-bold text-muted mb-1">
-                    {AREA_LABELS[item.area] || item.area}
-                  </div>
+                <div key={item.id} className="contents">
+                  {newArea && (
+                    <div className="text-[11px] font-extrabold uppercase tracking-wider text-gold mt-2">
+                      {AREA_LABELS[item.area] || item.area}
+                    </div>
+                  )}
+                <div className="bg-panel border border-border rounded-xl p-4">
                   <div className="text-sm mb-3">{item.descripcion}</div>
 
                   <div className="flex flex-wrap gap-2 mb-3">
@@ -140,6 +139,7 @@ export default function PlayerEvalForm({
                         : "Guardar"}
                     </button>
                   </div>
+                </div>
                 </div>
               );
             })}

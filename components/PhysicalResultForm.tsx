@@ -135,6 +135,11 @@ export default function PhysicalResultForm({
                 placeholder="0.0"
                 className="w-full box-border bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold"
               />
+              {historial[m.id]?.[0] && (
+                <div className="text-[11px] text-muted mt-1">
+                  Última vez: <b className="text-text">{historial[m.id][0].valor} {m.unidad}</b> ({historial[m.id][0].fecha})
+                </div>
+              )}
             </div>
           ))}
         </div>

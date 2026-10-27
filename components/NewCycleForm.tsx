@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { DURACIONES, endDateFor, monthsSpan } from "@/lib/eval-shared";
 
 const AREAS = [
   { value: "tactico", label: "Táctico" },
@@ -10,13 +11,6 @@ const AREAS = [
   { value: "actitudinal", label: "Actitudinal" },
 ];
 
-const DURACIONES = [
-  { value: "mensual", label: "Mensual", meses: 1 },
-  { value: "trimestral", label: "Trimestral", meses: 3 },
-  { value: "cuatrimestral", label: "Cuatrimestral", meses: 4 },
-  { value: "semestral", label: "Semestral", meses: 6 },
-  { value: "anual", label: "Anual", meses: 12 },
-];
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -31,9 +25,9 @@ interface Periodo {
 // A partir de la fecha de inicio y la duración elegida, genera un
 // periodo por cada mes (ej. trimestral desde marzo => Marzo, Abril, Mayo).
 // Si ya había texto de currículo escrito para un mes, lo conserva.
-function generarPeriodos(startDate: string, periodType: string, anteriores: Periodo[]): Periodo[] {
+function generarPeriodos(startDate: string, periodType: string, anteriores: Periodo[], endDate = ""): Periodo[] {
   const duracion = DURACIONES.find((d) => d.value === periodType);
-  const cantidadMeses = duracion?.meses ?? 1;
+  const cantidadMeses = periodType === "personalizado" ? (startDate && endDate ? monthsSpan(startDate, endDate) : 1) : duracion?.meses ?? 1;
 
   if (!startDate) {
     return Array.from({ length: cantidadMeses }, () => ({ period_label: "", items: {} }));
@@ -68,8 +62,15 @@ export default function NewCycleForm({
   // Regenera los meses cada vez que cambia la fecha de inicio o la
   // duración — sin que el coach tenga que agregarlos ni nombrarlos.
   useEffect(() => {
-    setPeriodos((anteriores) => generarPeriodos(startDate, periodType, anteriores));
-  }, [startDate, periodType]);
+    setPeriodos((anteriores) => generarPeriodos(startDate, periodType, anteriores, endDate));
+  }, [startDate, periodType, endDate]);
+
+  // El fin se sugiere solo según la duración, pero se puede cambiar a mano.
+  const [endTouched, setEndTouched] = useState(false);
+  useEffect(() => {
+    const meses = DURACIONES.find((d) => d.value === periodType)?.meses ?? 0;
+    if (!endTouched && startDate && meses > 0) setEndDate(endDateFor(startDate, meses));
+  }, [startDate, periodType, endTouched]);
 
   function updateItem(index: number, area: string, descripcion: string) {
     const next = [...periodos];
@@ -172,7 +173,10 @@ export default function NewCycleForm({
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setEndTouched(true);
+              }}
               className="bg-bg border border-border rounded-lg px-3 py-2 text-sm font-semibold"
             />
           </div>

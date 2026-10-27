@@ -9,6 +9,7 @@ import {
   getCurriculumItems,
   getFormativeEvaluationsForPlayer,
 } from "@/lib/data-evaluaciones";
+import { isGoalkeeper } from "@/lib/ficha-shared";
 
 export default async function CicloDetallePage({
   params,
@@ -34,7 +35,8 @@ export default async function CicloDetallePage({
   const playersWithProgress = await Promise.all(
     players.map(async (player) => {
       const evaluated = await getFormativeEvaluationsForPlayer(player.id, cycle.id);
-      return { ...player, completados: Object.keys(evaluated).length };
+      const total = curriculumItems.filter((i) => i.area !== "portero" || isGoalkeeper(player.position)).length;
+      return { ...player, completados: Object.keys(evaluated).length, total };
     })
   );
 
@@ -76,7 +78,7 @@ export default async function CicloDetallePage({
               </Link>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-muted">
-                  {player.completados} / {totalItems} calificados
+                  {player.completados} / {player.total} calificados
                 </span>
                 <Link
                   href={`/${team.slug}/jugador/${player.id}`}
@@ -95,7 +97,10 @@ export default async function CicloDetallePage({
         </div>
 
         {team.role === "coach" && (
-          <div className="mt-8">
+          <div className="mt-8 flex flex-col gap-4 items-start">
+            <Link href={`/${team.slug}/evaluaciones/${cycle.id}/editar`} className="text-sm font-bold text-gold hover:underline">
+              Editar competencias de este ciclo
+            </Link>
             <DeleteCycleButton cycleId={cycle.id} cycleName={cycle.name} teamSlug={team.slug} />
           </div>
         )}

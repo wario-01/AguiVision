@@ -5,7 +5,13 @@
 // la base de datos (RLS), no solo esta página.
 
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import PlayerCard from "@/components/PlayerCard";
+import FormativeRadarChart from "@/components/charts/FormativeRadarChart";
+import FormativeProgress from "@/components/FormativeProgress";
+import { getFicha } from "@/lib/data-ficha";
+import { cardName, positionAbbr, isGoalkeeper } from "@/lib/ficha-shared";
 import { createClient } from "@/lib/supabase/server";
 import { getTeamBySlug, getPlayers } from "@/lib/data";
 import {
@@ -97,7 +103,8 @@ export default async function MiEvaluacionPage({ params }: { params: { teamSlug:
       );
       const progreso = await getProgresoFormativo(kid.id, team.id);
       const fisico = physicalEnabled ? await getPhysicalResultsForPlayer(kid.id) : {};
-      return { kid, formativo, progreso, fisico };
+      const ficha = await getFicha(kid, team.id);
+      return { kid, formativo, progreso, fisico, ficha };
     })
   );
 
@@ -108,13 +115,55 @@ export default async function MiEvaluacionPage({ params }: { params: { teamSlug:
         <div className="font-display text-2xl font-bold mb-1">Evaluación</div>
         <div className="text-sm text-muted mb-6">{team.name}</div>
 
-        {perKid.map(({ kid, formativo, progreso, fisico }) => {
+        {perKid.map(({ kid, formativo, progreso, fisico, ficha }) => {
           const conEval = formativo.filter((f) => Object.keys(f.evals).length > 0);
           const hayFisico = Object.values(fisico).some((arr) => arr.length > 0);
           return (
             <div key={kid.id} className="mb-12">
               {perKid.length > 1 && (
                 <div className="font-display text-xl font-bold mb-4 text-gold">{kid.full_name}</div>
+              )}
+
+              {/* Ficha técnica y radar */}
+              {(ficha.ovr !== null || ficha.snapshot) && (
+                <div className="mb-10">
+                  <div className="font-display text-lg font-semibold mb-3">Ficha técnica</div>
+                  <div className="flex items-start gap-6 flex-wrap">
+                    <div className="w-[230px] shrink-0">
+                      <PlayerCard
+                        uid={`fam-${kid.id}`}
+                        ovr={ficha.ovr}
+                        pos={positionAbbr(kid.position)}
+                        team={team.age_category}
+                        name={cardName(kid.full_name)}
+                        sub={[kid.jersey_number != null ? `#${kid.jersey_number}` : null, isGoalkeeper(kid.position) ? "Portero" : kid.position].filter(Boolean).join(" · ") || "Nido Austin"}
+                        photoUrl={kid.photo_url}
+                        stats={ficha.stats}
+                      />
+                      <Link
+                        href={`/${team.slug}/jugador/${kid.id}/ficha`}
+                        className="block text-center text-xs font-bold text-gold hover:underline mt-3"
+                      >
+                        Ver e imprimir la ficha
+                      </Link>
+                    </div>
+                    {ficha.snapshot && (
+                      <div className="flex-1 min-w-[260px] bg-panel border border-border rounded-2xl p-4">
+                        <div className="text-xs text-muted mb-2">
+                          Evaluación: <span className="font-bold text-text">{ficha.snapshot.cycleName}</span>
+                        </div>
+                        <FormativeRadarChart areas={ficha.snapshot.areas} previous={ficha.snapshot.previous?.areas ?? null} />
+                        {ficha.snapshot.previous && (
+                          <FormativeProgress
+                            current={ficha.snapshot.areas}
+                            previous={ficha.snapshot.previous.areas}
+                            previousName={ficha.snapshot.previous.cycleName}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
               {conEval.length === 0 && !hayFisico && (
@@ -133,7 +182,7 @@ export default async function MiEvaluacionPage({ params }: { params: { teamSlug:
                       <thead>
                         <tr className="text-xs text-muted text-left border-b border-border">
                           <th className="px-4 py-2.5 font-bold">Ciclo</th>
-                          {AREAS.map((a) => (
+                          {AREAS.filter((a) => progreso.some((r: any) => r[a.value] != null)).map((a) => (
                             <th key={a.value} className="px-3 py-2.5 font-bold">
                               {a.label}
                             </th>
@@ -144,7 +193,7 @@ export default async function MiEvaluacionPage({ params }: { params: { teamSlug:
                         {progreso.map((row: any) => (
                           <tr key={row.ciclo} className="border-b border-border last:border-0">
                             <td className="px-4 py-2.5 font-bold">{row.ciclo}</td>
-                            {AREAS.map((a) => (
+                            {AREAS.filter((a) => progreso.some((r: any) => r[a.value] != null)).map((a) => (
                               <td key={a.value} className="px-3 py-2.5 text-muted">
                                 {row[a.value] != null ? `${Number(row[a.value]).toFixed(1)} / 5` : "—"}
                               </td>

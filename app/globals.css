@@ -67,3 +67,17 @@ body {
     display: block !important;
   }
 }
+
+/* Ficha técnica del jugador: al imprimir se ve solo la tarjeta, centrada y en colores. */
+@media print {
+  .ficha-page {
+    background: #ffffff !important;
+    min-height: 0 !important;
+    padding: 0.4in 0 0 !important;
+  }
+  .ficha-card {
+    width: 4in !important;
+    max-width: 4in !important;
+    margin: 0 auto;
+  }
+}

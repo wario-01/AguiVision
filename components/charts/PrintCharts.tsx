@@ -21,18 +21,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AREA_LABELS } from "@/lib/eval-shared";
 
 const NAVY = "#0A1830";
 const GOLD = "#B8963A";
 const GRID = "#cfc8b0";
 const INK = "#1a1a1a";
 
-const AREA_LABELS: Record<string, string> = {
-  tactico: "Táctico",
-  tecnico: "Técnico",
-  fisico: "Físico",
-  actitudinal: "Actitudinal",
-};
 
 export function PrintRadar({ areas }: { areas: Record<string, number> }) {
   const data = Object.entries(areas).map(([area, valor]) => ({

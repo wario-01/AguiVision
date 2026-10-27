@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import MetricScaleForm from "@/components/MetricScaleForm";
 import { getTeamBySlug, getPlayers } from "@/lib/data";
 import {
   getPhysicalEvalEnabled,
@@ -94,6 +95,21 @@ export default async function FisicoPage({
             </div>
           )}
         </div>
+
+        {metrics.length > 0 && (
+          <div className="mt-8">
+            <MetricScaleForm
+              metrics={metrics.map((m) => ({
+                id: m.id,
+                nombre: m.nombre,
+                unidad: m.unidad,
+                grupo: m.grupo ?? null,
+                valor_bajo: m.valor_bajo != null ? Number(m.valor_bajo) : null,
+                valor_alto: m.valor_alto != null ? Number(m.valor_alto) : null,
+              }))}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 interface PeriodoInput {
   period_label: string;
   period_order: number;
-  items: { area: string; descripcion: string }[];
+  items: { area: string; descripcion: string; item_order?: number }[];
 }
 
 interface Body {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+    return NextResponse.json({ error: 'Tienes que iniciar sesión' }, { status: 401 });
   }
 
   // 1) Crear el ciclo
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   if (cycleError || !cycle) {
     console.error('Error creando ciclo', cycleError);
     return NextResponse.json(
-      { error: 'No se pudo crear el ciclo (¿tenés permiso de entrenador?)' },
+      { error: 'No se pudo crear el ciclo (¿tienes permiso de entrenador?)' },
       { status: 403 }
     );
   }
@@ -82,8 +82,9 @@ export async function POST(req: NextRequest) {
         cycle_id: cycle.id,
         period_label: String(p.period_label ?? '').slice(0, 60),
         period_order: p.period_order,
+        item_order: Number.isFinite(it.item_order) ? Number(it.item_order) : 0,
         area: String(it.area ?? '').slice(0, 60),
-        descripcion: it.descripcion.trim().slice(0, 300),
+        descripcion: it.descripcion.trim().slice(0, 400),
       }))
   );
 
@@ -117,7 +118,7 @@ export async function DELETE(req: NextRequest) {
   }
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+    return NextResponse.json({ error: 'Tienes que iniciar sesión' }, { status: 401 });
   }
 
   const { data, error } = await supabase.from('eval_cycles').delete().eq('id', body.cycleId).select('id');
@@ -126,7 +127,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'No se pudo borrar el ciclo' }, { status: 500 });
   }
   if (!data || data.length === 0) {
-    return NextResponse.json({ error: 'No tenés permiso para borrar este ciclo, o ya no existe' }, { status: 403 });
+    return NextResponse.json({ error: 'No tienes permiso para borrar este ciclo, o ya no existe' }, { status: 403 });
   }
   return NextResponse.json({ ok: true });
 }
@@ -146,7 +147,7 @@ export async function PATCH(req: NextRequest) {
   }
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return NextResponse.json({ error: 'Tenés que iniciar sesión' }, { status: 401 });
+    return NextResponse.json({ error: 'Tienes que iniciar sesión' }, { status: 401 });
   }
 
   const { data, error } = await supabase
@@ -159,7 +160,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'No se pudo cambiar la publicación' }, { status: 500 });
   }
   if (!data || data.length === 0) {
-    return NextResponse.json({ error: 'No tenés permiso para publicar este ciclo' }, { status: 403 });
+    return NextResponse.json({ error: 'No tienes permiso para publicar este ciclo' }, { status: 403 });
   }
   return NextResponse.json({ ok: true });
 }

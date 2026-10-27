@@ -9,6 +9,7 @@ import {
   getFormativeEvaluationsForPlayer,
 } from "@/lib/data-evaluaciones";
 import PlayerEvalForm from "@/components/PlayerEvalForm";
+import { isGoalkeeper } from "@/lib/ficha-shared";
 
 export default async function EvaluarJugadorPage({
   params,
@@ -33,7 +34,8 @@ export default async function EvaluarJugadorPage({
     getFormativeEvaluationsForPlayer(player.id, cycle.id),
   ]);
 
-  const groups = groupCurriculumByPeriod(items);
+  // Las competencias de portero solo se califican a los porteros.
+  const groups = groupCurriculumByPeriod(items.filter((i) => i.area !== "portero" || isGoalkeeper(player.position)));
 
   const evaluacionesSimples: Record<string, { nivel: string; notas: string | null }> = {};
   for (const [itemId, ev] of Object.entries(evaluaciones)) {
