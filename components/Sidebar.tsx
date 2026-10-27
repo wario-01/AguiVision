@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getMyTeams, getCurrentUser, Team } from "@/lib/data";
+import { getFinanceAccess } from "@/lib/finance";
 import LogoutButton from "./LogoutButton";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -49,6 +50,12 @@ const NAV_ICONS = {
       <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  recibos: (
+    <>
+      <path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 8h6M9 12h6" strokeLinecap="round" />
+    </>
+  ),
   asistencia: (
     <>
       <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -94,6 +101,7 @@ export default async function Sidebar({
     .join("")
     .toUpperCase();
   const currentTeam = teams.find((t) => t.slug === currentTeamSlug);
+  const financeAccess = await getFinanceAccess();
 
   const isStaff = currentTeam?.role === "coach" || currentTeam?.role === "assistant";
   // Fotos: cuerpo técnico y colaboradores.
@@ -115,6 +123,9 @@ export default async function Sidebar({
 
   // Las evaluaciones son datos de menores: solo entrenador/asistente.
   // Crecimiento (IMC): lo ve la familia/jugador vinculado (el cuerpo técnico lo ve en el perfil del jugador).
+  if (financeAccess) {
+    allNavItems.push({ key: "recibos" as any, href: "/recibos", label: "Recibos", icon: NAV_ICONS.recibos } as any);
+  }
   const navItems = allNavItems
     .map((item) =>
       item.key === "evaluaciones" && !isStaff

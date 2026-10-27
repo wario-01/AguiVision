@@ -93,3 +93,10 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Se borran solas a los 60 días (cron `cleanup-fotos`) salvo las marcadas "Guardar".
 - Pendiente: copia automática R2 → Buffalo (rclone, solo copiar, nunca espejo) al menos cada semana, para que la Buffalo conserve lo que la app borra.
 - Pendiente: galería para familias (decidir si ven todo o solo a su hijo).
+
+## Recibos (oct 2026)
+- Acceso a nivel club (`finance_access`): owner (Mario), admin (solo reportes), issuer (expide + reportes). Se administra en /recibos/accesos.
+- Recibos con número consecutivo (`receipts_number_seq`; para empezar en otro número: `alter sequence receipts_number_seq restart with 700;`). No se borran, se anulan.
+- Saldo: en Anualidad y Membresía se descuentan los pagos anteriores de la misma temporada (junio–mayo).
+- Pendiente: mandar el recibo por correo a la familia; recibo en español/inglés.
+- Exentos (por ejemplo, hijos de entrenadores): se marcan en Recibos → Pagos anteriores; salen como “Exento” y no cuentan como saldo pendiente. Tabla `finance_exemptions`.
