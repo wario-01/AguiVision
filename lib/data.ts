@@ -56,6 +56,7 @@ export type LiveStream = {
   id: string;
   team_id: string;
   team_name: string;
+  team_category?: string | null;
   title: string;
   status: "scheduled" | "live" | "ended";
   viewer_count: number;
@@ -309,7 +310,7 @@ export async function getLiveStreams(): Promise<LiveStream[]> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from("live_streams")
-      .select("*, teams(name)")
+      .select("*, teams(name, age_category)")
       .eq("status", "live")
       .in("team_id", teamIds);
     if (!error && data) {
@@ -317,6 +318,7 @@ export async function getLiveStreams(): Promise<LiveStream[]> {
         id: row.id,
         team_id: row.team_id,
         team_name: row.teams?.name ?? "Equipo",
+        team_category: row.teams?.age_category ?? null,
         title: row.title,
         status: row.status,
         viewer_count: row.viewer_count,
@@ -496,6 +498,18 @@ export async function getPublicLiveStreams(): Promise<LiveStream[]> {
     playback_id: row.playback_id,
     sponsor_logo_url: row.teams?.sponsor_logo_url ?? null,
   }));
+}
+
+// Cuántas veces se ha abierto esta transmisión (visitas, no "viendo ahora").
+export async function getStreamViewCount(liveStreamId: string): Promise<number> {
+  if (!isAdminConfigured) return 0;
+  const admin = createAdminClient();
+  if (!admin) return 0;
+  const { count } = await admin
+    .from("live_stream_views")
+    .select("id", { count: "exact", head: true })
+    .eq("live_stream_id", liveStreamId);
+  return count ?? 0;
 }
 
 // Registra una visita anónima — no identifica a la persona, solo cuenta

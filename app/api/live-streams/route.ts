@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+    return NextResponse.json({ error: "Tienes que iniciar sesión" }, { status: 401 });
   }
 
   const { data: team } = await supabase
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     .single();
 
   if (matchError || !match) {
-    return NextResponse.json({ error: "No tenés permiso para transmitir en este equipo" }, { status: 403 });
+    return NextResponse.json({ error: "No tienes permiso para transmitir en este equipo" }, { status: 403 });
   }
 
   // insert respeta RLS: solo entrenadores/asistentes de este equipo pueden crear
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     .single();
 
   if (insertError || !liveStream) {
-    return NextResponse.json({ error: "No tenés permiso para transmitir en este equipo" }, { status: 403 });
+    return NextResponse.json({ error: "No tienes permiso para transmitir en este equipo" }, { status: 403 });
   }
 
   if (!isMuxConfigured || !mux) {
@@ -131,7 +131,7 @@ export async function DELETE(req: Request) {
 
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+    return NextResponse.json({ error: "Tienes que iniciar sesión" }, { status: 401 });
   }
 
   const { data: liveStream } = await supabase
@@ -154,7 +154,7 @@ export async function DELETE(req: Request) {
     .maybeSingle();
 
   if (!membership || (membership.role !== "coach" && membership.role !== "assistant")) {
-    return NextResponse.json({ error: "No tenés permiso para terminar esta transmisión" }, { status: 403 });
+    return NextResponse.json({ error: "No tienes permiso para terminar esta transmisión" }, { status: 403 });
   }
 
   if (isMuxConfigured && mux && liveStream?.mux_live_stream_id) {
@@ -174,7 +174,7 @@ export async function DELETE(req: Request) {
     .eq("id", body.liveStreamId);
 
   if (error) {
-    return NextResponse.json({ error: "No tenés permiso para terminar esta transmisión" }, { status: 403 });
+    return NextResponse.json({ error: "No tienes permiso para terminar esta transmisión" }, { status: 403 });
   }
 
   return NextResponse.json({ ok: true });

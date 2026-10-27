@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import CopyButton from "./CopyButton";
 
 type Credentials = {
   liveStreamId: string;
@@ -60,20 +61,12 @@ export default function StartStreamForm({ teamSlug }: { teamSlug: string }) {
     }
   }
 
-  async function copy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // el navegador no dejó copiar — no es grave, el texto ya está visible
-    }
-  }
-
   if (creds) {
     return (
       <div className="bg-panel border border-border rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-2 h-2 rounded-full bg-red" />
-          <span className="text-sm font-extrabold">Transmisión creada — configurá tu cámara</span>
+          <span className="text-sm font-extrabold">Transmisión creada — configura tu cámara</span>
         </div>
 
         {creds.note && <div className="text-sm text-muted mb-4">{creds.note}</div>}
@@ -83,34 +76,24 @@ export default function StartStreamForm({ teamSlug }: { teamSlug: string }) {
             <div>
               <div className="text-xs font-bold text-muted mb-1">Server URL</div>
               <div className="flex items-center gap-2">
-                <code className="flex-grow bg-bg border border-border rounded-lg px-3 py-2 text-xs break-all">
+                <code className="flex-grow bg-bg border border-border rounded-lg px-3 py-2 text-xs break-all select-all">
                   {creds.serverUrl}
                 </code>
-                <button
-                  onClick={() => copy(creds.serverUrl!)}
-                  className="shrink-0 bg-gold text-bg rounded-lg px-3 py-2 text-xs font-extrabold"
-                >
-                  Copiar
-                </button>
+                <CopyButton text={creds.serverUrl!} />
               </div>
             </div>
             <div>
               <div className="text-xs font-bold text-muted mb-1">Stream Key (secreta — no la compartas)</div>
               <div className="flex items-center gap-2">
-                <code className="flex-grow bg-bg border border-border rounded-lg px-3 py-2 text-xs break-all">
+                <code className="flex-grow bg-bg border border-border rounded-lg px-3 py-2 text-xs break-all select-all">
                   {creds.streamKey}
                 </code>
-                <button
-                  onClick={() => copy(creds.streamKey!)}
-                  className="shrink-0 bg-gold text-bg rounded-lg px-3 py-2 text-xs font-extrabold"
-                >
-                  Copiar
-                </button>
+                <CopyButton text={creds.streamKey!} />
               </div>
             </div>
             <div className="text-xs text-muted">
-              Pegá estos dos datos en tu cámara o app de transmisión (Larix Broadcaster, OBS, etc.). En cuanto
-              empiece a llegar la señal, esta transmisión va a aparecer sola en "En vivo" para todo el equipo.
+              Pega estos dos datos en tu cámara o app de transmisión (Larix Broadcaster, OBS, etc.). En cuanto
+              empiece a llegar la señal, esta transmisión aparecerá sola en "En vivo" para todo el equipo.
             </div>
           </div>
         )}
@@ -128,6 +111,15 @@ export default function StartStreamForm({ teamSlug }: { teamSlug: string }) {
   }
 
   return (
+    <>
+    <div className="bg-panel border border-border rounded-2xl p-5 mb-4">
+      <div className="text-xs font-bold text-muted uppercase tracking-wide mb-2">Antes de empezar</div>
+      <ul className="text-sm text-muted flex flex-col gap-1.5 list-disc pl-4">
+        <li>Celular o cámara con batería suficiente (o conectado a corriente).</li>
+        <li>Buena señal: wifi del campo o datos con cobertura.</li>
+        <li>Celular en horizontal y sin que se bloquee la pantalla.</li>
+      </ul>
+    </div>
     <form onSubmit={handleStart} className="bg-panel border border-border rounded-2xl p-5">
       <label className="block text-xs font-bold text-muted mb-1.5">Título</label>
       <input
@@ -147,5 +139,6 @@ export default function StartStreamForm({ teamSlug }: { teamSlug: string }) {
       </button>
       {message && <div className="mt-3 text-sm text-red">{message}</div>}
     </form>
+    </>
   );
 }
