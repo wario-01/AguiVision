@@ -55,10 +55,16 @@ export function seasonOf(ymd: string): string {
   return `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
 }
 
+// Primera temporada que se muestra. Para agregar años más viejos, baja este número
+// (por ejemplo, 2025 agrega la 2025-26). Las nuevas temporadas se agregan solas:
+// cada junio aparece la siguiente.
+export const FIRST_SEASON_START = 2026;
+
 export function seasonOptions(now = new Date()): string[] {
-  const cur = seasonOf(now.toISOString().slice(0, 10));
-  const start = Number(cur.slice(0, 4));
-  return [start + 1, start, start - 1, start - 2].map((s) => `${s}-${String((s + 1) % 100).padStart(2, "0")}`);
+  const cur = Number(seasonOf(now.toISOString().slice(0, 10)).slice(0, 4));
+  const out: string[] = [];
+  for (let s = cur + 1; s >= FIRST_SEASON_START; s--) out.push(`${s}-${String((s + 1) % 100).padStart(2, "0")}`);
+  return out;
 }
 
 export const money = (cents: number) =>
