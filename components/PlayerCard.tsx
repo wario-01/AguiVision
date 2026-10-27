@@ -3,6 +3,9 @@
 
 import { FichaStat } from "@/lib/ficha-shared";
 
+// Zona de la foto: un arco grande que llena el centro-derecha de la tarjeta.
+const PHOTO = "M102 252 L102 112 A70 70 0 0 1 242 112 L242 252 Z";
+
 const SHIELD =
   "M130 10 C150 10 160 22 190 24 L236 30 C244 32 246 38 246 46 L246 380 C246 430 200 470 130 510 C60 470 14 430 14 380 L14 46 C14 38 16 32 24 30 L70 24 C100 22 110 10 130 10Z";
 
@@ -44,7 +47,7 @@ export default function PlayerCard({
           <path d={SHIELD} />
         </clipPath>
         <clipPath id={`ph-${uid}`}>
-          <circle cx="176" cy="110" r="58" />
+          <path d={PHOTO} />
         </clipPath>
       </defs>
 
@@ -75,18 +78,16 @@ export default function PlayerCard({
         {team}
       </text>
 
-      <circle cx="176" cy="110" r="62" fill="#FFF6CC" opacity=".6" />
+      <path d={PHOTO} fill="#FFF6CC" opacity=".6" />
       {photoUrl ? (
-        <>
-          <image href={photoUrl} x="118" y="52" width="116" height="116" preserveAspectRatio="xMidYMid slice" clipPath={`url(#ph-${uid})`} />
-          <circle cx="176" cy="110" r="58" fill="none" stroke="#14284B" strokeWidth="2" />
-        </>
+        <image href={photoUrl} x="102" y="42" width="140" height="210" preserveAspectRatio="xMidYMin slice" clipPath={`url(#ph-${uid})`} />
       ) : (
-        <g>
-          <circle cx="176" cy="98" r="26" fill="#14284B" />
-          <path d="M124 180 C126 140 152 130 176 130 C200 130 226 140 228 180Z" fill="#14284B" clipPath={`url(#ph-${uid})`} />
+        <g clipPath={`url(#ph-${uid})`}>
+          <circle cx="172" cy="116" r="38" fill="#14284B" />
+          <path d="M96 260 C98 190 134 170 172 170 C210 170 246 190 248 260Z" fill="#14284B" />
         </g>
       )}
+      <path d={PHOTO} fill="none" stroke="#14284B" strokeWidth="2" />
 
       <text x="130" y="290" fontSize={nameSize} fontWeight="700" fill="#0A1830" textAnchor="middle" letterSpacing="1">
         {name}
