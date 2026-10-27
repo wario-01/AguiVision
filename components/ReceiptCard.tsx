@@ -79,9 +79,8 @@ export default function ReceiptCard({ r }: { r: ReceiptData }) {
 
       {/* logo y encabezado */}
       <image href="/logo.png" x="228" y="78" width="144" height="144" preserveAspectRatio="xMidYMid meet" />
-      <text x="300" y="255" textAnchor="middle" fontSize="25" fontWeight="900" fill={NAVY} fontFamily={font}>AUSTIN TX</text>
-      <text x="300" y="300" textAnchor="middle" fontSize="33" fontWeight="900" fontStyle="italic" fill={NAVY} fontFamily={font}>NIDO AGUILA USA AUSTIN</text>
-      <text x="300" y="344" textAnchor="middle" fontSize="38" fontWeight="900" fontStyle="italic" fill="#8E9CA0" fontFamily={font} letterSpacing="2">RECEIPT</text>
+      <text x="300" y="286" textAnchor="middle" fontSize="40" fontWeight="900" fontStyle="italic" fill={NAVY} fontFamily={font}>NIDO AUSTIN</text>
+      <text x="300" y="334" textAnchor="middle" fontSize="38" fontWeight="900" fontStyle="italic" fill="#8E9CA0" fontFamily={font} letterSpacing="2">RECEIPT</text>
 
       {/* datos */}
       <g fontFamily={font} fill={NAVY} fontWeight="900" fontSize="22">

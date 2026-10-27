@@ -221,7 +221,7 @@ export default async function RecibosPage({
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src="/logo.png" alt="" style={{ width: 52, height: 52, borderRadius: "50%" }} />
           <div>
-            <div style={{ fontWeight: 900, fontSize: 18, color: "#14284B" }}>NIDO AGUILA USA AUSTIN</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: "#14284B" }}>NIDO AUSTIN</div>
             <div style={{ fontSize: 12 }}>
               Reporte de pagos · {tab === "historial" ? "Historial de recibos" : REASONS[tab as keyof typeof REASONS]} · Temporada {season}
               {teamFilter ? ` · ${teamFilter}` : ""} · Generado el {usDate(clubParts(new Date()).ymd)}
