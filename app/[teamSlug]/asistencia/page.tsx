@@ -15,6 +15,7 @@ import {
   eventName,
   formatEventDate,
   LOW_THRESHOLD,
+  pctTone,
   MESES_CORTOS,
   MESES_LARGOS,
   monthOf,
@@ -211,7 +212,10 @@ export default async function AsistenciaPage({
                   </Link>
                   <div className="text-right">{pctText(s.entrenamientos.pct)}</div>
                   <div className="text-right">{pctText(s.juegos.pct)}</div>
-                  <div className={`text-right font-bold ${low ? "text-red" : ""}`}>{pctText(s.total.pct)}</div>
+                  <div className={`text-right font-bold ${pctTone(s.total.pct).text}`}>
+                    <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${pctTone(s.total.pct).bg}`} />
+                    {pctText(s.total.pct)}
+                  </div>
                   <div className="text-right text-muted">{s.total.ausente + s.total.justificado || "—"}</div>
                 </div>
               );

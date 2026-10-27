@@ -10,6 +10,7 @@ import {
   eventName,
   formatEventDate,
   LOW_THRESHOLD,
+  pctTone,
   monthlySeries,
   statsOf,
   STATUS_LABELS,
@@ -20,8 +21,11 @@ function Card({ title, c }: { title: string; c: Counts }) {
   return (
     <div className="bg-panel border border-border rounded-xl p-4">
       <div className="text-xs text-muted mb-1">{title}</div>
-      <div className={`font-display text-3xl font-bold leading-none ${low ? "text-red" : "text-gold"}`}>
+      <div className={`font-display text-3xl font-bold leading-none ${pctTone(c.pct).text}`}>
         {c.pct === null ? "—" : `${c.pct}%`}
+      </div>
+      <div className="h-1.5 rounded-full bg-bg mt-2 overflow-hidden">
+        <div className={`h-full rounded-full ${pctTone(c.pct).bg}`} style={{ width: `${c.pct ?? 0}%` }} />
       </div>
       <div className="text-[11px] text-muted mt-1.5">
         {c.contables > 0 ? `${c.presente + c.tarde} de ${c.contables}` : "Sin eventos"}

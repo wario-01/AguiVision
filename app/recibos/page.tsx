@@ -131,6 +131,16 @@ export default async function RecibosPage({
     const exemptCount = list.filter(isExempt).length;
     const totalPending = list.reduce((n, g) => n + pendingOf(g), 0);
     let lastTeam = "";
+    // Avance por equipo: lo pagado contra lo que se debería (sin contar exentos).
+    const teamStat = new Map<string, { paid: number; due: number; pct: number }>();
+    for (const g of list) {
+      if (isExempt(g)) continue;
+      const t = teamStat.get(g.team) ?? { paid: 0, due: 0, pct: 0 };
+      t.paid += Math.min(g.paid, g.lastTotal);
+      t.due += g.lastTotal;
+      teamStat.set(g.team, t);
+    }
+    teamStat.forEach((t) => (t.pct = t.due > 0 ? Math.round((t.paid / t.due) * 100) : 0));
 
     body = (
       <>
@@ -164,7 +174,24 @@ export default async function RecibosPage({
             return (
               <div key={g.key}>
                 {header && (
-                  <div className="px-5 py-2 bg-panel2 text-xs font-extrabold tracking-wider uppercase text-gold">{g.team}</div>
+                  <div className="px-5 py-2.5 bg-panel2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-extrabold tracking-wider uppercase text-gold">{g.team}</span>
+                      {tracksBalance && teamStat.get(g.team) && (
+                        <span className="text-[11px] font-bold text-muted">
+                          {money(teamStat.get(g.team)!.paid)} de {money(teamStat.get(g.team)!.due)} · {teamStat.get(g.team)!.pct}%
+                        </span>
+                      )}
+                    </div>
+                    {tracksBalance && teamStat.get(g.team) && (
+                      <div className="h-2 rounded-full bg-bg mt-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${teamStat.get(g.team)!.pct >= 90 ? "bg-ok" : teamStat.get(g.team)!.pct >= 50 ? "bg-amberText" : "bg-red"}`}
+                          style={{ width: `${teamStat.get(g.team)!.pct}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className={`px-5 py-3 ${i < list.length - 1 ? "border-b border-border" : ""}`}>
                   <div className="flex items-baseline justify-between gap-3">
@@ -177,12 +204,20 @@ export default async function RecibosPage({
                       )}
                       {tracksBalance && !isExempt(g) && (
                         <span className="text-xs text-muted">
-                          de {money(g.lastTotal)} · saldo <b className={pendingOf(g) > 0 ? "text-amberText" : "text-goldText"}>{money(pendingOf(g))}</b>
+                          de {money(g.lastTotal)} · saldo <b className={pendingOf(g) === 0 ? "text-ok" : g.paid > 0 ? "text-amberText" : "text-red"}>{money(pendingOf(g))}</b>
                         </span>
                       )}
                       <span className="text-sm font-extrabold text-gold">{money(g.paid)}</span>
                     </div>
                   </div>
+                  {tracksBalance && !isExempt(g) && g.lastTotal > 0 && (
+                    <div className="h-1.5 rounded-full bg-bg mt-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${g.paid >= g.lastTotal ? "bg-ok" : g.paid > 0 ? "bg-amberText" : "bg-red"}`}
+                        style={{ width: `${Math.min(100, Math.round((g.paid / g.lastTotal) * 100))}%` }}
+                      />
+                    </div>
+                  )}
                   <div className="text-xs text-muted mt-1 flex flex-wrap gap-x-3">
                     {g.items.map((r) =>
                       r.legacy ? (

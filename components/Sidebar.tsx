@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getMyTeams, getCurrentUser, Team } from "@/lib/data";
 import { getFinanceAccess } from "@/lib/finance";
 import LogoutButton from "./LogoutButton";
+import MoreMenu from "./MoreMenu";
+import { teamAccent } from "@/lib/team-accent";
 
 const ROLE_LABELS: Record<string, string> = {
   coach: "Entrenador",
@@ -141,6 +143,11 @@ export default async function Sidebar({
     return true;
   });
 
+  // Celular: 4 accesos fijos + "Más" con el resto.
+  const MAIN_KEYS = ["inicio", "calendario", canPhotos ? "fotos" : "vivo", "highlights"];
+  const mainItems = MAIN_KEYS.map((k) => navItems.find((i) => i.key === k)).filter(Boolean) as typeof navItems;
+  const moreItems = navItems.filter((i) => !MAIN_KEYS.includes(i.key));
+
   return (
     <>
       {/* ---------- Escritorio: barra lateral fija ---------- */}
@@ -161,6 +168,7 @@ export default async function Sidebar({
                   : "border-transparent text-muted hover:text-text"
               }`}
             >
+              <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ background: teamAccent(team.age_category) }} />
               {team.name}
             </Link>
           ))}
@@ -240,6 +248,7 @@ export default async function Sidebar({
                     : "border-borderMuted text-muted"
                 }`}
               >
+                <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: teamAccent(team.age_category) }} />
                 {team.name}
               </Link>
             ))}
@@ -247,22 +256,33 @@ export default async function Sidebar({
         )}
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-sidebar border-t border-border flex items-stretch overflow-x-auto no-scrollbar pb-[env(safe-area-inset-bottom,0px)]">
-        {navItems.map((item) => {
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-sidebar border-t border-border flex items-stretch pb-[env(safe-area-inset-bottom,0px)]">
+        {mainItems.map((item) => {
           const isActive = active === item.key;
           return (
             <Link
               key={item.key}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-[68px] shrink-0 ${isActive ? "bg-cream" : ""}`}
+              className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-0 ${isActive ? "bg-cream" : ""}`}
             >
-              <Icon path={item.icon} active={isActive} size={18} />
+              <Icon path={item.icon} active={isActive} size={20} />
               <span className={`text-[10px] font-semibold truncate ${isActive ? "text-bg font-extrabold" : "text-muted"}`}>
                 {item.label}
               </span>
             </Link>
           );
         })}
+        {moreItems.length > 0 && (
+          <MoreMenu
+            activeKey={active}
+            items={moreItems.map((i) => ({
+              key: i.key,
+              href: i.href,
+              label: i.label,
+              svg: i.icon,
+            }))}
+          />
+        )}
       </div>
     </>
   );

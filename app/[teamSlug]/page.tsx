@@ -4,6 +4,7 @@ import MuxThumb from "@/components/MuxThumb";
 import Link from "next/link";
 import { getMeasurements } from "@/lib/data-crecimiento";
 import { clubParts, clubTime } from "@/lib/tz";
+import { teamAccent } from "@/lib/team-accent";
 import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingEvents } from "@/lib/data";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -35,6 +36,20 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
     }
   }
 
+  const accent = teamAccent(team.age_category);
+  const next = upcomingEvents[0] ?? null;
+  const restEvents = upcomingEvents.slice(1);
+  const lastMatch = matches.find((m) => m.video_playback_id) ?? null;
+  const daysUntil = (iso: string) => {
+    const a = clubParts(new Date()).ymd.split("-").map(Number);
+    const b = clubParts(new Date(iso)).ymd.split("-").map(Number);
+    return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000);
+  };
+  const whenLabel = (iso: string) => {
+    const n = daysUntil(iso);
+    return n <= 0 ? "Hoy" : n === 1 ? "Mañana" : `En ${n} días`;
+  };
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
@@ -42,7 +57,10 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
         <div className="mb-7 flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-display text-2xl font-bold">Hola, {firstName}</div>
-            <div className="text-muted text-sm mt-0.5">{team.name} · temporada 2026</div>
+            <div className="text-muted text-sm mt-0.5 flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: accent }} />
+              {team.name} · temporada 2026
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {team.standings_url && (
@@ -80,16 +98,48 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
           </Link>
         )}
 
-        {upcomingEvents.length > 0 && (
+        {next && (
+          <div
+            className="rounded-2xl border border-border bg-panel overflow-hidden mb-8"
+            style={{ borderTop: `4px solid ${accent}` }}
+          >
+            <div className="px-5 pt-4 flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-widest text-gold">
+                Siguiente · {next.type === "game" ? "Partido" : TYPE_LABELS[next.type] || "Evento"}
+              </span>
+              <span className="text-[11px] font-extrabold rounded-full px-2.5 py-1 bg-goldBgDim text-goldText border border-goldBorderDim">
+                {whenLabel(next.start_at)}
+              </span>
+            </div>
+            <div className="px-5 py-4 flex items-center gap-4">
+              <div className="text-center shrink-0">
+                <div className="font-display text-4xl font-bold leading-none">{clubTime(new Date(next.start_at))}</div>
+                <div className="text-xs text-muted mt-1.5">
+                  {DIAS[clubParts(new Date(next.start_at)).dow]}, {clubParts(new Date(next.start_at)).day}{" "}
+                  {MESES[clubParts(new Date(next.start_at)).month]}
+                </div>
+              </div>
+              <div className="min-w-0 flex-grow border-l border-border pl-4">
+                <div className="text-base font-bold truncate">
+                  {next.type === "game" ? `${team.name} vs ${next.opponent ?? ""}` : next.title || TYPE_LABELS[next.type] || "Evento"}
+                </div>
+                {next.location && <div className="text-xs text-muted mt-1 truncate">{next.location}</div>}
+                {next.league && <div className="text-[11px] text-muted mt-0.5 truncate">{next.league}</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {restEvents.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-3.5">
-              <div className="font-display text-lg font-semibold">Próximos eventos</div>
+              <div className="font-display text-lg font-semibold">Después</div>
               <a href={`/${team.slug}/calendario`} className="text-xs font-bold text-gold">
                 Ver calendario
               </a>
             </div>
             <div className="flex flex-col gap-3 mb-8">
-              {upcomingEvents.map((g) => {
+              {restEvents.map((g) => {
                 const d = new Date(g.start_at);
                 if (g.type !== "game") {
                   return (
@@ -157,6 +207,25 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
           </>
         )}
 
+        {lastMatch && (
+          <>
+            <div className="font-display text-lg font-semibold mb-3.5">Último partido</div>
+            <a
+              href={`/${team.slug}/partidos/${lastMatch.id}`}
+              className="block bg-panel border border-border rounded-2xl overflow-hidden mb-8 hover:border-borderMuted transition-colors"
+            >
+              <MuxThumb playbackId={lastMatch.video_playback_id} width={960} time={30} play className="w-full h-[190px] md:h-[260px]" />
+              <div className="px-5 py-3.5 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold truncate">{team.name} vs {lastMatch.opponent}</div>
+                  <div className="text-xs text-muted">{lastMatch.match_date}</div>
+                </div>
+                <span className="text-xs font-extrabold text-gold shrink-0">Ver partido</span>
+              </div>
+            </a>
+          </>
+        )}
+
         <div className="flex items-center justify-between mb-3.5">
           <div className="font-display text-lg font-semibold">Highlights recientes</div>
           {highlights.length > 0 && (
@@ -165,10 +234,10 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             </a>
           )}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           {highlights.slice(0, 6).map((h) => (
-            <a href={`/${team.slug}/highlights/${h.id}`} key={h.id}>
-              <MuxThumb playbackId={h.clip_playback_id} className="w-full h-[110px] rounded-xl mb-2" />
+            <a href={`/${team.slug}/highlights/${h.id}`} key={h.id} className="group">
+              <MuxThumb playbackId={h.clip_playback_id} className="w-full h-[130px] md:h-[170px] rounded-xl mb-2 group-hover:ring-2 group-hover:ring-cream/60 transition" />
               <div className="text-sm font-bold">
                 {h.label} · {h.player_name}
               </div>
@@ -176,7 +245,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             </a>
           ))}
           {highlights.length === 0 && (
-            <div className="text-sm text-muted col-span-2 md:col-span-4">Todavía no hay highlights para este equipo.</div>
+            <div className="text-sm text-muted col-span-2 md:col-span-3">Todavía no hay highlights para este equipo.</div>
           )}
         </div>
 

@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
@@ -21,6 +21,7 @@ const config: Config = {
         goldBorderDim: "#4A3F17",
         red: "#E6483C",
         redText: "#FDF3E7",
+        ok: "#4ADE80",
         amberBg: "#2B2413",
         amberText: "#FBBF24",
       },

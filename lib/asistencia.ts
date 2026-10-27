@@ -18,6 +18,7 @@ export const STATUS_LABELS: Record<AttStatus, string> = {
   justificado: "Justificado",
 };
 
+export const GOOD_THRESHOLD = 90; // verde desde aquí
 export const LOW_THRESHOLD = 75; // por debajo de este % se marca al jugador
 
 export const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -108,4 +109,12 @@ export function monthlySeries(rs: AttRecord[]): { key: string; label: string; pc
       const c = countRecords(byMonth.get(key)!);
       return { key, label: MESES_CORTOS[Number(key.slice(5)) - 1], pct: c.pct, n: c.contables };
     });
+}
+
+// Semáforo: verde (>=90), ámbar (75-89), rojo (<75). Sin datos: gris.
+export function pctTone(pct: number | null): { text: string; bg: string } {
+  if (pct === null) return { text: "text-muted", bg: "bg-borderMuted" };
+  if (pct >= GOOD_THRESHOLD) return { text: "text-ok", bg: "bg-ok" };
+  if (pct >= LOW_THRESHOLD) return { text: "text-amberText", bg: "bg-amberText" };
+  return { text: "text-red", bg: "bg-red" };
 }

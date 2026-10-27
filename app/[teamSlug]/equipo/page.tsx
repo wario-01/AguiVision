@@ -9,6 +9,7 @@ import StandingsLinkForm from "@/components/StandingsLinkForm";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import PhotoAccessToggle from "@/components/PhotoAccessToggle";
 import PlayerPhotoUpload from "@/components/PlayerPhotoUpload";
+import { teamAccent } from "@/lib/team-accent";
 import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers, getMyTeams } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -109,11 +110,11 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
               {players.map((p, i) => (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-3 px-5 py-3 ${
+                  className={`flex items-center gap-3 px-5 py-3 hover:bg-panel2 transition-colors ${
                     i < players.length - 1 ? "border-b border-border" : ""
                   }`}
                 >
-                  <PlayerPhotoUpload playerId={p.id} currentUrl={p.photo_url ?? null} fullName={p.full_name} />
+                  <PlayerPhotoUpload playerId={p.id} currentUrl={p.photo_url ?? null} fullName={p.full_name} ringColor={teamAccent(team.age_category)} jersey={p.jersey_number} />
                   <div className="flex-grow min-w-0">
                     <div className="text-sm font-bold truncate">
                       {p.jersey_number != null && <span className="text-gold">#{p.jersey_number} </span>}

@@ -72,11 +72,33 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <img src="/logo.png" alt="Nido Austin" className="w-14 h-14 rounded-full object-contain mb-3" />
-          <div className="font-display text-2xl font-bold text-text">AguiVision</div>
+    <div className="relative overflow-hidden min-h-screen bg-bg flex items-center justify-center p-6">
+      {/* Franjas del recibo en dos esquinas */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        {["#2B4F9E", "#E0585A", "#F2C85B"].map((c, i) => (
+          <div key={`a${i}`}>
+            <div
+              className="absolute h-4 md:h-5 origin-top-left"
+              style={{ background: c, left: "-8%", top: 0, width: `${44 - i * 7}%`, transform: `rotate(35deg) translate(-10px, ${i * 30 - 6}px)` }}
+            />
+            <div
+              className="absolute h-4 md:h-5 origin-bottom-right"
+              style={{ background: c, right: "-8%", bottom: 0, width: `${44 - i * 7}%`, transform: `rotate(35deg) translate(10px, ${-i * 30 + 6}px)` }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="relative w-full max-w-sm">
+        <div className="flex flex-col items-center mb-6 text-center">
+          <img
+            src="/logo.png"
+            alt="Nido Austin"
+            className="w-32 h-32 md:w-36 md:h-36 rounded-full object-contain mb-3 drop-shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
+          />
+          <div className="font-display text-4xl font-bold tracking-wider text-text">NIDO AUSTIN</div>
+          <div className="text-[12px] font-extrabold uppercase tracking-[0.25em] text-gold mt-1">
+            Sin disciplina no hay éxito
+          </div>
         </div>
 
         {linkFailed && status !== "sent" && (
@@ -86,7 +108,7 @@ function LoginForm() {
           </div>
         )}
         {status === "sent" ? (
-          <div className="bg-panel border border-border rounded-2xl p-6 text-center">
+          <div className="bg-panel/95 border border-border rounded-2xl p-6 text-center">
             <div className="text-text font-bold text-sm mb-2">Revisa tu correo</div>
             <div className="text-muted text-sm mb-4">
               Te mandamos un acceso a <span className="text-text font-semibold">{email}</span>. Toca el enlace, o
@@ -113,7 +135,7 @@ function LoginForm() {
             </form>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-6">
+          <form onSubmit={handleSubmit} className="bg-panel/95 border border-border rounded-2xl p-6">
             <label className="block text-xs font-bold text-muted mb-1.5">Tu nombre</label>
             <input
               type="text"
@@ -145,6 +167,7 @@ function LoginForm() {
             </div>
           </form>
         )}
+        <div className="mt-5 text-center text-[11px] font-extrabold tracking-[0.2em] text-muted">AGUIVISION</div>
       </div>
     </div>
   );
