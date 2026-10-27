@@ -25,7 +25,7 @@ export default async function RecibosShell({
     <div className="min-h-screen bg-bg">
       <div className="no-print bg-sidebar border-b border-border">
         <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-3">
-          <img src="/logo.png" alt="Nido Águila" className="w-[30px] h-[30px] rounded-full object-contain" />
+          <img src="/logo.png" alt="Nido Austin" className="w-[30px] h-[30px] rounded-full object-contain" />
           <div className="font-display text-base font-bold">AguiVision · Recibos</div>
           <div className="flex-grow" />
           {back && (
