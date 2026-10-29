@@ -8,7 +8,7 @@ export default function MatchPlayer({ playbackId, live = false }: { playbackId: 
       <MuxPlayer
         playbackId={playbackId}
         streamType={live ? "live" : "on-demand"}
-        accentColor="#F0D875"
+        accentColor="#F9E547"
         autoPlay={live}
       />
     </div>

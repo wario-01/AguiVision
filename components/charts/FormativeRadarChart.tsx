@@ -34,18 +34,18 @@ export default function FormativeRadarChart({
   return (
     <ResponsiveContainer width="100%" height={260}>
       <RadarChart data={data}>
-        <PolarGrid stroke="#234070" />
-        <PolarAngleAxis dataKey="area" tick={{ fill: "#8CA0C7", fontSize: 12, fontWeight: 600 }} />
+        <PolarGrid stroke="#2467A8" />
+        <PolarAngleAxis dataKey="area" tick={{ fill: "#A9C0DD", fontSize: 12, fontWeight: 600 }} />
         <PolarRadiusAxis
           domain={[0, 5]}
           tickCount={6}
-          tick={{ fill: "#4A5A7E", fontSize: 10 }}
+          tick={{ fill: "#6C8CB3", fontSize: 10 }}
           tickFormatter={(v) => NIVEL_LABELS[v] ?? ""}
         />
         {previous && (
-          <Radar dataKey="anterior" stroke="#8CA0C7" strokeDasharray="5 4" fill="#8CA0C7" fillOpacity={0.12} />
+          <Radar dataKey="anterior" stroke="#A9C0DD" strokeDasharray="5 4" fill="#A9C0DD" fillOpacity={0.12} />
         )}
-        <Radar dataKey="nivel" stroke="#F0D875" fill="#F0D875" fillOpacity={0.35} />
+        <Radar dataKey="nivel" stroke="#F9E547" fill="#F9E547" fillOpacity={0.35} />
       </RadarChart>
     </ResponsiveContainer>
   );

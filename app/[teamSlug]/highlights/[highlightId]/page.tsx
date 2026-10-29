@@ -44,7 +44,7 @@ export default async function HighlightPage({
               )}`}
               className="inline-flex items-center gap-2 mt-4 bg-panel border border-border rounded-lg px-4 py-2.5 text-sm font-bold hover:border-borderMuted"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#F5EFD6" strokeWidth={2}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#FFFFFF" strokeWidth={2}>
                 <path d="M12 3v12M7 10l5 5 5-5M5 21h14" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Descargar highlight

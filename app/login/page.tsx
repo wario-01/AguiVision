@@ -75,7 +75,7 @@ function LoginForm() {
     <div className="relative overflow-hidden min-h-screen bg-bg flex items-center justify-center p-6">
       {/* Franjas del recibo en dos esquinas */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        {["#2B4F9E", "#E0585A", "#F2C85B"].map((c, i) => (
+        {["#2F74B8", "#E03C31", "#F9E547"].map((c, i) => (
           <div key={`a${i}`}>
             <div
               className="absolute h-4 md:h-5 origin-top-left"
@@ -96,8 +96,8 @@ function LoginForm() {
             className="w-32 h-32 md:w-36 md:h-36 rounded-full object-contain mb-3 drop-shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
           />
           <div className="font-display text-4xl font-bold tracking-wider text-text">NIDO AUSTIN</div>
-          <div className="text-[12px] font-extrabold uppercase tracking-[0.25em] text-gold mt-1">
-            Sin disciplina no hay éxito
+          <div className="font-brand text-[13px] font-bold uppercase tracking-[0.2em] text-gold mt-1">
+            Grandes de corazón
           </div>
         </div>
 

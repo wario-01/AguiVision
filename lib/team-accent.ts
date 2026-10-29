@@ -6,5 +6,5 @@ const ACCENTS: Record<string, string> = {
   U14: "#F59E42", // naranja
 };
 export function teamAccent(ageCategory?: string | null): string {
-  return (ageCategory && ACCENTS[ageCategory.toUpperCase()]) || "#F0D875";
+  return (ageCategory && ACCENTS[ageCategory.toUpperCase()]) || "#F9E547";
 }

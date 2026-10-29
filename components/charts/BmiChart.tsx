@@ -41,39 +41,39 @@ export default function BmiChart({
   return (
     <ResponsiveContainer width="100%" height={300}>
       <ComposedChart data={curves} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#234070" strokeDasharray="3 3" />
+        <CartesianGrid stroke="#2467A8" strokeDasharray="3 3" />
         <XAxis
           type="number"
           dataKey="age"
           domain={["dataMin", "dataMax"]}
-          tick={{ fill: "#8CA0C7", fontSize: 10 }}
+          tick={{ fill: "#A9C0DD", fontSize: 10 }}
           tickFormatter={(v: number) => `${Math.round(v * 10) / 10}`}
-          label={{ value: "Edad (años)", position: "insideBottom", offset: -2, fill: "#8CA0C7", fontSize: 10 }}
+          label={{ value: "Edad (años)", position: "insideBottom", offset: -2, fill: "#A9C0DD", fontSize: 10 }}
           height={36}
         />
         <YAxis
           domain={["auto", "auto"]}
-          tick={{ fill: "#8CA0C7", fontSize: 10 }}
+          tick={{ fill: "#A9C0DD", fontSize: 10 }}
           width={32}
           tickFormatter={(v: number) => `${Math.round(v)}`}
         />
         <Tooltip
-          contentStyle={{ background: "#12284D", border: "1px solid #234070", borderRadius: 8 }}
-          labelStyle={{ color: "#F5EFD6" }}
+          contentStyle={{ background: "#0A2F5C", border: "1px solid #2467A8", borderRadius: 8 }}
+          labelStyle={{ color: "#FFFFFF" }}
           labelFormatter={(v: number) => `${Math.round(v * 10) / 10} años`}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Line name="Percentil 5" dataKey="p5" stroke="#8CA0C7" strokeDasharray="4 4" dot={false} strokeWidth={1.5} />
-        <Line name="Percentil 50" dataKey="p50" stroke="#8CA0C7" dot={false} strokeWidth={1.5} />
+        <Line name="Percentil 5" dataKey="p5" stroke="#A9C0DD" strokeDasharray="4 4" dot={false} strokeWidth={1.5} />
+        <Line name="Percentil 50" dataKey="p50" stroke="#A9C0DD" dot={false} strokeWidth={1.5} />
         <Line name="Percentil 85" dataKey="p85" stroke="#C9A94E" strokeDasharray="4 4" dot={false} strokeWidth={1.5} />
         <Line name="Percentil 95" dataKey="p95" stroke="#E6483C" strokeDasharray="4 4" dot={false} strokeWidth={1.5} />
         <Line
           name={playerLabel}
           data={child}
           dataKey="bmi"
-          stroke="#F0D875"
+          stroke="#F9E547"
           strokeWidth={3}
-          dot={{ r: 4, fill: "#F0D875" }}
+          dot={{ r: 4, fill: "#F9E547" }}
           isAnimationActive={false}
         />
       </ComposedChart>

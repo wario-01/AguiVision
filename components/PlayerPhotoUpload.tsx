@@ -56,7 +56,7 @@ export default function PlayerPhotoUpload({
     <label className="relative shrink-0 cursor-pointer">
       <div
         className="w-12 h-12 rounded-full bg-panel2 flex items-center justify-center overflow-hidden"
-        style={{ boxShadow: `0 0 0 2px ${ringColor ?? "#2A4A7E"}` }}
+        style={{ boxShadow: `0 0 0 2px ${ringColor ?? "#2F74B8"}` }}
       >
         {preview ? (
           <img src={preview} alt={fullName} className="w-full h-full object-cover" />

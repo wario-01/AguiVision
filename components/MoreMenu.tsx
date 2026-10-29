@@ -30,7 +30,7 @@ export default function MoreMenu({ items, activeKey }: { items: MoreItem[]; acti
                     activeKey === i.key ? "bg-cream border-cream" : "bg-panel border-border"
                   }`}
                 >
-                  <svg viewBox="0 0 24 24" width={22} height={22} fill="none" strokeWidth={2} stroke={activeKey === i.key ? "#0A1830" : "#8CA0C7"}>
+                  <svg viewBox="0 0 24 24" width={22} height={22} fill="none" strokeWidth={2} stroke={activeKey === i.key ? "#003C71" : "#A9C0DD"}>
                     {i.svg}
                   </svg>
                   <span className={`text-[11px] font-bold ${activeKey === i.key ? "text-bg" : "text-muted"}`}>{i.label}</span>
@@ -45,7 +45,7 @@ export default function MoreMenu({ items, activeKey }: { items: MoreItem[]; acti
         onClick={() => setOpen((o) => !o)}
         className={`flex flex-col items-center justify-center gap-0.5 py-2 flex-1 min-w-0 ${isActive || open ? "bg-cream" : ""}`}
       >
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" strokeWidth={2.5} strokeLinecap="round" stroke={isActive || open ? "#0A1830" : "#8CA0C7"}>
+        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" strokeWidth={2.5} strokeLinecap="round" stroke={isActive || open ? "#003C71" : "#A9C0DD"}>
           <circle cx="5" cy="12" r="1" />
           <circle cx="12" cy="12" r="1" />
           <circle cx="19" cy="12" r="1" />

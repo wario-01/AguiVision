@@ -148,7 +148,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                       className="flex items-center gap-4 bg-panel border border-border rounded-2xl px-5 py-4"
                     >
                       <div className="w-11 h-11 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center shrink-0">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8CA0C7" strokeWidth={2}>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#A9C0DD" strokeWidth={2}>
                           <rect x="3" y="4" width="18" height="18" rx="2" />
                           <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>

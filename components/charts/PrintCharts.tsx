@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import { AREA_LABELS } from "@/lib/eval-shared";
 
-const NAVY = "#0A1830";
+const NAVY = "#003C71";
 const GOLD = "#B8963A";
 const GRID = "#cfc8b0";
 const INK = "#1a1a1a";

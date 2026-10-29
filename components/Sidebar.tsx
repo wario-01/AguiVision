@@ -81,7 +81,7 @@ const NAV_ICONS = {
 
 function Icon({ path, active, size = 19 }: { path: React.ReactNode; active: boolean; size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={active ? "#0A1830" : "#8CA0C7"} strokeWidth={2}>
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={active ? "#003C71" : "#A9C0DD"} strokeWidth={2}>
       {path}
     </svg>
   );

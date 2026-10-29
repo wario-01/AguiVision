@@ -12,16 +12,16 @@ export default function AttendanceMonthlyChart({
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={rows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#234070" strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="label" tick={{ fill: "#8CA0C7", fontSize: 11 }} />
-        <YAxis domain={[0, 100]} tick={{ fill: "#8CA0C7", fontSize: 10 }} width={34} tickFormatter={(v: number) => `${v}%`} />
+        <CartesianGrid stroke="#2467A8" strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="label" tick={{ fill: "#A9C0DD", fontSize: 11 }} />
+        <YAxis domain={[0, 100]} tick={{ fill: "#A9C0DD", fontSize: 10 }} width={34} tickFormatter={(v: number) => `${v}%`} />
         <Tooltip
-          contentStyle={{ background: "#12284D", border: "1px solid #234070", borderRadius: 8 }}
-          labelStyle={{ color: "#F5EFD6" }}
+          contentStyle={{ background: "#0A2F5C", border: "1px solid #2467A8", borderRadius: 8 }}
+          labelStyle={{ color: "#FFFFFF" }}
           formatter={(v: number, _n: string, item: any) => [`${v}% (${item.payload.n} eventos)`, "Asistencia"]}
         />
         <ReferenceLine y={LOW_THRESHOLD} stroke="#E6483C" strokeDasharray="4 4" />
-        <Bar dataKey="pct" fill="#F0D875" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="pct" fill="#F9E547" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

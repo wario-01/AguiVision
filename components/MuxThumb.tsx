@@ -28,7 +28,7 @@ export default function MuxThumb({
         play && (
           <svg viewBox="0 0 24 24" width="26" height="26" className="relative">
             <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)" />
-            <path d="M10 8l6 4-6 4z" fill="#F5EFD6" />
+            <path d="M10 8l6 4-6 4z" fill="#FFFFFF" />
           </svg>
         )
       ) : (

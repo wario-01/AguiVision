@@ -1,11 +1,18 @@
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap");
+@font-face {
+  font-family: "Avant Garde";
+  src: url("/fonts/AvantGardeBold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  background-color: #0a1830;
-  color: #f5efd6;
+  background-color: #003C71;
+  color: #FFFFFF;
 }
 
 .no-scrollbar::-webkit-scrollbar {

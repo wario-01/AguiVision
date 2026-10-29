@@ -1,9 +1,9 @@
 # AguiVision — Roadmap
 
-Última actualización: 8 de octubre de 2026.
+Última actualización: 27 de octubre de 2026.
 
 ## Hecho
-- Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U14), con perfil unificado y PDF.
+- Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
 - Datos del jugador: número, posición, peso, altura y perfil (pie dominante).
 - Mover un partido/video a otro equipo.
 - Alta, edición y baja de jugadores desde la app.
@@ -11,17 +11,22 @@
 - Niños que juegan en 2 equipos: se vinculan desde "Editar datos" y los papás ven los highlights de las dos categorías juntos.
 - Compartir un highlight con todo el equipo (interruptor del entrenador en el highlight; los papás lo ven con la marca "Compartido").
 - Descargar el partido completo (botón en la página del partido, solo entrenador/asistente) y limpieza de partidos "fantasma" (sin video ni highlights) a los 6 meses.
-- Sub-12 con evaluación físico-técnica (mismas 5 pruebas que Sub-14).
+- Sub-12 con evaluación físico-técnica (mismas pruebas que Sub-14; desde oct 2026 son 6 pruebas en sistema inglés, ver "Evaluaciones").
 - Botón "Standings" en Inicio de cada equipo, con el enlace de la liga que el cuerpo técnico puede cambiar (Equipo → Tabla de posiciones).
 - IMC con historial en el perfil del jugador (peso en libras, altura en pies/pulgadas). Cada cambio de peso o altura guarda una medición. La familia ve el de su hijo (menú Crecimiento), con gráfica de percentiles del CDC. No se guarda fecha de nacimiento (solo la edad al medir). El aviso "conviene hablar con el pediatra" combina el IMC, la relación cintura/altura (0.5) y la tendencia: un IMC alto con cintura en rango se muestra como informativo (probable músculo), sin aviso.
 - Pendiente opcional del IMC: interruptor por jugador para apagar el aviso de Inicio.
 - Borrar un ciclo de evaluación (botón al final de la página del ciclo, solo entrenador) y borrar un resultado físico-técnico del historial.
 - Asistencia: se toma desde el Calendario (botón "Tomar asistencia" en cada evento: presente, tarde, ausente, justificado). Reporte del equipo por año y mes con % de entrenamientos, juegos y total, descarga en Excel (resumen y detalle por evento), historial anual, ficha del jugador y vista para la familia de su propio jugador. "Justificado" no baja el porcentaje.
 - Primera ronda de endurecimiento de seguridad (ver abajo).
+- Galería de fotos en Cloudflare R2, rol Colaborador y permiso de fotos por familia (ver "Fotos").
+- Sistema de recibos del club con reportes, exentos y pagos anteriores (ver "Recibos").
+- Logo nuevo de Nido Austin, resaltado en color crema y rediseño de octubre 2026 (ver "Diseño").
+- Mejoras de transmisiones en vivo (ver "Transmisiones").
+- Ficha técnica del jugador estilo tarjeta, imprimible (ver "Evaluaciones").
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
-   - **Recibos de pago automatizados** (en espera, decidido 8 oct): generar el recibo desde la app. Pendiente definir qué se cobra (inscripción, mensualidad, torneos), quién registra el pago y si el recibo se envía por correo (Resend) o se descarga como PDF.
+   - **Recibos de pago**: ya construidos (ver "Recibos"). Falta el envío por correo.
    - **IA para análisis de video** (costos investigados 8 oct 2026). Ruta más barata, en 3 pasos:
      1. Ficha de jugador con estadísticas sacadas de las etiquetas de los highlights (goles, asistencias, atajadas): costo $0, sin IA.
      2. "Reel" de reclutamiento: página compartible que reproduce seguidos los highlights del jugador: costo ~$0 (usa los clips que ya existen).
@@ -40,8 +45,8 @@
      primero, aditivo, sin perder datos, y probar paso a paso. Revisar antes que Supabase tenga respaldos activos (punto 6).
    (Los niños que juegan en 2 equipos a la vez ya se pueden vincular; esto es el caso de cambio de categoría.)
 2. **Cierre de temporada**: archivar equipo o temporada sin perder el historial de evaluaciones.
-3. **Evaluación por tendencia**: en el perfil, comparar el último ciclo con el anterior (sube/baja por área).
-4. **PDF para papás**: que cada papá/jugador vea el perfil de su propio hijo y reciba el PDF por correo (Resend).
+3. ~~Evaluación por tendencia~~ — hecho en oct 2026: radar con el ciclo anterior, cambio por área y comparación de pruebas físicas (ver "Evaluaciones").
+4. **PDF para papás por correo**: las familias ya ven la evaluación de su hijo, el radar y la ficha técnica (imprimible) cuando el entrenador publica. Falta que reciban el PDF por correo (Resend).
 5. **Reenviar invitaciones** (opcional; hoy se cancela y se vuelve a invitar).
 6. **Respaldo de la base de datos**: confirmar que Supabase tiene copias automáticas activas.
 7. Si los videos se siguen subiendo al equipo equivocado: revisar cómo se elige el equipo al iniciar una transmisión.
@@ -98,5 +103,40 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Acceso a nivel club (`finance_access`): owner (Mario), admin (solo reportes), issuer (expide + reportes). Se administra en /recibos/accesos.
 - Recibos con número consecutivo (`receipts_number_seq`; para empezar en otro número: `alter sequence receipts_number_seq restart with 700;`). No se borran, se anulan.
 - Saldo: en Anualidad y Membresía se descuentan los pagos anteriores de la misma temporada (junio–mayo).
-- Pendiente: mandar el recibo por correo a la familia; recibo en español/inglés.
+- Pendiente: recibo en español/inglés.
+- **Pendiente (decidido 27 oct 2026, en espera de que termine la configuración de la página web y del dominio): enviar el recibo por correo a la familia.** Hoy el recibo solo se ve, se imprime o se guarda como PDF desde la app; el correo que aparece en los datos es el de quien lo expide, no el de la familia. Propuesta:
+  - Campo opcional "Correo de quien paga" en el formulario del recibo, con casilla "Enviar copia por correo".
+  - Correo corto de Nido Austin (Resend, que ya usa la app) con número de recibo, jugador, monto y motivo, y botón para verlo; opcionalmente el PDF adjunto y copia a quien lo expidió.
+  - Botón "Enviar por correo" en cada recibo ya creado, para reenviarlo o corregir la dirección.
+  - Recibos anulados: el correo dice "ANULADO" o no se envía.
+  - Decisión pendiente: guardar o no el correo en el recibo (recomendado guardarlo, como historial; solo lo ven quienes tienen acceso a finanzas).
+  - Antes de activarlo: verificar el dominio del club en Resend (SPF/DKIM) para que no caiga en spam.
 - Exentos (por ejemplo, hijos de entrenadores): se marcan en Recibos → Pagos anteriores; salen como “Exento” y no cuentan como saldo pendiente. Tabla `finance_exemptions`.
+
+## Evaluaciones (oct 2026)
+- **U14** se evalúa por competencias (documento del prof. Mario Dena): áreas Táctico-técnico-cognitiva, Condicional motriz y Criterios transversales (incluye lateralidad eficaz), con la escala de 5 niveles. U12 y menores siguen con Táctico, Técnico, Físico y Actitudinal.
+- Ciclos de **duración libre**: mensual, bimestral, trimestral, cuatrimestral, semestral, anual o personalizado; el fin se sugiere solo y se puede cambiar. Las competencias de U14 se precargan del ciclo anterior (o de la plantilla) y son editables al crear el ciclo y después ("Editar competencias de este ciclo"; quitar una competencia borra sus calificaciones).
+- **Pruebas físicas (U12 y U14)**, sistema inglés: Wells (pulgadas), Course Navette (yardas recorridas), salto horizontal (pulgadas), balón medicinal sobre la cabeza (pies), sprint 20 yardas (segundos), agilidad / cambios de dirección (segundos). Las métricas anteriores se borraron. SQL: `supabase/evaluaciones-u14.sql`.
+- **Comparación con el propio avance**: radar con línea punteada del ciclo anterior y cambio por área; pruebas físicas última vs anterior (▲/▼) y "Última vez" al capturar.
+- **Familias**: ven radar, ficha técnica y evaluación de su hijo cuando el entrenador publica.
+- **Ficha técnica** (tarjeta dorada con rayos, colores del club): datos de 40 a 99 (VEL, RES, POT, FLX, TAC, ACT; en equipos sin pruebas físicas salen de las áreas y la asistencia). La escala de cada prueba (qué resultado vale 40 y cuál 99) se edita en Evaluación físico-técnica → "Escala de la ficha técnica". Los valores iniciales son estimaciones: ajustarlos tras la primera ronda de pruebas y luego dejarlos fijos para comparar siempre contra la misma referencia. Imprimible desde el perfil (staff) y desde "Evaluación" (familia, solo su hijo).
+- **Portero**: se marca poniendo Posición: Portero en "Editar datos". Área "Portero" con 6 competencias de ejemplo (posicionamiento, manejo, reflejos, salidas, juego con los pies, comunicación) que se califica solo a porteros; su ficha cambia RES por ARQ y marca POR. Pendiente: definir los parámetros reales de portero.
+- Pendiente: pruebas físicas y escala con datos reales del equipo; versión de la ficha para los demás equipos si se quiere.
+
+## Transmisiones (oct 2026)
+- Botón Copiar de la llave con respaldo para celulares; "N visitas" en lugar del contador falso de "viendo ahora".
+- Miniaturas en la lista En vivo, botón Compartir (menú del celular) y Copiar enlace, pantalla de espera que se actualiza sola, recuadro "Antes de empezar" y textos en "tú".
+- Pendiente: "Próximas transmisiones" desde el calendario, indicador de que la señal ya llega, título automático desde el calendario, aviso "Ver el partido completo" al terminar.
+
+## Diseño (oct 2026)
+- Login con logo grande, franjas del club y lema "Grandes de corazón" (fuente Avant Garde Bold de la guía de marca Nido USA).
+- Inicio con tarjeta "Siguiente", "Último partido" y highlights más grandes; menú del celular con 4 accesos y "Más"; color de acento por equipo (U9 verde, U11 azul claro, U12 rojo, U14 naranja); aros con número en las fotos de jugadores.
+- Reportes con barras de avance (recibos) y semáforo de asistencia.
+- Pendiente: marcador manual del partido (dos números, solo cuerpo técnico) para mostrarlo en "Último partido" — pospuesto por ahora.
+
+## Ideas / pendientes grandes
+- **Álbum de estampas** (fin de temporada): álbum imprimible por equipo y hojas de estampas con las fichas técnicas, cada niño recibe la misma cantidad de copias para regalar a sus compañeros (con una pregunta para conversar). Sin compartir por internet; posible QR dentro de la app en una segunda etapa. Sacar primero la ficha técnica y simular una página antes de construirlo.
+- **Manuales y presentación**: actualizar el manual de entrenadores, el de familias y la presentación para padres (fotos, recibos, evaluación U14, ficha técnica, nuevo diseño); completar el contacto del club en la presentación.
+- **Respaldo de fotos en la Buffalo** (rclone, solo copiar, cada semana o menos de 60 días): falta saber si hay una computadora siempre encendida.
+- **Página web del club** (proyecto aparte, con la sección de AguiVision y highlights) y después mover la app a un subdominio (`app.`).
+- Enviar el recibo por correo (ver "Recibos").

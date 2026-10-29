@@ -62,7 +62,7 @@ export default function UploadForm({ teamSlug }: { teamSlug: string }) {
     <form onSubmit={handleSubmit}>
       <div className="border-2 border-dashed border-borderMuted rounded-2xl p-10 flex flex-col items-center gap-3 bg-sidebar mb-5">
         <div className="w-14 h-14 rounded-full bg-panel border border-borderMuted flex items-center justify-center">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F0D875" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#F9E547" strokeWidth={2}>
             <path d="M12 16V4M7 9l5-5 5 5M4 20h16" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>

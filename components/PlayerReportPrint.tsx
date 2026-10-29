@@ -20,7 +20,7 @@ function fecha(iso: string) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-[#0A1830] text-white px-3 py-1.5 text-[11px] font-bold tracking-[0.18em] uppercase mb-2">
+    <div className="bg-[#003C71] text-white px-3 py-1.5 text-[11px] font-bold tracking-[0.18em] uppercase mb-2">
       {children}
     </div>
   );
@@ -76,7 +76,7 @@ export default function PlayerReportPrint({
     equipo: teamAverages[m.id] ?? 0,
   }));
   const lineMetrics = filasFisicas.filter((m) => historial[m.id].length >= 2);
-  const th = "text-left text-[10px] font-bold uppercase tracking-wide text-[#0A1830] border-b-2 border-[#B8963A] px-2 py-1.5";
+  const th = "text-left text-[10px] font-bold uppercase tracking-wide text-[#003C71] border-b-2 border-[#B8963A] px-2 py-1.5";
   const td = "px-2 py-1.5 border-b border-[#d9d2be] text-[12px]";
 
   return (
@@ -86,7 +86,7 @@ export default function PlayerReportPrint({
         <div className="flex items-center gap-4">
           <img src="/logo.png" alt="Nido Austin" className="w-[72px] h-[72px] object-contain" />
           <div>
-            <div className="font-display text-[26px] font-bold tracking-[0.12em] text-[#0A1830] leading-none">
+            <div className="font-display text-[26px] font-bold tracking-[0.12em] text-[#003C71] leading-none">
               NIDO AUSTIN
             </div>
             <div className="text-[11px] tracking-[0.2em] uppercase text-[#6b6450] mt-1.5">
@@ -95,7 +95,7 @@ export default function PlayerReportPrint({
           </div>
         </div>
         <div className="text-right text-[11px] text-[#6b6450]">
-          <div className="font-bold text-[#0A1830]">{teamName}</div>
+          <div className="font-bold text-[#003C71]">{teamName}</div>
           <div>Emitido el {hoy}</div>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function PlayerReportPrint({
           {photoUrl ? (
             <img src={photoUrl} alt={playerName} className="w-full h-full object-cover" />
           ) : (
-            <span className="font-display text-lg font-bold text-[#0A1830]">
+            <span className="font-display text-lg font-bold text-[#003C71]">
               {playerName
                 .split(" ")
                 .map((p) => p[0])
@@ -118,7 +118,7 @@ export default function PlayerReportPrint({
           )}
         </div>
         <div className="flex-grow">
-          <div className="font-display text-[22px] font-bold text-[#0A1830] leading-tight">{playerName}</div>
+          <div className="font-display text-[22px] font-bold text-[#003C71] leading-tight">{playerName}</div>
           <div className="text-[12px] text-[#6b6450] mt-0.5">
             {teamName}
             {jerseyNumber != null && ` · Número ${jerseyNumber}`}
@@ -187,7 +187,7 @@ export default function PlayerReportPrint({
                             <span
                               key={i}
                               className={`inline-block h-[7px] w-[22px] ${
-                                i <= n ? "bg-[#0A1830]" : "bg-[#d9d2be]"
+                                i <= n ? "bg-[#003C71]" : "bg-[#d9d2be]"
                               }`}
                             />
                           ))}
@@ -247,7 +247,7 @@ export default function PlayerReportPrint({
           </table>
           {compareData.length > 0 && (
             <div className="mt-3 break-inside-avoid">
-              <div className="text-[10px] font-bold uppercase tracking-wide text-[#0A1830] mb-1">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[#003C71] mb-1">
                 Jugador vs. promedio del equipo
               </div>
               <PrintCompareBar data={compareData} />
@@ -255,7 +255,7 @@ export default function PlayerReportPrint({
           )}
           {lineMetrics.length > 0 && (
             <div className="mt-3">
-              <div className="text-[10px] font-bold uppercase tracking-wide text-[#0A1830] mb-1">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[#003C71] mb-1">
                 Progreso en el tiempo
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2">
