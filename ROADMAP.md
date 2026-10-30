@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 27 de octubre de 2026.
+Última actualización: 30 de octubre de 2026.
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -23,6 +23,9 @@
 - Logo nuevo de Nido Austin, resaltado en color crema y rediseño de octubre 2026 (ver "Diseño").
 - Mejoras de transmisiones en vivo (ver "Transmisiones").
 - Ficha técnica del jugador estilo tarjeta, imprimible (ver "Evaluaciones").
+- Colores y fuentes oficiales de la guía de marca Club América Nido Águila USA (azul #003C71, amarillo #F9E547, rojo #E03C31 con moderación; títulos Avant Garde Bold, texto Montserrat). Ver "Diseño".
+- Calendario (30 oct 2026): torneos con varios juegos adentro (rival, día, hora; se agregan también al editar) y eventos que se repiten (días de la semana hasta una fecha; se borra solo uno o toda la serie). SQL: `supabase/calendario-torneos-repeticion.sql`.
+- Videos en la galería de fotos (30 oct 2026): hasta 5 por vez de 600 MB, se pueden marcar como highlight (se envían a Mux, máximo 5 minutos). SQL: `supabase/fotos-4-videos.sql`.
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
@@ -129,6 +132,7 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Pendiente: "Próximas transmisiones" desde el calendario, indicador de que la señal ya llega, título automático desde el calendario, aviso "Ver el partido completo" al terminar.
 
 ## Diseño (oct 2026)
+- Ficha técnica estilo FIFA en colores oficiales, con efecto holográfico (se inclina y brilla con el dedo/mouse, la inclinación del teléfono o el scroll; archivo `components/PlayerCard.tsx`).
 - Login con logo grande, franjas del club y lema "Grandes de corazón" (fuente Avant Garde Bold de la guía de marca Nido USA).
 - Inicio con tarjeta "Siguiente", "Último partido" y highlights más grandes; menú del celular con 4 accesos y "Más"; color de acento por equipo (U9 verde, U11 azul claro, U12 rojo, U14 naranja); aros con número en las fotos de jugadores.
 - Reportes con barras de avance (recibos) y semáforo de asistencia.
@@ -140,3 +144,12 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - **Respaldo de fotos en la Buffalo** (rclone, solo copiar, cada semana o menos de 60 días): falta saber si hay una computadora siempre encendida.
 - **Página web del club** (proyecto aparte, con la sección de AguiVision y highlights) y después mover la app a un subdominio (`app.`).
 - Enviar el recibo por correo (ver "Recibos").
+
+## Nota de traspaso: álbum de estampas (para la próxima sesión)
+Decidido con Mario (todo en español, explicaciones cortas, primero simular antes de construir):
+- Se imprime al final de la temporada: un álbum por equipo (U9, U11, U12, U14) y hojas de estampas. Las estampas son las fichas técnicas de los jugadores (`components/PlayerCard.tsx`, datos de `lib/ficha-shared.ts` y `lib/data-ficha.ts`).
+- Dinámica: cada niño platica con cada compañero para conseguir su estampa; cada niño recibe la misma cantidad de copias para regalar. Cada estampa lleva una pregunta para conversar. No se comparten por internet; un QR dentro de la app podría ser una segunda etapa.
+- Empezar por simular una página del álbum y una hoja de estampas (como se hizo con la ficha) y mostrársela a Mario antes de tocar el código.
+- Para imprimir: la ficha ya es un SVG que se ve igual impresa (`.ficha-card`, ancho de 4 pulgadas en `app/globals.css`). Ojo: el holograma es solo de pantalla; al imprimir sale con los colores pero sin movimiento.
+- Preguntas abiertas: tamaño de la estampa (¿varias por hoja carta?), número de copias por niño, quién imprime, qué pregunta lleva cada una, si el álbum incluye a los entrenadores.
+- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 41.
