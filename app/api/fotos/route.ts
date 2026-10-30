@@ -5,7 +5,10 @@ import { isR2Configured, r2UploadUrl, r2Delete } from "@/lib/r2";
 import { clubParts } from "@/lib/tz";
 
 const MAX_FILES = 60;
+const MAX_VIDEOS = 5; // por vez
 const MAX_BYTES = 15 * 1024 * 1024; // las fotos se reducen en el teléfono antes de subir
+const MAX_VIDEO_BYTES = 600 * 1024 * 1024; // los videos se suben tal cual salen del teléfono
+const VIDEO_EXT = ["mp4", "mov", "m4v", "webm"];
 const MAX_THUMB_BYTES = 1 * 1024 * 1024;
 
 const slug = (s: string) =>
@@ -41,7 +44,7 @@ async function context(teamSlug: unknown) {
 }
 
 // POST /api/fotos
-// body: { teamSlug, matchId?, album, files: [{ name, size, thumbSize }] }
+// body: { teamSlug, matchId?, album, files: [{ name, size, thumbSize, kind?: "photo" | "video", duration? }] }
 // Crea el registro de cada foto y devuelve las URLs firmadas para que el
 // navegador suba la foto y su miniatura DIRECTO a Cloudflare R2.
 export async function POST(req: Request) {
@@ -50,17 +53,26 @@ export async function POST(req: Request) {
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   const { supabase, user, team } = ctx;
 
-  const files: { name: string; size: number; thumbSize: number }[] = Array.isArray(body.files) ? body.files : [];
+  const files: { name: string; size: number; thumbSize: number; kind?: string; duration?: number }[] = Array.isArray(body.files)
+    ? body.files
+    : [];
   if (files.length === 0 || files.length > MAX_FILES) {
-    return NextResponse.json({ error: `Elegí entre 1 y ${MAX_FILES} fotos por vez` }, { status: 400 });
+    return NextResponse.json({ error: `Elegí entre 1 y ${MAX_FILES} archivos por vez` }, { status: 400 });
+  }
+  if (files.filter((f) => f?.kind === "video").length > MAX_VIDEOS) {
+    return NextResponse.json({ error: `Máximo ${MAX_VIDEOS} videos por vez` }, { status: 400 });
   }
   for (const f of files) {
+    const limit = f?.kind === "video" ? MAX_VIDEO_BYTES : MAX_BYTES;
     if (
       typeof f?.name !== "string" ||
-      !Number.isFinite(f.size) || f.size <= 0 || f.size > MAX_BYTES ||
+      !Number.isFinite(f.size) || f.size <= 0 || f.size > limit ||
       !Number.isFinite(f.thumbSize) || f.thumbSize <= 0 || f.thumbSize > MAX_THUMB_BYTES
     ) {
-      return NextResponse.json({ error: "Alguna foto es demasiado grande o no es válida" }, { status: 400 });
+      return NextResponse.json(
+        { error: f?.kind === "video" ? "Algún video pesa más de 600 MB o no es válido" : "Alguna foto es demasiado grande o no es válida" },
+        { status: 400 }
+      );
     }
   }
 
@@ -81,12 +93,26 @@ export async function POST(req: Request) {
   }
   if (!album) return NextResponse.json({ error: "Falta el nombre del álbum" }, { status: 400 });
 
+  const hasVideo = files.some((f) => f.kind === "video");
   const folder = `${team.slug}/${albumDate}_${slug(album)}`;
   const rows = files.map((f) => {
     const id = randomUUID();
-    const base = f.name.replace(/\.[^.]+$/, "").replace(/[^\w\- ]+/g, "_").slice(0, 60) || "foto";
-    const fileName = `${base}.jpg`;
+    const isVideo = f.kind === "video";
+    const base = f.name.replace(/\.[^.]+$/, "").replace(/[^\w\- ]+/g, "_").slice(0, 60) || (isVideo ? "video" : "foto");
+    const rawExt = (f.name.match(/\.([A-Za-z0-9]+)$/)?.[1] ?? "").toLowerCase();
+    const ext = isVideo ? (VIDEO_EXT.includes(rawExt) ? rawExt : "mp4") : "jpg";
+    const fileName = `${base}.${ext}`;
     return {
+      // Las columnas nuevas solo se mandan para videos (así las fotos siguen igual aunque falte el SQL).
+      ...(hasVideo
+        ? isVideo
+          ? {
+            kind: "video",
+            content_type: ext === "mov" ? "video/quicktime" : ext === "webm" ? "video/webm" : "video/mp4",
+            duration_seconds: Number.isFinite(f.duration) && (f.duration as number) > 0 ? Math.round(f.duration as number) : null,
+          }
+          : { kind: "photo", content_type: null, duration_seconds: null }
+        : {}),
       id,
       team_id: team.id,
       match_id: matchId,
@@ -102,13 +128,17 @@ export async function POST(req: Request) {
 
   const { error } = await supabase.from("photos").insert(rows);
   if (error) {
-    return NextResponse.json({ error: "No tenés permiso para subir fotos a este equipo" }, { status: 403 });
+    const missing = /kind|duration_seconds|content_type/.test(error.message ?? "");
+    return NextResponse.json(
+      { error: missing ? "Falta correr el SQL de videos en Supabase (fotos-4-videos.sql)." : "No tenés permiso para subir fotos a este equipo" },
+      { status: missing ? 500 : 403 }
+    );
   }
 
   return NextResponse.json({
     items: rows.map((r) => ({
       id: r.id,
-      uploadUrl: r2UploadUrl(r.r2_key),
+      uploadUrl: r2UploadUrl(r.r2_key, (r as any).kind === "video" ? 7200 : 900),
       thumbUploadUrl: r2UploadUrl(r.thumb_key),
     })),
   });

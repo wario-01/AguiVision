@@ -240,7 +240,7 @@ export async function PATCH(req: Request) {
 
   const { data: hl } = await supabase
     .from("highlights")
-    .select("id, start_seconds, end_seconds, clip_asset_id, matches(team_id, video_asset_id, video_status)")
+    .select("*, matches(team_id, video_asset_id, video_status)")
     .eq("id", body.highlightId)
     .maybeSingle();
   const match = (hl as any)?.matches as { team_id: string; video_asset_id: string | null; video_status: string } | undefined;
@@ -285,6 +285,12 @@ export async function PATCH(req: Request) {
   // Si cambian los tiempos, se corta un clip nuevo (primero el nuevo, así si
   // falla no se pierde el que ya existía).
   const timesChanged = start !== hl.start_seconds || end !== hl.end_seconds;
+  if (timesChanged && (hl as any).source_photo_id) {
+    return NextResponse.json(
+      { error: "Este highlight viene de un video de la galería: sus tiempos no se pueden cambiar (la etiqueta, la nota y el jugador sí)." },
+      { status: 400 }
+    );
+  }
   let oldAssetId: string | null = null;
   if (timesChanged) {
     if (!isMuxConfigured || !mux || match.video_status !== "ready" || !match.video_asset_id) {

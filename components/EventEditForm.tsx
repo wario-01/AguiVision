@@ -19,6 +19,7 @@ type Initial = {
   league: string | null;
   location: string | null;
   start_at: string;
+  end_at?: string | null;
   notes: string | null;
 };
 
@@ -35,6 +36,10 @@ export default function EventEditForm({ teamSlug, initial }: { teamSlug: string;
   const [date, setDate] = useState(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
   const [time, setTime] = useState(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
   const [notes, setNotes] = useState(initial.notes ?? "");
+  const e0 = initial.end_at ? new Date(initial.end_at) : null;
+  const [endDate, setEndDate] = useState(
+    e0 ? `${e0.getFullYear()}-${pad(e0.getMonth() + 1)}-${pad(e0.getDate())}` : ""
+  );
   const [logo, setLogo] = useState<File | null>(null);
   const [notify, setNotify] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -65,6 +70,7 @@ export default function EventEditForm({ teamSlug, initial }: { teamSlug: string;
       formData.append("location", location);
       formData.append("startAt", new Date(`${date}T${time}`).toISOString());
       formData.append("notes", notes);
+      if (type === "tournament" && endDate) formData.append("endAt", new Date(`${endDate}T12:00`).toISOString());
       if (logo) formData.append("opponentLogo", logo);
       if (notify) formData.append("notify", "1");
 
@@ -130,8 +136,17 @@ export default function EventEditForm({ teamSlug, initial }: { teamSlug: string;
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={input} />
         </div>
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Hora</label>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={input} />
+          {type === "tournament" ? (
+            <>
+              <label className="block text-xs font-bold text-muted mb-1.5">Último día (opcional)</label>
+              <input type="date" value={endDate} min={date || undefined} onChange={(e) => setEndDate(e.target.value)} className={input} />
+            </>
+          ) : (
+            <>
+              <label className="block text-xs font-bold text-muted mb-1.5">Hora</label>
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={input} />
+            </>
+          )}
         </div>
       </div>
 

@@ -15,15 +15,52 @@ const SHIELD =
 export default function PlayerCard({ uid, ovr, pos, team, name, sub, photoUrl, stats }: { uid: string; ovr: number | null; pos: string; team: string; name: string; sub: string; photoUrl?: string | null; stats: FichaStat[]; }) {
   const ref = useRef<SVGSVGElement>(null);
   const [p, setP] = useState<{ x: number; y: number } | null>(null);
-  const [still, setStill] = useState(false);
-  useEffect(() => {
-    setStill(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  }, []);
-  const move = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (still) return;
+  const touching = useRef(false);
+  const gotOrientation = useRef(false);
+  const toXY = (px: number, py: number) => {
     const r = ref.current?.getBoundingClientRect();
     if (!r || !r.width) return;
-    setP({ x: ((e.clientX - r.left) / r.width) * 260, y: ((e.clientY - r.top) / r.height) * 520 });
+    setP({ x: ((px - r.left) / r.width) * 260, y: ((py - r.top) / r.height) * 520 });
+  };
+  const move = (e: React.PointerEvent<SVGSVGElement>) => {
+    touching.current = true;
+    toXY(e.clientX, e.clientY);
+  };
+  const leave = () => {
+    touching.current = false;
+    setP(null);
+  };
+
+  // En el celular no hay "mouse": el brillo se mueve con la inclinación del teléfono
+  // y, si no la hay, con el scroll de la página.
+  useEffect(() => {
+    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+    const onOrient = (e: DeviceOrientationEvent) => {
+      if (touching.current || e.gamma == null || e.beta == null) return;
+      gotOrientation.current = true;
+      setP({ x: 130 + (clamp(e.gamma, -25, 25) / 25) * 130, y: 260 + (clamp(e.beta - 45, -25, 25) / 25) * 260 });
+    };
+    const onScroll = () => {
+      if (touching.current || gotOrientation.current) return;
+      const r = ref.current?.getBoundingClientRect();
+      if (!r) return;
+      const t = clamp((r.top + r.height / 2) / window.innerHeight, 0, 1); // 0 arriba, 1 abajo
+      setP({ x: 40 + t * 180, y: 60 + t * 400 });
+    };
+    window.addEventListener("deviceorientation", onOrient);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true }); // el contenido de la app hace scroll dentro de su propio contenedor
+    return () => {
+      window.removeEventListener("deviceorientation", onOrient);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, []);
+
+  // iPhone: el permiso de movimiento solo se puede pedir al tocar la tarjeta.
+  const askMotion = () => {
+    const D: any = typeof window !== "undefined" ? (window as any).DeviceOrientationEvent : null;
+    if (D && typeof D.requestPermission === "function") D.requestPermission().catch(() => {});
   };
   const dx = p ? p.x - 130 : 0;
   const dy = p ? p.y - 260 : 0;
@@ -38,8 +75,10 @@ export default function PlayerCard({ uid, ovr, pos, team, name, sub, photoUrl, s
       viewBox="0 0 260 520"
       width="100%"
       onPointerMove={move}
-      onPointerDown={move}
-      onPointerLeave={() => setP(null)}
+      onPointerDown={(e) => { askMotion(); move(e); }}
+      onPointerLeave={leave}
+      onPointerUp={(e) => { if (e.pointerType !== "mouse") leave(); }}
+      onPointerCancel={leave}
       style={{
         display: "block",
         fontFamily: "'Avant Garde', 'Century Gothic', Arial, sans-serif",
@@ -59,15 +98,14 @@ export default function PlayerCard({ uid, ovr, pos, team, name, sub, photoUrl, s
           <stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset=".5" stopColor="#fff" stopOpacity=".38" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
         <linearGradient id={`ho-${uid}`} gradientUnits="userSpaceOnUse" x1={0 - dx * 1.2} y1={40 - dy * 0.6} x2={260 - dx * 1.2} y2={300 - dy * 0.6}>
-          <stop offset="0" stopColor="#7FE9FF" /><stop offset=".22" stopColor="#FF9AE0" /><stop offset=".45" stopColor="#FFF6A0" />
-          <stop offset=".68" stopColor="#8DF5C5" /><stop offset=".86" stopColor="#9DB7FF" /><stop offset="1" stopColor="#FF9AE0" />
+          <stop offset="0" stopColor="#5FE3FF" stopOpacity=".5" /><stop offset=".22" stopColor="#FF8AD8" stopOpacity=".5" /><stop offset=".45" stopColor="#FFF38A" stopOpacity=".45" />
+          <stop offset=".68" stopColor="#7DF2B8" stopOpacity=".5" /><stop offset=".86" stopColor="#8FAEFF" stopOpacity=".5" /><stop offset="1" stopColor="#FF8AD8" stopOpacity=".5" />
         </linearGradient>
-        <linearGradient id={`sw-${uid}`} gradientUnits="userSpaceOnUse" x1="-120" y1="0" x2="-20" y2="100">
-          <stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset=".5" stopColor="#fff" stopOpacity=".75" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
-          {!p && !still && <animateTransform attributeName="gradientTransform" type="translate" values="0 0; 400 0; 400 0" keyTimes="0;.45;1" dur="5s" repeatCount="indefinite" />}
+        <linearGradient id={`sw-${uid}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset=".5" stopColor="#fff" stopOpacity=".6" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
         <radialGradient id={`sp-${uid}`} gradientUnits="userSpaceOnUse" cx={p ? p.x : 130} cy={p ? p.y : 200} r="120">
-          <stop offset="0" stopColor="#fff" stopOpacity=".9" /><stop offset=".5" stopColor="#fff" stopOpacity=".25" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0" stopColor="#fff" stopOpacity=".55" /><stop offset=".5" stopColor="#fff" stopOpacity=".18" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
         <clipPath id={`cl-${uid}`}><path d={SHIELD} /></clipPath>
         <clipPath id={`ph-${uid}`}><path d={PHOTO} /></clipPath>
@@ -84,13 +122,13 @@ export default function PlayerCard({ uid, ovr, pos, team, name, sub, photoUrl, s
       </g>
 
       <g clipPath={`url(#cl-${uid})`} style={{ pointerEvents: "none" }}>
-        <rect x="0" y="0" width="260" height="330" fill={`url(#ho-${uid})`} opacity=".4" style={{ mixBlendMode: "overlay" }} />
-        <rect x="0" y="330" width="260" height="190" fill={`url(#ho-${uid})`} opacity=".1" style={{ mixBlendMode: "overlay" }} />
-        <g opacity=".5" style={{ mixBlendMode: "soft-light" }}>
+        <rect x="0" y="0" width="260" height="330" fill={`url(#ho-${uid})`} opacity=".8" />
+        <rect x="0" y="330" width="260" height="190" fill={`url(#ho-${uid})`} opacity=".22" />
+        <g opacity=".14">
           {[0, 1, 2, 3, 4, 5].map((i) => (<rect key={i} x={-40 + i * 60} y="-20" width="14" height="560" fill="#fff" transform="rotate(25 130 260)" />))}
         </g>
-        {!p && <rect x="-60" y="0" width="90" height="520" fill={`url(#sw-${uid})`} transform="skewX(-20)" opacity=".55" />}
-        {p && <rect x="0" y="0" width="260" height="520" fill={`url(#sp-${uid})`} opacity=".55" style={{ mixBlendMode: "soft-light" }} />}
+        {!p && <rect className="holo-sweep" x="0" y="0" width="80" height="520" fill={`url(#sw-${uid})`} />}
+        {p && <rect x="0" y="0" width="260" height="520" fill={`url(#sp-${uid})`} opacity=".9" />}
         {[[210,60,5],[48,236,4],[198,246,3],[96,320,3],[222,300,4]].map(([x,y,r],i)=>(<path key={i} d={`M${x} ${y-r*2} L${x+r*.5} ${y-r*.5} L${x+r*2} ${y} L${x+r*.5} ${y+r*.5} L${x} ${y+r*2} L${x-r*.5} ${y+r*.5} L${x-r*2} ${y} L${x-r*.5} ${y-r*.5}Z`} fill="#fff" opacity=".85" />))}
       </g>
       <path d={SHIELD} fill="none" stroke={BLUE} strokeWidth="12" clipPath={`url(#cl-${uid})`} />

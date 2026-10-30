@@ -537,7 +537,24 @@ export type CalendarEvent = {
   start_at: string;
   end_at: string | null;
   notes: string | null;
+  parent_event_id?: string | null; // juego que pertenece a un torneo
+  series_id?: string | null; // eventos creados juntos con "Se repite"
 };
+
+// Los juegos que pertenecen a cada torneo (por id del torneo). Si todavía no se
+// corrió el SQL del calendario (no existe la columna), devuelve vacío sin romper nada.
+export async function getTournamentGames(tournamentIds: string[]): Promise<CalendarEvent[]> {
+  if (!isSupabaseConfigured || tournamentIds.length === 0) return [];
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .in("parent_event_id", tournamentIds)
+    .order("start_at", { ascending: true });
+  if (error || !data) return [];
+  return data as CalendarEvent[];
+}
 
 // Todos los eventos del equipo dentro de un rango de fechas (para la
 // pantalla de Calendario, mes por mes).
@@ -571,8 +588,13 @@ export async function getUpcomingEvents(teamSlug: string, limit = 5): Promise<Ca
     .eq("team_id", team.id)
     .gte("start_at", new Date().toISOString())
     .order("start_at", { ascending: true })
-    .limit(limit);
+    .limit(limit + 6);
 
   if (error || !data) return [];
-  return data as CalendarEvent[];
+  const all = data as CalendarEvent[];
+  // Un torneo con juegos se muestra por sus juegos, no por el torneo.
+  const withGames = new Set(
+    (await getTournamentGames(all.filter((e) => e.type === "tournament").map((e) => e.id))).map((g) => g.parent_event_id)
+  );
+  return all.filter((e) => !(e.type === "tournament" && withGames.has(e.id))).slice(0, limit);
 }

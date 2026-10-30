@@ -50,7 +50,7 @@ export default async function SubirPage({
               Video del partido
             </Link>
             <Link href={`/${team.slug}/subir?tab=fotos`} className={tabClass(tab === "fotos")}>
-              Fotos
+              Fotos y videos
             </Link>
           </div>
         )}
@@ -69,7 +69,7 @@ export default async function SubirPage({
           <>
             <PhotoUploadForm teamSlug={team.slug} matches={matchOpts} />
             <div className="mt-8 text-xs text-muted">
-              Para ver y descargar las fotos:{" "}
+              Para ver y descargar las fotos y videos (y marcar un video como highlight):{" "}
               <Link href={`/${team.slug}/fotos`} className="font-bold text-gold hover:underline">
                 ir a la galería
               </Link>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
@@ -7,7 +8,10 @@ import { escapeHtml } from "@/lib/escapeHtml";
 
 // POST /api/events — crear
 // form-data: teamSlug, type, title?, opponent?, league?, location?, startAt,
-//            endAt?, notes?, opponentLogo? (archivo, opcional)
+//            endAt?, notes?, opponentLogo? (archivo, opcional),
+//            parentEventId? (este evento es un juego dentro de un torneo),
+//            repeatDates? (JSON: lista de fechas ISO — crea un evento por cada una,
+//            todos con la misma serie; para entrenamientos que se repiten)
 export async function POST(req: Request) {
   const formData = await req.formData();
   const teamSlug = formData.get("teamSlug");
@@ -83,27 +87,77 @@ export async function POST(req: Request) {
     }
   }
 
+  // Juego dentro de un torneo: el torneo tiene que ser de este mismo equipo.
+  let parentEventId: string | null = null;
+  const parentRaw = formData.get("parentEventId");
+  if (typeof parentRaw === "string" && parentRaw) {
+    const { data: parent } = await supabase
+      .from("events")
+      .select("id, type, team_id")
+      .eq("id", parentRaw)
+      .maybeSingle();
+    if (!parent || parent.team_id !== team.id || parent.type !== "tournament") {
+      return NextResponse.json({ error: "Torneo no encontrado en este equipo" }, { status: 404 });
+    }
+    if (typeRaw !== "game") {
+      return NextResponse.json({ error: "Dentro de un torneo solo se agregan juegos" }, { status: 400 });
+    }
+    parentEventId = parent.id;
+  }
+
+  // Eventos que se repiten (entrenamientos, etc.): una fecha ISO por cada día.
+  let startList: string[] = [startAt];
+  let seriesId: string | null = null;
+  const repeatRaw = formData.get("repeatDates");
+  if (typeof repeatRaw === "string" && repeatRaw) {
+    let dates: unknown;
+    try {
+      dates = JSON.parse(repeatRaw);
+    } catch {
+      return NextResponse.json({ error: "Las fechas de repetición no son válidas" }, { status: 400 });
+    }
+    if (!Array.isArray(dates) || dates.length < 1 || dates.length > 120 || dates.some((d) => typeof d !== "string" || isNaN(Date.parse(d)))) {
+      return NextResponse.json({ error: "Las fechas de repetición no son válidas (máximo 120)" }, { status: 400 });
+    }
+    if (typeRaw === "tournament" || typeRaw === "game") {
+      return NextResponse.json({ error: "Solo se pueden repetir entrenamientos y otros eventos" }, { status: 400 });
+    }
+    startList = (dates as string[]).sort();
+    seriesId = startList.length > 1 ? randomUUID() : null;
+  }
+
   // insert respeta RLS: solo entrenadores/asistentes de este equipo pueden crear
-  const { data: event, error } = await supabase
-    .from("events")
-    .insert({
-      team_id: team.id,
-      type: typeRaw,
-      title: txt("title", 120),
-      opponent: txt("opponent", 120),
-      opponent_logo_url: opponentLogoUrl,
-      league: txt("league", 160),
-      location: txt("location", 200),
-      start_at: startAt,
-      end_at: typeof endRaw === "string" && endRaw ? endRaw : null,
-      notes: txt("notes", 1000),
-    })
-    .select("id")
-    .single();
+  const rows = startList.map((start) => ({
+    team_id: team.id,
+    type: typeRaw,
+    title: txt("title", 120),
+    opponent: txt("opponent", 120),
+    opponent_logo_url: opponentLogoUrl,
+    league: txt("league", 160),
+    location: txt("location", 200),
+    start_at: start,
+    end_at: typeof endRaw === "string" && endRaw && startList.length === 1 ? endRaw : null,
+    notes: txt("notes", 1000),
+    ...(parentEventId ? { parent_event_id: parentEventId } : {}),
+    ...(seriesId ? { series_id: seriesId } : {}),
+  }));
+  const { data: inserted, error } = await supabase.from("events").insert(rows).select("id");
+  const event = inserted?.[0];
 
   if (error || !event) {
-    return NextResponse.json({ error: "No tenés permiso para agregar eventos a este equipo" }, { status: 403 });
+    const missingColumn = /parent_event_id|series_id/.test(error?.message ?? "");
+    return NextResponse.json(
+      {
+        error: missingColumn
+          ? "Falta correr el SQL nuevo del calendario en Supabase (calendario-torneos-repeticion.sql)."
+          : "No tenés permiso para agregar eventos a este equipo",
+      },
+      { status: missingColumn ? 500 : 403 }
+    );
   }
+
+  // Un juego dentro de un torneo no manda correo propio (el torneo ya avisó).
+  if (parentEventId) return NextResponse.json({ id: event.id });
 
   // Avisarle por correo a todo el equipo (menos a quien lo creó).
   const { data: recipients } = await supabase
@@ -123,7 +177,7 @@ export async function POST(req: Request) {
       type === "game"
         ? `partido vs ${txt("opponent", 120) || "?"}`
         : txt("title", 120) || "evento nuevo";
-    const when = new Date(startAt).toLocaleString("es-MX", {
+    const when = new Date(startList[0]).toLocaleString("es-MX", {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -131,12 +185,18 @@ export async function POST(req: Request) {
       minute: "2-digit",
       timeZone: "America/Chicago",
     });
+    const many = startList.length > 1;
+    const lastDay = new Date(startList[startList.length - 1]).toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "long",
+      timeZone: "America/Chicago",
+    });
     await sendEmail({
       to: emails,
       subject: `${team.name}: ${what}`,
       html: `
-        <p>Se agregó un evento nuevo a ${escapeHtml(team.name)}: <b>${escapeHtml(what)}</b>.</p>
-        <p>${escapeHtml(when)}</p>
+        <p>${many ? `Se agregaron ${startList.length} eventos a` : "Se agregó un evento nuevo a"} ${escapeHtml(team.name)}: <b>${escapeHtml(what)}</b>.</p>
+        <p>${many ? `Desde el ${escapeHtml(when)} hasta el ${escapeHtml(lastDay)}.` : escapeHtml(when)}</p>
         <p><a href="${appUrl}/${team.slug}/calendario">Ver el calendario en AguiVision</a></p>
       `,
     });
@@ -158,12 +218,20 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "No se pudo conectar con la base de datos" }, { status: 500 });
   }
 
-  const { data: deleted, error } = await supabase.from("events").delete().eq("id", body.eventId).select("id");
+  // Si es parte de una serie que se repite y piden borrar toda la serie.
+  let seriesId: string | null = null;
+  if (body.series === true) {
+    const { data: ev } = await supabase.from("events").select("series_id").eq("id", body.eventId).maybeSingle();
+    seriesId = (ev as any)?.series_id ?? null;
+  }
+  const { data: deleted, error } = seriesId
+    ? await supabase.from("events").delete().eq("series_id", seriesId).select("id")
+    : await supabase.from("events").delete().eq("id", body.eventId).select("id");
   if (error || !deleted || deleted.length === 0) {
     return NextResponse.json({ error: "No tenés permiso para borrar este evento" }, { status: 403 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deleted: deleted.length });
 }
 
 // PATCH /api/events — corregir un evento ya creado

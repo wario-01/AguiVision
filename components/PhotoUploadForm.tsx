@@ -3,7 +3,13 @@
 import { useState } from "react";
 
 type MatchOpt = { id: string; label: string };
-type Item = { name: string; state: "wait" | "up" | "ok" | "error"; msg?: string };
+type Item = { name: string; state: "wait" | "up" | "ok" | "error"; msg?: string; pct?: number };
+type Prepared = { full: Blob; thumb: Blob; name: string; kind: "photo" | "video"; duration?: number; type: string };
+
+const MAX_VIDEO_MB = 600;
+const MAX_VIDEOS = 5;
+
+const isVideoFile = (f: File) => f.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(f.name);
 
 const FULL_EDGE = 2560; // lado largo máximo de la foto subida
 const THUMB_EDGE = 480;
@@ -26,9 +32,76 @@ async function toJpeg(file: File, maxEdge: number, quality: number): Promise<Blo
   return blob;
 }
 
-async function put(url: string, blob: Blob) {
-  const res = await fetch(url, { method: "PUT", body: blob, headers: { "Content-Type": "image/jpeg" } });
+async function put(url: string, blob: Blob, type = "image/jpeg") {
+  const res = await fetch(url, { method: "PUT", body: blob, headers: { "Content-Type": type } });
   if (!res.ok) throw new Error("No se pudo subir (" + res.status + ")");
+}
+
+// Los videos pesan mucho: se suben con barra de avance.
+function putWithProgress(url: string, blob: Blob, type: string, onPct: (n: number) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", type);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onPct(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("No se pudo subir (" + xhr.status + ")")));
+    xhr.onerror = () => reject(new Error("Se cortó la conexión al subir el video"));
+    xhr.send(blob);
+  });
+}
+
+// Miniatura de un video (un cuadro) y su duración. Si el navegador no puede leer el video
+// (por ejemplo un .mov de iPhone en Chrome de escritorio) se usa una miniatura genérica.
+async function videoThumb(file: File): Promise<{ thumb: Blob; duration?: number }> {
+  const url = URL.createObjectURL(file);
+  try {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.src = url;
+    await new Promise<void>((res, rej) => {
+      video.onloadedmetadata = () => res();
+      video.onerror = () => rej(new Error("no se pudo leer"));
+      setTimeout(() => rej(new Error("tiempo agotado")), 8000);
+    });
+    const duration = Number.isFinite(video.duration) ? video.duration : undefined;
+    video.currentTime = Math.min(1, (duration ?? 2) / 2);
+    await new Promise<void>((res, rej) => {
+      video.onseeked = () => res();
+      video.onerror = () => rej(new Error("no se pudo leer"));
+      setTimeout(() => rej(new Error("tiempo agotado")), 8000);
+    });
+    const scale = Math.min(1, THUMB_EDGE / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const thumb: Blob | null = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
+    if (!thumb) throw new Error("sin miniatura");
+    return { thumb, duration };
+  } catch {
+    const canvas = document.createElement("canvas");
+    canvas.width = 480;
+    canvas.height = 270;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#0A2F5C";
+    ctx.fillRect(0, 0, 480, 270);
+    ctx.fillStyle = "#F9E547";
+    ctx.beginPath();
+    ctx.moveTo(210, 100);
+    ctx.lineTo(210, 170);
+    ctx.lineTo(275, 135);
+    ctx.closePath();
+    ctx.fill();
+    const thumb: Blob | null = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
+    if (!thumb) throw new Error("No se pudo preparar el video");
+    return { thumb };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: string; matches: MatchOpt[] }) {
@@ -47,24 +120,40 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (files.length === 0) return setMessage("Elegí al menos una foto.");
-    if (other && !album.trim()) return setMessage("Escribí el nombre del álbum (por ejemplo: Torneo de otoño).");
+    if (files.length === 0) return setMessage("Elige al menos una foto o video.");
+    if (files.filter(isVideoFile).length > MAX_VIDEOS) return setMessage(`Máximo ${MAX_VIDEOS} videos por vez.`);
+    const big = files.find((f) => isVideoFile(f) && f.size > MAX_VIDEO_MB * 1024 * 1024);
+    if (big) return setMessage(`"${big.name}" pesa más de ${MAX_VIDEO_MB} MB. Recórtalo o elige otro.`);
+    if (other && !album.trim()) return setMessage("Escribe el nombre del álbum (por ejemplo: Torneo de otoño).");
     setBusy(true);
     setMessage("");
     setItems(files.map((f) => ({ name: f.name, state: "wait" })));
 
     try {
       // 1) preparar todas las fotos (reducidas) y sus miniaturas
-      const prepared: { full: Blob; thumb: Blob; name: string }[] = [];
+      const prepared: Prepared[] = [];
       const okIdx: number[] = [];
       for (let i = 0; i < files.length; i++) {
         try {
-          const full = await toJpeg(files[i], FULL_EDGE, 0.9);
-          const thumb = await toJpeg(files[i], THUMB_EDGE, 0.8);
-          prepared.push({ full, thumb, name: files[i].name });
+          if (isVideoFile(files[i])) {
+            const { thumb, duration } = await videoThumb(files[i]);
+            const ext = (files[i].name.match(/\.([A-Za-z0-9]+)$/)?.[1] ?? "mp4").toLowerCase();
+            prepared.push({
+              full: files[i],
+              thumb,
+              name: files[i].name,
+              kind: "video",
+              duration,
+              type: ext === "mov" ? "video/quicktime" : ext === "webm" ? "video/webm" : "video/mp4",
+            });
+          } else {
+            const full = await toJpeg(files[i], FULL_EDGE, 0.9);
+            const thumb = await toJpeg(files[i], THUMB_EDGE, 0.8);
+            prepared.push({ full, thumb, name: files[i].name, kind: "photo", type: "image/jpeg" });
+          }
           okIdx.push(i);
         } catch {
-          setItem(i, { state: "error", msg: "No se pudo leer esta foto" });
+          setItem(i, { state: "error", msg: "No se pudo leer este archivo" });
         }
       }
       if (prepared.length === 0) throw new Error("Ninguna foto se pudo preparar.");
@@ -77,7 +166,7 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
           teamSlug,
           matchId: other ? undefined : matchId,
           album: other ? album.trim() : undefined,
-          files: prepared.map((p) => ({ name: p.name, size: p.full.size, thumbSize: p.thumb.size })),
+          files: prepared.map((p) => ({ name: p.name, size: p.full.size, thumbSize: p.thumb.size, kind: p.kind, duration: p.duration })),
         }),
       });
       const data = await res.json();
@@ -92,7 +181,11 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
           const idx = okIdx[k];
           setItem(idx, { state: "up" });
           try {
-            await put(data.items[k].uploadUrl, prepared[k].full);
+            if (prepared[k].kind === "video") {
+              await putWithProgress(data.items[k].uploadUrl, prepared[k].full, prepared[k].type, (pct) => setItem(idx, { pct }));
+            } else {
+              await put(data.items[k].uploadUrl, prepared[k].full);
+            }
             await put(data.items[k].thumbUploadUrl, prepared[k].thumb);
             setItem(idx, { state: "ok" });
           } catch (err: any) {
@@ -114,8 +207,8 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
       const okCount = prepared.length - failed.length;
       setMessage(
         failed.length === 0
-          ? `Listo: ${okCount} foto${okCount === 1 ? "" : "s"} en la galería.`
-          : `Se subieron ${okCount}; ${failed.length} fallaron — vuelve a elegirlas y súbelas otra vez.`
+          ? `Listo: ${okCount} archivo${okCount === 1 ? "" : "s"} en la galería.`
+          : `Se subieron ${okCount}; ${failed.length} fallaron — vuelve a elegirlos y súbelos otra vez.`
       );
       if (failed.length === 0) setFiles([]);
     } catch (err: any) {
@@ -130,15 +223,15 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
   return (
     <form onSubmit={handleSubmit}>
       <div className="border-2 border-dashed border-borderMuted rounded-2xl p-8 flex flex-col items-center gap-3 bg-sidebar mb-5">
-        <div className="text-sm font-bold text-center">Fotos del partido o evento</div>
+        <div className="text-sm font-bold text-center">Fotos y videos del partido o evento</div>
         <div className="text-xs text-muted text-center">
-          Hasta 60 por vez · se reducen en tu teléfono antes de subir · se borran solas a los 60 días, salvo las que el cuerpo técnico marque con “Guardar”
+          Hasta 60 por vez (máximo 5 videos de 600 MB cada uno) · las fotos se reducen en tu teléfono antes de subir · se borran solas a los 60 días, salvo las que el cuerpo técnico marque con “Guardar”
         </div>
         <label className="mt-1 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold cursor-pointer">
-          {files.length > 0 ? `${files.length} foto${files.length === 1 ? "" : "s"} elegida${files.length === 1 ? "" : "s"}` : "Elegir fotos"}
+          {files.length > 0 ? `${files.length} archivo${files.length === 1 ? "" : "s"} elegido${files.length === 1 ? "" : "s"}` : "Elegir fotos o videos"}
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             className="hidden"
             onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 60))}
@@ -178,6 +271,11 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
           <div className="text-xs text-muted mt-1.5">
             {done} de {items.length} — no cierres la página mientras sube
           </div>
+          {items.filter((i) => i.state === "up" && i.pct !== undefined).map((i, k) => (
+            <div key={k} className="text-xs text-muted mt-1 truncate">
+              {i.name}: {i.pct}%
+            </div>
+          ))}
         </div>
       )}
 
@@ -186,7 +284,7 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
         disabled={busy}
         className="w-full bg-gold text-bg rounded-xl py-3.5 text-sm font-extrabold disabled:opacity-60 mt-2"
       >
-        {busy ? "Subiendo..." : "Subir fotos"}
+        {busy ? "Subiendo..." : "Subir"}
       </button>
 
       {message && <div className="mt-3 text-sm text-muted">{message}</div>}

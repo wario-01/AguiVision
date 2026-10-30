@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import EventEditForm from "@/components/EventEditForm";
-import { getTeamBySlug } from "@/lib/data";
+import TournamentGames from "@/components/TournamentGames";
+import { getTeamBySlug, getTournamentGames } from "@/lib/data";
+import { clubParts, clubTime } from "@/lib/tz";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EditarEventoPage({ params }: { params: { teamSlug: string; eventId: string } }) {
@@ -14,6 +16,21 @@ export default async function EditarEventoPage({ params }: { params: { teamSlug:
   if (!supabase) notFound();
   const { data: event } = await supabase.from("events").select("*").eq("id", params.eventId).single();
   if (!event || event.team_id !== team.id) notFound();
+
+  const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const games =
+    event.type === "tournament"
+      ? (await getTournamentGames([event.id])).map((g) => {
+          const p = clubParts(g.start_at);
+          return {
+            id: g.id,
+            opponent: g.opponent,
+            location: g.location && g.location !== event.location ? g.location : null,
+            label: `${DIAS[p.dow]} ${p.day} ${MESES[p.month]} · ${clubTime(g.start_at)}`,
+          };
+        })
+      : [];
 
   return (
     <div className="flex h-screen w-full">
@@ -36,9 +53,20 @@ export default async function EditarEventoPage({ params }: { params: { teamSlug:
             league: event.league,
             location: event.location,
             start_at: event.start_at,
+            end_at: event.end_at,
             notes: event.notes,
           }}
         />
+        {event.type === "tournament" && (
+          <TournamentGames
+            teamSlug={team.slug}
+            tournamentId={event.id}
+            league={event.league}
+            location={event.location}
+            startDate={clubParts(event.start_at).ymd}
+            games={games}
+          />
+        )}
       </div>
     </div>
   );

@@ -12,7 +12,13 @@ export type GalleryPhoto = {
   fileName: string;
   keep: boolean;
   mine: boolean;
+  kind: "photo" | "video";
+  durationSeconds: number | null;
+  highlightId: string | null;
+  matchId: string | null;
 };
+
+const fmtDur = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
 
 function fmtDate(ymd: string) {
   const [y, m, d] = ymd.split("-").map(Number);
@@ -34,29 +40,43 @@ export default function PhotoGallery({
   teamSlug,
   photos,
   canManage,
+  matches = [],
+  players = [],
 }: {
   teamSlug: string;
   photos: GalleryPhoto[];
   canManage: boolean;
+  matches?: { id: string; label: string }[];
+  players?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selecting, setSelecting] = useState(false);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
-  const [viewer, setViewer] = useState<{ id: string; url: string; name: string; dl: string } | null>(null);
+  const [viewer, setViewer] = useState<{ id: string; url: string; name: string; dl: string; kind: "photo" | "video"; highlightId: string | null; matchId: string | null } | null>(null);
   const [onlyKept, setOnlyKept] = useState(false);
+  const [onlyVideos, setOnlyVideos] = useState(false);
+  // Marcar un video como highlight
+  const [hlOpen, setHlOpen] = useState(false);
+  const [hlMatch, setHlMatch] = useState("");
+  const [hlPlayer, setHlPlayer] = useState("");
+  const [hlLabel, setHlLabel] = useState("Video");
+  const [hlShared, setHlShared] = useState(true);
+  const [hlBusy, setHlBusy] = useState(false);
+  const [hlMsg, setHlMsg] = useState("");
 
   const albums = useMemo(() => {
     const map = new Map<string, { album: string; date: string; items: GalleryPhoto[] }>();
     for (const p of photos) {
       if (onlyKept && !p.keep) continue;
+      if (onlyVideos && p.kind !== "video") continue;
       const k = `${p.albumDate}|${p.album}`;
       if (!map.has(k)) map.set(k, { album: p.album, date: p.albumDate, items: [] });
       map.get(k)!.items.push(p);
     }
     return Array.from(map.values());
-  }, [photos, onlyKept]);
+  }, [photos, onlyKept, onlyVideos]);
 
   const byId = useMemo(() => new Map(photos.map((p) => [p.id, p])), [photos]);
 
@@ -96,7 +116,13 @@ export default function PhotoGallery({
     try {
       const [view] = await links([p.id], true);
       const [dl] = await links([p.id], false);
-      setViewer({ id: p.id, url: view.url, name: p.fileName, dl: dl.url });
+      setHlOpen(false);
+      setHlMsg("");
+      setHlMatch(p.matchId && matches.some((m) => m.id === p.matchId) ? p.matchId : matches[0]?.id ?? "");
+      setHlPlayer("");
+      setHlLabel("Video");
+      setHlShared(true);
+      setViewer({ id: p.id, url: view.url, name: p.fileName, dl: dl.url, kind: p.kind, highlightId: p.highlightId, matchId: p.matchId });
     } catch (e: any) {
       setMessage(e.message);
     }
@@ -112,8 +138,19 @@ export default function PhotoGallery({
         window.location.href = l.url;
         return;
       }
-      setBusy(`Preparando ${ids.length} fotos…`);
-      const ls = await links(ids, true);
+      const photoIds = ids.filter((id) => byId.get(id)?.kind !== "video");
+      const skipped = ids.length - photoIds.length;
+      if (photoIds.length === 0) {
+        setMessage("Los videos se descargan de uno en uno: ábrelo y toca Descargar.");
+        return;
+      }
+      if (photoIds.length === 1) {
+        const [l] = await links(photoIds, false);
+        window.location.href = l.url;
+        return;
+      }
+      setBusy(`Preparando ${photoIds.length} fotos…`);
+      const ls = await links(photoIds, true);
       const files: { name: string; data: Uint8Array }[] = [];
       const used = new Set<string>();
       for (let i = 0; i < ls.length; i++) {
@@ -126,7 +163,11 @@ export default function PhotoGallery({
         files.push({ name, data: new Uint8Array(await r.arrayBuffer()) });
       }
       saveBlob(makeZip(files), `fotos-${teamSlug}.zip`);
-      setMessage(`Listo: ${files.length} fotos en un zip.`);
+      setMessage(
+        skipped > 0
+          ? `Listo: ${files.length} fotos en un zip. Los ${skipped} video${skipped === 1 ? "" : "s"} se descargan de uno en uno.`
+          : `Listo: ${files.length} fotos en un zip.`
+      );
     } catch (e: any) {
       setMessage(e.message ?? "No se pudo descargar");
     } finally {
@@ -173,7 +214,7 @@ export default function PhotoGallery({
     selected.size > 0 && (canManage || Array.from(selected).every((id) => byId.get(id)?.mine));
 
   if (photos.length === 0) {
-    return <div className="text-sm text-muted">Todavía no hay fotos. Súbelas desde Subir → Fotos.</div>;
+    return <div className="text-sm text-muted">Todavía no hay fotos ni videos. Súbelos desde Subir → Fotos.</div>;
   }
 
   return (
@@ -193,6 +234,16 @@ export default function PhotoGallery({
         >
           ★ Solo guardadas
         </button>
+        {photos.some((p) => p.kind === "video") && (
+          <button
+            onClick={() => setOnlyVideos((v) => !v)}
+            className={`text-xs font-bold rounded-full px-3.5 py-2 border ${
+              onlyVideos ? "border-goldBorderDim text-goldText bg-goldBgDim" : "border-borderMuted text-muted hover:text-text"
+            }`}
+          >
+            ▶ Solo videos
+          </button>
+        )}
         {selected.size > 0 && (
           <>
             <span className="text-xs text-muted">{selected.size} elegida{selected.size === 1 ? "" : "s"}</span>
@@ -224,7 +275,7 @@ export default function PhotoGallery({
           <div key={g.date + g.album}>
             <div className="flex items-baseline gap-2 mb-3 flex-wrap">
               <span className="font-display text-base font-semibold">{g.album}</span>
-              <span className="text-xs text-muted">{fmtDate(g.date)} · {g.items.length} foto{g.items.length === 1 ? "" : "s"}</span>
+              <span className="text-xs text-muted">{fmtDate(g.date)} · {g.items.length} archivo{g.items.length === 1 ? "" : "s"}</span>
               <button onClick={() => toggleAlbum(g.items)} className="text-xs font-bold text-gold ml-auto">
                 {g.items.every((p) => selected.has(p.id)) ? "Quitar todas" : "Elegir todas"}
               </button>
@@ -242,6 +293,19 @@ export default function PhotoGallery({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.thumbUrl} alt="" loading="lazy" className="w-full h-full object-cover" />
+                    {p.kind === "video" && (
+                      <>
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="w-9 h-9 rounded-full bg-black/55 border border-white/70 flex items-center justify-center text-white text-sm pl-0.5">▶</span>
+                        </span>
+                        {p.durationSeconds ? (
+                          <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] font-bold px-1.5 rounded">{fmtDur(p.durationSeconds)}</span>
+                        ) : null}
+                        {p.highlightId && (
+                          <span className="absolute bottom-1 left-1 bg-gold text-bg text-[10px] font-extrabold px-1.5 rounded">Highlight</span>
+                        )}
+                      </>
+                    )}
                     {p.keep && (
                       <span className="absolute top-1 left-1 bg-black/60 text-goldText text-[11px] font-extrabold px-1.5 rounded">★</span>
                     )}
@@ -268,13 +332,94 @@ export default function PhotoGallery({
           <div className="flex items-center justify-between px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
             <span className="text-muted truncate">{viewer.name}</span>
             <div className="flex gap-2">
+              {canManage && viewer.kind === "video" && matches.length > 0 && !viewer.highlightId && (
+                <button onClick={() => setHlOpen((v) => !v)} className="text-xs font-extrabold rounded-full px-3.5 py-2 border border-goldBorderDim text-goldText">
+                  ★ Marcar como highlight
+                </button>
+              )}
+              {viewer.kind === "video" && viewer.highlightId && (
+                <span className="text-xs font-extrabold rounded-full px-3.5 py-2 bg-goldBgDim text-goldText border border-goldBorderDim">✓ Es highlight</span>
+              )}
               <a href={viewer.dl} className="text-xs font-extrabold rounded-full px-3.5 py-2 bg-gold text-bg">Descargar</a>
               <button onClick={() => setViewer(null)} className="text-xs font-bold rounded-full px-3.5 py-2 border border-borderMuted text-text">Cerrar</button>
             </div>
           </div>
+          {hlOpen && viewer.kind === "video" && (
+            <div className="mx-4 mb-2 bg-panel border border-border rounded-xl p-3 text-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="text-xs text-muted mb-2">
+                Aparecerá en Highlights, dentro del partido que elijas. Máximo 5 minutos.
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                <select value={hlMatch} onChange={(e) => setHlMatch(e.target.value)} className="bg-bg border border-border rounded-lg px-3 py-2 text-xs font-semibold">
+                  {matches.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+                <select value={hlPlayer} onChange={(e) => setHlPlayer(e.target.value)} className="bg-bg border border-border rounded-lg px-3 py-2 text-xs font-semibold">
+                  <option value="">Todo el equipo</option>
+                  {players.map((pl) => (
+                    <option key={pl.id} value={pl.id}>{pl.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={hlLabel}
+                  onChange={(e) => setHlLabel(e.target.value)}
+                  maxLength={80}
+                  placeholder="Etiqueta, ej: Gol"
+                  className="bg-bg border border-border rounded-lg px-3 py-2 text-xs font-semibold"
+                />
+              </div>
+              {hlPlayer && (
+                <label className="flex items-center gap-2 text-xs font-bold text-muted mb-2 cursor-pointer">
+                  <input type="checkbox" checked={hlShared} onChange={(e) => setHlShared(e.target.checked)} />
+                  Compartir también con todo el equipo
+                </label>
+              )}
+              <button
+                disabled={hlBusy}
+                onClick={async () => {
+                  setHlBusy(true);
+                  setHlMsg("");
+                  try {
+                    const res = await fetch("/api/fotos/highlight", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ teamSlug, photoId: viewer.id, matchId: hlMatch, playerId: hlPlayer || undefined, label: hlLabel, shared: hlShared }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error ?? "No se pudo crear el highlight");
+                    setViewer({ ...viewer, highlightId: data.highlightId });
+                    setHlOpen(false);
+                    setMessage("Listo: el video quedó como highlight. Tarda unos minutos en procesarse.");
+                    router.refresh();
+                  } catch (e: any) {
+                    setHlMsg(e.message ?? "Ocurrió un error");
+                  } finally {
+                    setHlBusy(false);
+                  }
+                }}
+                className="text-xs font-extrabold rounded-lg px-4 py-2 bg-gold text-bg disabled:opacity-60"
+              >
+                {hlBusy ? "Enviando…" : "Crear highlight"}
+              </button>
+              {hlMsg && <div className="text-xs text-red mt-2">{hlMsg}</div>}
+            </div>
+          )}
           <div className="flex-1 min-h-0 flex items-center justify-center p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={viewer.url} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+            {viewer.kind === "video" ? (
+              <video
+                src={viewer.url}
+                controls
+                playsInline
+                autoPlay
+                className="max-w-full max-h-full"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={viewer.url} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+            )}
           </div>
         </div>
       )}

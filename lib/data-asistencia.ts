@@ -5,7 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { AttRecord, AttStatus, monthOf } from "@/lib/asistencia";
-import type { CalendarEvent } from "@/lib/data";
+import { getTournamentGames, type CalendarEvent } from "@/lib/data";
 
 const PAGE = 1000; // Supabase devuelve máximo 1000 filas por consulta
 
@@ -117,7 +117,12 @@ export async function getPendingEvents(teamId: string): Promise<CalendarEvent[]>
     .gte("start_at", since.toISOString())
     .lte("start_at", now.toISOString())
     .order("start_at", { ascending: false });
-  const events = (data ?? []) as CalendarEvent[];
+  const all = (data ?? []) as CalendarEvent[];
+  // Un torneo con juegos no lleva asistencia propia: se toma en cada juego.
+  const withGames = new Set(
+    (await getTournamentGames(all.filter((e) => e.type === "tournament").map((e) => e.id))).map((g) => g.parent_event_id)
+  );
+  const events = all.filter((e) => !(e.type === "tournament" && withGames.has(e.id)));
   const done = await getEventsWithAttendance(events.map((e) => e.id));
   return events.filter((e) => !done.has(e.id));
 }

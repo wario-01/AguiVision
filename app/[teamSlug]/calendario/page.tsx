@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import NewEventToggle from "@/components/NewEventToggle";
 import EventDeleteButton from "@/components/EventDeleteButton";
-import { getTeamBySlug, getEvents, getMyTeams } from "@/lib/data";
+import { getTeamBySlug, getEvents, getMyTeams, getTournamentGames } from "@/lib/data";
 import { getEventsWithAttendance } from "@/lib/data-asistencia";
 import { clubParts, clubTime } from "@/lib/tz";
 
@@ -48,11 +48,22 @@ export default async function CalendarioPage({
   const nowParts = clubParts(new Date());
   const [y, m] = (searchParams.m ?? `${nowParts.year}-${nowParts.month}`).split("-").map(Number);
   const range = monthRange(y, m);
-  const events = (await getEvents(team.slug, range)).filter((ev) => {
+  const monthEvents = (await getEvents(team.slug, range)).filter((ev) => {
     const p = clubParts(ev.start_at);
     return p.year === y && p.month === m;
   });
-  const withAttendance = canEdit ? await getEventsWithAttendance(events.map((e) => e.id)) : new Set<string>();
+  // Los juegos de un torneo se muestran dentro del torneo (aunque caigan en otro mes).
+  const tournamentGames = await getTournamentGames(monthEvents.filter((e) => e.type === "tournament").map((e) => e.id));
+  const gamesByTournament = new Map<string, typeof tournamentGames>();
+  for (const g of tournamentGames) {
+    const k = g.parent_event_id as string;
+    if (!gamesByTournament.has(k)) gamesByTournament.set(k, []);
+    gamesByTournament.get(k)!.push(g);
+  }
+  const events = monthEvents.filter((ev) => !ev.parent_event_id);
+  const withAttendance = canEdit
+    ? await getEventsWithAttendance([...events, ...tournamentGames].map((e) => e.id))
+    : new Set<string>();
 
   const prevM = m === 0 ? 11 : m - 1;
   const prevY = m === 0 ? y - 1 : y;
@@ -118,7 +129,90 @@ export default async function CalendarioPage({
                   {DIAS[d.getDay()]} {d.getDate()} de {MESES[m].toLowerCase()}
                 </div>
                 <div className="flex flex-col gap-2">
-                  {byDay.get(day)!.map((ev) => (
+                  {byDay.get(day)!.map((ev) => {
+                    if (ev.type === "tournament") {
+                      const games = gamesByTournament.get(ev.id) ?? [];
+                      const sp = clubParts(ev.start_at);
+                      const ep = ev.end_at ? clubParts(ev.end_at) : null;
+                      const range =
+                        ep && ep.ymd !== sp.ymd
+                          ? `${sp.day} ${MESES[sp.month].slice(0, 3)} – ${ep.day} ${MESES[ep.month].slice(0, 3)}`
+                          : null;
+                      return (
+                        <div key={ev.id} className="bg-panel border border-border rounded-xl overflow-hidden">
+                          <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="flex-grow min-w-0">
+                              <div className="text-[10px] font-extrabold uppercase tracking-widest text-gold">Torneo</div>
+                              <div className="text-sm font-bold truncate">{ev.title || "Torneo"}</div>
+                              <div className="text-xs text-muted truncate">
+                                {range ? `${range} · ` : ""}
+                                {games.length} juego{games.length === 1 ? "" : "s"}
+                                {ev.location ? ` · ${ev.location}` : ""}
+                                {ev.league ? ` · ${ev.league}` : ""}
+                              </div>
+                            </div>
+                            {canEdit && games.length === 0 && (
+                              <Link
+                                href={`/${team.slug}/asistencia/evento/${ev.id}`}
+                                className="text-xs font-bold text-gold hover:underline shrink-0"
+                              >
+                                {withAttendance.has(ev.id) ? "Asistencia ✓" : "Asistencia"}
+                              </Link>
+                            )}
+                            {canEdit && (
+                              <Link
+                                href={`/${team.slug}/calendario/evento/${ev.id}/editar`}
+                                className="text-xs font-bold text-gold hover:underline shrink-0"
+                              >
+                                Editar / juegos
+                              </Link>
+                            )}
+                            {canEdit && <EventDeleteButton eventId={ev.id} hasGames={games.length > 0} />}
+                          </div>
+                          {games.length > 0 && (
+                            <div className="border-t border-border divide-y divide-border">
+                              {games.map((g) => {
+                                const gp = clubParts(g.start_at);
+                                return (
+                                  <div key={g.id} className="flex items-center gap-3 px-4 py-2.5 bg-panel2/40">
+                                    <div className="w-16 shrink-0">
+                                      <div className="text-[11px] font-bold text-gold uppercase">
+                                        {DIAS[gp.dow]} {gp.day}
+                                      </div>
+                                      <div className="text-xs text-muted">{clubTime(g.start_at)}</div>
+                                    </div>
+                                    <div className="flex-grow min-w-0 text-sm font-bold truncate">
+                                      vs {g.opponent ?? "?"}
+                                      {g.location && g.location !== ev.location ? (
+                                        <span className="text-xs text-muted font-semibold"> · {g.location}</span>
+                                      ) : null}
+                                    </div>
+                                    {canEdit && (
+                                      <Link
+                                        href={`/${team.slug}/asistencia/evento/${g.id}`}
+                                        className="text-xs font-bold text-gold hover:underline shrink-0"
+                                      >
+                                        {withAttendance.has(g.id) ? "Asistencia ✓" : "Asistencia"}
+                                      </Link>
+                                    )}
+                                    {canEdit && (
+                                      <Link
+                                        href={`/${team.slug}/calendario/evento/${g.id}/editar`}
+                                        className="text-xs font-bold text-gold hover:underline shrink-0"
+                                      >
+                                        Editar
+                                      </Link>
+                                    )}
+                                    {canEdit && <EventDeleteButton eventId={g.id} />}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
                     <div
                       key={ev.id}
                       className="flex items-center gap-3 bg-panel border border-border rounded-xl px-4 py-3"
@@ -160,9 +254,10 @@ export default async function CalendarioPage({
                           Editar
                         </Link>
                       )}
-                      {canEdit && <EventDeleteButton eventId={ev.id} />}
+                      {canEdit && <EventDeleteButton eventId={ev.id} seriesId={ev.series_id} />}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );

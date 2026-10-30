@@ -76,8 +76,8 @@ function presign(method: "GET" | "PUT" | "DELETE", key: string, expires: number,
   });
 }
 
-/** URL para que el navegador SUBA un archivo (válida 15 min). */
-export const r2UploadUrl = (key: string) => presign("PUT", key, 900);
+/** URL para que el navegador SUBA un archivo (válida 15 min; los videos pesados piden más tiempo). */
+export const r2UploadUrl = (key: string, expires = 900) => presign("PUT", key, expires);
 
 /** URL para VER una foto (válida 1 hora). */
 export const r2ViewUrl = (key: string) => presign("GET", key, 3600);
