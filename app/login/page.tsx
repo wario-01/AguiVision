@@ -96,8 +96,14 @@ function LoginForm() {
             className="w-32 h-32 md:w-36 md:h-36 rounded-full object-contain mb-3 drop-shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
           />
           <div className="font-display text-4xl font-bold tracking-wider text-text">NIDO AUSTIN</div>
-          <div className="font-brand text-[13px] font-bold uppercase tracking-[0.2em] text-gold mt-1">
-            Grandes de corazón
+          {/* Lema del club: dos líneas, con el escudo en lugar de la O de "corazón". */}
+          <div className="mt-2 font-body font-extrabold uppercase text-gold text-center leading-[1.02]" aria-label="Grandes de corazón">
+            <div className="text-[22px] tracking-tight">Grandes</div>
+            <div className="text-[14px] tracking-tight flex items-center justify-center">
+              <span>de c</span>
+              <img src="/logo.png" alt="" aria-hidden="true" className="w-[15px] h-[15px] mx-px object-contain" />
+              <span>razón</span>
+            </div>
           </div>
         </div>
 

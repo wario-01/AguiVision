@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 
 // POST /api/invitations
 // body: { teamSlug, email, role }
@@ -31,6 +32,53 @@ export async function POST(req: Request) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
     return NextResponse.json({ error: "Tenés que iniciar sesión" }, { status: 401 });
+  }
+
+  // Colaborador (solo fotos): cualquier entrenador/asistente del club lo puede agregar a
+  // CUALQUIER equipo, aunque no sea su entrenador. Solo ve las fotos de ese equipo.
+  if (body.role === "collaborator" && isAdminConfigured) {
+    const { data: mine } = await supabase
+      .from("team_members")
+      .select("id")
+      .eq("profile_id", userData.user.id)
+      .in("role", ["coach", "assistant"])
+      .limit(1);
+    if (!mine || mine.length === 0) {
+      return NextResponse.json({ error: "No tenés permiso para invitar colaboradores" }, { status: 403 });
+    }
+    const admin = createAdminClient();
+    if (!admin) return NextResponse.json({ error: "Falta configurar el servidor" }, { status: 500 });
+    const { data: target } = await admin.from("teams").select("id, active").eq("slug", body.teamSlug).maybeSingle();
+    if (!target || target.active === false) {
+      return NextResponse.json({ error: "Equipo no encontrado" }, { status: 404 });
+    }
+    // Si ya tiene cuenta, queda agregado de inmediato; si no, se queda la invitación pendiente.
+    const { data: profile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+    if (profile) {
+      const { data: existing } = await admin
+        .from("team_members")
+        .select("role")
+        .eq("team_id", target.id)
+        .eq("profile_id", profile.id);
+      if ((existing ?? []).some((m: any) => m.role === "collaborator")) {
+        return NextResponse.json({ ok: true, direct: true, already: true });
+      }
+      if ((existing ?? []).length > 0) {
+        return NextResponse.json({ error: "Esa persona ya está en ese equipo con otro rol" }, { status: 409 });
+      }
+      const { error: addError } = await admin
+        .from("team_members")
+        .insert({ team_id: target.id, profile_id: profile.id, role: "collaborator" });
+      if (addError) return NextResponse.json({ error: "No se pudo agregar al colaborador" }, { status: 500 });
+      return NextResponse.json({ ok: true, direct: true });
+    }
+    const { error: invError } = await admin
+      .from("team_invitations")
+      .insert({ team_id: target.id, email, role: "collaborator", player_id: null });
+    if (invError && !/duplicate|unique/i.test(invError.message ?? "")) {
+      return NextResponse.json({ error: "No se pudo crear la invitación" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const { data: team } = await supabase

@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import EventDeleteButton from "@/components/EventDeleteButton";
+import { resizeImage } from "@/lib/resizeImage";
 
-type Game = { id: string; opponent: string | null; location: string | null; label: string };
+type Game = { id: string; opponent: string | null; location: string | null; label: string; logoUrl?: string | null };
 
 // Juegos de un torneo: ver los que hay, quitar y agregar nuevos (rival, día y hora).
 export default function TournamentGames({
@@ -27,6 +28,7 @@ export default function TournamentGames({
   const [date, setDate] = useState(startDate);
   const [time, setTime] = useState("");
   const [gameLocation, setGameLocation] = useState("");
+  const [logo, setLogo] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -49,12 +51,14 @@ export default function TournamentGames({
       const loc = gameLocation.trim() || location || "";
       if (loc) f.append("location", loc);
       f.append("startAt", new Date(`${date}T${time}`).toISOString());
+      if (logo) f.append("opponentLogo", logo);
       const res = await fetch("/api/events", { method: "POST", body: f });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "No se pudo agregar el juego");
       setOpponent("");
       setTime("");
       setGameLocation("");
+      setLogo(null);
       router.refresh();
     } catch (err: any) {
       setMessage(err.message ?? "Ocurrió un error");
@@ -74,6 +78,14 @@ export default function TournamentGames({
         <div className="flex flex-col gap-2 mb-4">
           {games.map((g) => (
             <div key={g.id} className="flex items-center gap-3 bg-bg border border-border rounded-xl px-3 py-2.5">
+              <div className="w-8 h-8 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
+                {g.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={g.logoUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] font-bold text-muted">{(g.opponent ?? "?").slice(0, 2).toUpperCase()}</span>
+                )}
+              </div>
               <div className="flex-grow min-w-0">
                 <div className="text-sm font-bold truncate">vs {g.opponent ?? "?"}</div>
                 <div className="text-xs text-muted truncate">
@@ -111,8 +123,21 @@ export default function TournamentGames({
           value={gameLocation}
           onChange={(e) => setGameLocation(e.target.value)}
           placeholder="Cancha (opcional; si lo dejas vacío usa el lugar del torneo)"
-          className={`${input} !bg-panel text-xs mb-3`}
+          className={`${input} !bg-panel text-xs mb-2`}
         />
+        <label className="inline-block bg-panel border border-border rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer mb-3">
+          {logo ? logo.name : "Logo del rival (opcional)"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (f) setLogo(await resizeImage(f, 400));
+            }}
+          />
+        </label>
+        <br />
         <button
           type="submit"
           disabled={busy}

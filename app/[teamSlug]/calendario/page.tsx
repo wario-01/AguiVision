@@ -181,6 +181,13 @@ export default async function CalendarioPage({
                                       </div>
                                       <div className="text-xs text-muted">{clubTime(g.start_at)}</div>
                                     </div>
+                                    <div className="w-7 h-7 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
+                                      {g.opponent_logo_url ? (
+                                        <img src={g.opponent_logo_url} alt={g.opponent ?? ""} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-[9px] font-bold text-muted">{(g.opponent ?? "?").slice(0, 2).toUpperCase()}</span>
+                                      )}
+                                    </div>
                                     <div className="flex-grow min-w-0 text-sm font-bold truncate">
                                       vs {g.opponent ?? "?"}
                                       {g.location && g.location !== ev.location ? (

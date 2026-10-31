@@ -26,6 +26,7 @@ export default async function EditarEventoPage({ params }: { params: { teamSlug:
           return {
             id: g.id,
             opponent: g.opponent,
+            logoUrl: g.opponent_logo_url,
             location: g.location && g.location !== event.location ? g.location : null,
             label: `${DIAS[p.dow]} ${p.day} ${MESES[p.month]} · ${clubTime(g.start_at)}`,
           };

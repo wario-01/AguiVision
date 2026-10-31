@@ -11,7 +11,7 @@ const TYPES = [
   { value: "other", label: "Otro" },
 ];
 
-type GameRow = { opponent: string; date: string; time: string; location: string };
+type GameRow = { opponent: string; date: string; time: string; location: string; logo: File | null };
 
 const WEEKDAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -84,7 +84,7 @@ export default function EventForm({
     setGames((prev) => prev.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
   }
   function addGame() {
-    setGames((prev) => [...prev, { opponent: "", date: prev[prev.length - 1]?.date || date, time: "", location: "" }]);
+    setGames((prev) => [...prev, { opponent: "", date: prev[prev.length - 1]?.date || date, time: "", location: "", logo: null }]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -174,6 +174,7 @@ export default function EventForm({
             const loc = g.location.trim() || location;
             if (loc) gf.append("location", loc);
             gf.append("startAt", new Date(`${g.date}T${g.time}`).toISOString());
+            if (g.logo) gf.append("opponentLogo", g.logo);
             const gr = await fetch("/api/events", { method: "POST", body: gf });
             const gd = await gr.json().catch(() => ({}));
             if (!gr.ok) {
@@ -450,6 +451,18 @@ export default function EventForm({
                   placeholder="Cancha (opcional; si lo dejas vacío usa el lugar del torneo)"
                   className="w-full box-border bg-panel border border-border rounded-lg px-3 py-2 text-xs font-semibold"
                 />
+                <label className="inline-block bg-panel border border-border rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer mt-2">
+                  {g.logo ? g.logo.name : "Logo del rival (opcional)"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setGame(i, { logo: await resizeImage(f, 400) });
+                    }}
+                  />
+                </label>
               </div>
             ))}
           </div>

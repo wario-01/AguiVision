@@ -15,10 +15,12 @@ const ROLES = [
 export default function InviteForm({
   teamSlug,
   teams,
+  allTeams,
   players,
 }: {
   teamSlug: string;
   teams: { slug: string; name: string }[];
+  allTeams?: { slug: string; name: string }[]; // todos los equipos del club (para colaboradores)
   players: Player[];
 }) {
   const [email, setEmail] = useState("");
@@ -27,12 +29,15 @@ export default function InviteForm({
   const [selectedTeams, setSelectedTeams] = useState<string[]>([teamSlug]);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [info, setInfo] = useState("");
   const router = useRouter();
 
   const needsPlayer = role === "player" || role === "parent";
   // Jugador/madre-padre quedan ligados a UN jugador de UN equipo — el
   // selector de varios equipos solo tiene sentido para entrenador/asistente.
-  const canPickMultiple = !needsPlayer && teams.length > 1;
+  // Un colaborador (solo fotos) se puede agregar a cualquier equipo del club.
+  const pickable = role === "collaborator" && allTeams && allTeams.length > 0 ? allTeams : teams;
+  const canPickMultiple = !needsPlayer && pickable.length > 1;
 
   function toggleTeam(slug: string) {
     setSelectedTeams((prev) =>
@@ -50,7 +55,9 @@ export default function InviteForm({
     }
     setStatus("saving");
     setMessage("");
+    setInfo("");
     try {
+      let direct = 0;
       for (const slug of targets) {
         const res = await fetch("/api/invitations", {
           method: "POST",
@@ -64,7 +71,9 @@ export default function InviteForm({
         });
         const data = await res.json();
         if (!res.ok) throw new Error(`${slug}: ${data.error ?? "no se pudo invitar"}`);
+        if (data.direct) direct++;
       }
+      if (direct > 0) setInfo("Esa persona ya tenía cuenta: quedó agregada de inmediato.");
       setEmail("");
       setPlayerName("");
       setStatus("idle");
@@ -133,7 +142,7 @@ export default function InviteForm({
         <div>
           <label className="block text-xs font-bold text-muted mb-1.5">A qué equipos</label>
           <div className="flex gap-2 flex-wrap">
-            {teams.map((t) => (
+            {pickable.map((t) => (
               <button
                 type="button"
                 key={t.slug}
@@ -155,6 +164,12 @@ export default function InviteForm({
           crea solo. Si lo dejás vacío, esa persona no queda vinculada a ningún jugador en particular.
         </div>
       )}
+      {role === "collaborator" && (
+        <div className="text-xs text-muted">
+          El colaborador solo ve y sube las fotos de los equipos que elijas, y puedes elegir cualquier equipo del club.
+        </div>
+      )}
+      {info && <div className="text-sm text-ok">{info}</div>}
       {message && <div className="text-sm text-red">{message}</div>}
     </form>
   );

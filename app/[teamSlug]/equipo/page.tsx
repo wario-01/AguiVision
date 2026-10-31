@@ -10,6 +10,7 @@ import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import PhotoAccessToggle from "@/components/PhotoAccessToggle";
 import PlayerPhotoUpload from "@/components/PlayerPhotoUpload";
 import { teamAccent } from "@/lib/team-accent";
+import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { getTeamBySlug, getTeamMembers, getPendingInvitations, getCurrentUser, getPlayers, getMyTeams } from "@/lib/data";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -55,6 +56,14 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
         .map((t) => ({ slug: t.slug, name: t.name }))
     : [];
 
+  // Todos los equipos del club: para agregar colaboradores (fotos) a cualquiera.
+  let allTeams = managedTeams;
+  if (canInvite && isAdminConfigured) {
+    const admin = createAdminClient();
+    const { data } = admin ? await admin.from("teams").select("slug, name, active").order("name") : { data: null };
+    if (data && data.length > 0) allTeams = data.filter((t: any) => t.active !== false).map((t: any) => ({ slug: t.slug, name: t.name }));
+  }
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="equipo" />
@@ -86,7 +95,7 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
         {canInvite && (
           <div className="bg-panel border border-border rounded-2xl p-5 mb-8">
             <div className="font-display text-base font-semibold mb-4">Invitar a alguien</div>
-            <InviteForm teamSlug={team.slug} teams={managedTeams} players={players} />
+            <InviteForm teamSlug={team.slug} teams={managedTeams} allTeams={allTeams} players={players} />
             <div className="text-xs text-muted mt-3">
               Se vincula solo la primera vez que esa persona inicie sesión con ese email — no hace falta nada más.
             </div>
@@ -118,13 +127,21 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
                   <div className="flex-grow min-w-0">
                     <div className="text-sm font-bold truncate">
                       {p.jersey_number != null && <span className="text-gold">#{p.jersey_number} </span>}
-                      {p.full_name}
+                      <Link href={`/${team.slug}/jugador/${p.id}`} className="hover:underline">
+                        {p.full_name}
+                      </Link>
                     </div>
                     <div className="text-xs text-muted truncate">{p.position ? p.position : "Sin posición"}</div>
                   </div>
                   <Link
-                    href={`/${team.slug}/jugador/${p.id}/editar`}
+                    href={`/${team.slug}/jugador/${p.id}`}
                     className="text-xs font-bold text-gold hover:underline shrink-0"
+                  >
+                    Ver perfil
+                  </Link>
+                  <Link
+                    href={`/${team.slug}/jugador/${p.id}/editar`}
+                    className="text-xs font-bold text-muted hover:text-text hover:underline shrink-0"
                   >
                     Editar datos
                   </Link>
