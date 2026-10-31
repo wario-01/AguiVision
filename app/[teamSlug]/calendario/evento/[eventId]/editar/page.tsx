@@ -56,6 +56,8 @@ export default async function EditarEventoPage({ params }: { params: { teamSlug:
             start_at: event.start_at,
             end_at: event.end_at,
             notes: event.notes,
+            cancelled: event.cancelled,
+            cancel_reason: event.cancel_reason,
           }}
         />
         {event.type === "tournament" && (

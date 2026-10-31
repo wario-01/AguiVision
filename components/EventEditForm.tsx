@@ -21,6 +21,8 @@ type Initial = {
   start_at: string;
   end_at?: string | null;
   notes: string | null;
+  cancelled?: boolean | null;
+  cancel_reason?: string | null;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -40,6 +42,8 @@ export default function EventEditForm({ teamSlug, initial }: { teamSlug: string;
   const [endDate, setEndDate] = useState(
     e0 ? `${e0.getFullYear()}-${pad(e0.getMonth() + 1)}-${pad(e0.getDate())}` : ""
   );
+  const [cancelled, setCancelled] = useState(!!initial.cancelled);
+  const [cancelReason, setCancelReason] = useState(initial.cancel_reason ?? "");
   const [logo, setLogo] = useState<File | null>(null);
   const [notify, setNotify] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -72,6 +76,8 @@ export default function EventEditForm({ teamSlug, initial }: { teamSlug: string;
       formData.append("notes", notes);
       if (type === "tournament" && endDate) formData.append("endAt", new Date(`${endDate}T12:00`).toISOString());
       if (logo) formData.append("opponentLogo", logo);
+      formData.append("cancelled", cancelled ? "1" : "0");
+      if (cancelled) formData.append("cancelReason", cancelReason);
       if (notify) formData.append("notify", "1");
 
       const res = await fetch("/api/events", { method: "PATCH", body: formData });
@@ -163,6 +169,25 @@ export default function EventEditForm({ teamSlug, initial }: { teamSlug: string;
           rows={2}
           className={`${input} resize-none`}
         />
+      </div>
+
+      <div className={`rounded-xl border p-3 mb-4 ${cancelled ? "border-red" : "border-border"}`}>
+        <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+          <input type="checkbox" checked={cancelled} onChange={(e) => setCancelled(e.target.checked)} />
+          Este evento se canceló
+        </label>
+        <div className="text-[11px] text-muted mt-1">
+          Queda en el calendario marcado como CANCELADO, sin asistencia. Lo puedes reactivar cuando quieras.
+        </div>
+        {cancelled && (
+          <input
+            type="text"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Motivo (opcional): lluvia, cancha cerrada…"
+            className={`${input} mt-2`}
+          />
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-xs font-bold text-muted mb-4 cursor-pointer">

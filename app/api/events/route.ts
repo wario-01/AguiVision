@@ -267,7 +267,7 @@ export async function PATCH(req: Request) {
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, team_id, opponent_logo_url")
+    .select("*")
     .eq("id", eventId)
     .maybeSingle();
   if (!event) {
@@ -304,6 +304,14 @@ export async function PATCH(req: Request) {
   }
 
   const endRaw = formData.get("endAt");
+  // Cancelar / reactivar. Solo se toca la columna si se cancela o ya estaba cancelado
+  // (así editar sigue funcionando aunque todavía no se haya corrido el SQL).
+  const cancelledNow = formData.get("cancelled") === "1";
+  const wasCancelled = (event as any).cancelled === true;
+  const cancelFields =
+    cancelledNow || wasCancelled
+      ? { cancelled: cancelledNow, cancel_reason: cancelledNow ? txt("cancelReason", 300) : null }
+      : {};
   const { data: updated, error } = await supabase
     .from("events")
     .update({
@@ -316,9 +324,16 @@ export async function PATCH(req: Request) {
       start_at: startAt,
       end_at: typeof endRaw === "string" && endRaw && !isNaN(Date.parse(endRaw)) ? endRaw : null,
       notes: txt("notes", 1000),
+      ...cancelFields,
     })
     .eq("id", event.id)
     .select("id");
+  if (error && /cancel/.test(error.message ?? "")) {
+    return NextResponse.json(
+      { error: "Falta correr el SQL de eventos cancelados en Supabase (calendario-cancelado.sql)." },
+      { status: 500 }
+    );
+  }
   if (error || !updated || updated.length === 0) {
     return NextResponse.json({ error: "No tenés permiso para editar este evento" }, { status: 403 });
   }
@@ -344,10 +359,19 @@ export async function PATCH(req: Request) {
         minute: "2-digit",
         timeZone: "America/Chicago",
       });
+      const newlyCancelled = cancelledNow && !wasCancelled;
+      const reason = txt("cancelReason", 300);
       await sendEmail({
         to: emails,
-        subject: `${team.name}: se actualizó ${what}`,
-        html: `
+        subject: newlyCancelled ? `${team.name}: SE CANCELÓ ${what}` : `${team.name}: se actualizó ${what}`,
+        html: newlyCancelled
+          ? `
+          <p>Se canceló un evento de ${escapeHtml(team.name)}: <b>${escapeHtml(what)}</b>.</p>
+          <p>Era el ${escapeHtml(when)}</p>
+          ${reason ? `<p>Motivo: ${escapeHtml(reason)}</p>` : ""}
+          <p><a href="${appUrl}/${team.slug}/calendario">Ver el calendario en AguiVision</a></p>
+        `
+          : `
           <p>Se actualizó un evento de ${escapeHtml(team.name)}: <b>${escapeHtml(what)}</b>.</p>
           <p>Ahora: ${escapeHtml(when)}</p>
           <p><a href="${appUrl}/${team.slug}/calendario">Ver el calendario en AguiVision</a></p>

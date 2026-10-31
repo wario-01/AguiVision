@@ -122,7 +122,7 @@ export async function getPendingEvents(teamId: string): Promise<CalendarEvent[]>
   const withGames = new Set(
     (await getTournamentGames(all.filter((e) => e.type === "tournament").map((e) => e.id))).map((g) => g.parent_event_id)
   );
-  const events = all.filter((e) => !(e.type === "tournament" && withGames.has(e.id)));
+  const events = all.filter((e) => !e.cancelled && !(e.type === "tournament" && withGames.has(e.id)));
   const done = await getEventsWithAttendance(events.map((e) => e.id));
   return events.filter((e) => !done.has(e.id));
 }

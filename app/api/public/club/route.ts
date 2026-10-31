@@ -47,13 +47,27 @@ export async function GET(req: Request) {
       .limit(6),
     admin
       .from("events")
-      .select("id, type, title, opponent, opponent_logo_url, league, location, start_at, end_at, teams!inner(age_category, active)")
+      .select("id, type, title, opponent, opponent_logo_url, league, location, start_at, end_at, cancelled, teams!inner(age_category, active)")
       .in("type", ["game", "tournament"])
       .eq("teams.active", true)
       .gte("start_at", from)
       .order("start_at", { ascending: true })
       .limit(8),
   ]);
+
+  // Si todavía no existe la columna "cancelled" (SQL sin correr), se pide sin ella.
+  let eventRows: any[] = eventsRes.data ?? [];
+  if (eventsRes.error) {
+    const retry = await admin
+      .from("events")
+      .select("id, type, title, opponent, opponent_logo_url, league, location, start_at, end_at, teams!inner(age_category, active)")
+      .in("type", ["game", "tournament"])
+      .eq("teams.active", true)
+      .gte("start_at", from)
+      .order("start_at", { ascending: true })
+      .limit(8);
+    eventRows = retry.data ?? [];
+  }
 
   const live = (liveRes.data ?? []).map((s: any) => ({
     id: s.id,
@@ -63,7 +77,7 @@ export async function GET(req: Request) {
     watch_url: `${origin}/en-vivo/${s.id}`,
   }));
 
-  const upcoming = (eventsRes.data ?? []).map((e: any) => ({
+  const upcoming = eventRows.filter((e: any) => !e.cancelled).map((e: any) => ({
     id: e.id,
     type: e.type,
     category: e.teams?.age_category ?? null,

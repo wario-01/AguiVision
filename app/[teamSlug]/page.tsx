@@ -37,8 +37,9 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
   }
 
   const accent = teamAccent(team.age_category);
-  const next = upcomingEvents[0] ?? null;
-  const restEvents = upcomingEvents.slice(1);
+  // "Siguiente" es el primero que NO está cancelado; los cancelados quedan en "Después" con su etiqueta.
+  const next = upcomingEvents.find((e) => !e.cancelled) ?? null;
+  const restEvents = upcomingEvents.filter((e) => e !== next);
   const lastMatch = matches.find((m) => m.video_playback_id) ?? null;
   const daysUntil = (iso: string) => {
     const a = clubParts(new Date()).ymd.split("-").map(Number);
@@ -99,8 +100,9 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
         )}
 
         {next && (
-          <div
-            className="rounded-2xl border border-border bg-panel overflow-hidden mb-8"
+          <Link
+            href={`/${team.slug}/calendario/evento/${next.id}`}
+            className="block rounded-2xl border border-border bg-panel overflow-hidden mb-8 hover:border-borderMuted transition-colors"
             style={{ borderTop: `4px solid ${accent}` }}
           >
             <div className="px-5 pt-4 flex items-center justify-between">
@@ -127,7 +129,8 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                 {next.league && <div className="text-[11px] text-muted mt-0.5 truncate">{next.league}</div>}
               </div>
             </div>
-          </div>
+            <div className="px-5 pb-3 text-[11px] font-bold text-gold">Ver detalles →</div>
+          </Link>
         )}
 
         {restEvents.length > 0 && (
@@ -143,9 +146,10 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                 const d = new Date(g.start_at);
                 if (g.type !== "game") {
                   return (
-                    <div
+                    <Link
                       key={g.id}
-                      className="flex items-center gap-4 bg-panel border border-border rounded-2xl px-5 py-4"
+                      href={`/${team.slug}/calendario/evento/${g.id}`}
+                      className={`flex items-center gap-4 bg-panel border border-border rounded-2xl px-5 py-4 hover:border-borderMuted transition-colors ${g.cancelled ? "opacity-70" : ""}`}
                     >
                       <div className="w-11 h-11 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center shrink-0">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#A9C0DD" strokeWidth={2}>
@@ -154,18 +158,28 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                         </svg>
                       </div>
                       <div className="flex-grow min-w-0">
-                        <div className="text-sm font-bold truncate">{g.title || TYPE_LABELS[g.type] || "Evento"}</div>
+                        <div className="text-sm font-bold truncate">
+                          {g.cancelled && <span className="text-[10px] font-extrabold text-red mr-2">CANCELADO</span>}
+                          <span className={g.cancelled ? "line-through" : ""}>{g.title || TYPE_LABELS[g.type] || "Evento"}</span>
+                        </div>
                         <div className="text-xs text-muted truncate">
                           {DIAS[clubParts(d).dow]}, {clubParts(d).day} {MESES[clubParts(d).month]} ·{" "}
                           {clubTime(d)}
                           {g.location ? ` · ${g.location}` : ""}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 }
                 return (
-                  <div key={g.id} className="bg-panel border border-border rounded-2xl overflow-hidden">
+                  <Link
+                    key={g.id}
+                    href={`/${team.slug}/calendario/evento/${g.id}`}
+                    className={`block bg-panel border border-border rounded-2xl overflow-hidden hover:border-borderMuted transition-colors ${g.cancelled ? "opacity-70" : ""}`}
+                  >
+                    {g.cancelled && (
+                      <div className="px-5 pt-3 text-[11px] font-extrabold text-red tracking-widest">CANCELADO</div>
+                    )}
                     {g.league && (
                       <div className="px-5 pt-3 text-[11px] font-bold text-muted uppercase tracking-wide">
                         {g.league}
@@ -200,7 +214,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
                     {g.location && (
                       <div className="px-5 pb-3 text-xs text-muted border-t border-border pt-3">{g.location}</div>
                     )}
-                  </div>
+                  </Link>
                 );
               })}
             </div>

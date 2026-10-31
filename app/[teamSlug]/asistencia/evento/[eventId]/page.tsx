@@ -3,7 +3,7 @@
 // Tomar (o corregir) la asistencia de un entrenamiento, partido o torneo.
 
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import AttendanceForm from "@/components/AttendanceForm";
 import { getTeamBySlug, getPlayers } from "@/lib/data";
@@ -24,6 +24,7 @@ export default async function TomarAsistenciaPage({
   if (!supabase) notFound();
   const { data: event } = await supabase.from("events").select("*").eq("id", params.eventId).single();
   if (!event || event.team_id !== team.id) notFound();
+  if (event.cancelled) redirect(`/${team.slug}/calendario/evento/${event.id}`); // cancelado: sin asistencia
 
   const [players, initial] = await Promise.all([getPlayers(team.slug), getEventAttendance(event.id)]);
   const name = eventName({ event_type: event.type, title: event.title, opponent: event.opponent });

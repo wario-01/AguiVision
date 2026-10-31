@@ -139,19 +139,21 @@ export default async function CalendarioPage({
                           ? `${sp.day} ${MESES[sp.month].slice(0, 3)} – ${ep.day} ${MESES[ep.month].slice(0, 3)}`
                           : null;
                       return (
-                        <div key={ev.id} className="bg-panel border border-border rounded-xl overflow-hidden">
+                        <div key={ev.id} className={`bg-panel border border-border rounded-xl overflow-hidden ${ev.cancelled ? "opacity-70" : ""}`}>
                           <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="flex-grow min-w-0">
-                              <div className="text-[10px] font-extrabold uppercase tracking-widest text-gold">Torneo</div>
-                              <div className="text-sm font-bold truncate">{ev.title || "Torneo"}</div>
+                            <Link href={`/${team.slug}/calendario/evento/${ev.id}`} className="flex-grow min-w-0 block">
+                              <div className="text-[10px] font-extrabold uppercase tracking-widest text-gold">
+                                Torneo{ev.cancelled && <span className="text-red"> · CANCELADO</span>}
+                              </div>
+                              <div className={`text-sm font-bold truncate ${ev.cancelled ? "line-through" : ""}`}>{ev.title || "Torneo"}</div>
                               <div className="text-xs text-muted truncate">
                                 {range ? `${range} · ` : ""}
                                 {games.length} juego{games.length === 1 ? "" : "s"}
                                 {ev.location ? ` · ${ev.location}` : ""}
                                 {ev.league ? ` · ${ev.league}` : ""}
                               </div>
-                            </div>
-                            {canEdit && games.length === 0 && (
+                            </Link>
+                            {canEdit && games.length === 0 && !ev.cancelled && (
                               <Link
                                 href={`/${team.slug}/asistencia/evento/${ev.id}`}
                                 className="text-xs font-bold text-gold hover:underline shrink-0"
@@ -174,7 +176,7 @@ export default async function CalendarioPage({
                               {games.map((g) => {
                                 const gp = clubParts(g.start_at);
                                 return (
-                                  <div key={g.id} className="flex items-center gap-3 px-4 py-2.5 bg-panel2/40">
+                                  <div key={g.id} className={`flex items-center gap-3 px-4 py-2.5 bg-panel2/40 ${g.cancelled ? "opacity-70" : ""}`}>
                                     <div className="w-16 shrink-0">
                                       <div className="text-[11px] font-bold text-gold uppercase">
                                         {DIAS[gp.dow]} {gp.day}
@@ -188,13 +190,14 @@ export default async function CalendarioPage({
                                         <span className="text-[9px] font-bold text-muted">{(g.opponent ?? "?").slice(0, 2).toUpperCase()}</span>
                                       )}
                                     </div>
-                                    <div className="flex-grow min-w-0 text-sm font-bold truncate">
-                                      vs {g.opponent ?? "?"}
+                                    <Link href={`/${team.slug}/calendario/evento/${g.id}`} className="flex-grow min-w-0 text-sm font-bold truncate">
+                                      {g.cancelled && <span className="text-[10px] font-extrabold text-red mr-1.5">CANCELADO</span>}
+                                      <span className={g.cancelled ? "line-through" : ""}>vs {g.opponent ?? "?"}</span>
                                       {g.location && g.location !== ev.location ? (
                                         <span className="text-xs text-muted font-semibold"> · {g.location}</span>
                                       ) : null}
-                                    </div>
-                                    {canEdit && (
+                                    </Link>
+                                    {canEdit && !g.cancelled && (
                                       <Link
                                         href={`/${team.slug}/asistencia/evento/${g.id}`}
                                         className="text-xs font-bold text-gold hover:underline shrink-0"
@@ -222,7 +225,7 @@ export default async function CalendarioPage({
                     return (
                     <div
                       key={ev.id}
-                      className="flex items-center gap-3 bg-panel border border-border rounded-xl px-4 py-3"
+                      className={`flex items-center gap-3 bg-panel border border-border rounded-xl px-4 py-3 ${ev.cancelled ? "opacity-70" : ""}`}
                     >
                       {ev.type === "game" && (
                         <div className="w-9 h-9 rounded-full bg-panel2 border border-borderMuted flex items-center justify-center overflow-hidden shrink-0">
@@ -235,17 +238,20 @@ export default async function CalendarioPage({
                           )}
                         </div>
                       )}
-                      <div className="flex-grow min-w-0">
+                      <Link href={`/${team.slug}/calendario/evento/${ev.id}`} className="flex-grow min-w-0 block">
                         <div className="text-sm font-bold truncate">
-                          {ev.type === "game" ? `vs ${ev.opponent ?? "?"}` : ev.title || TYPE_LABELS[ev.type]}
+                          {ev.cancelled && <span className="text-[10px] font-extrabold text-red mr-2">CANCELADO</span>}
+                          <span className={ev.cancelled ? "line-through" : ""}>
+                            {ev.type === "game" ? `vs ${ev.opponent ?? "?"}` : ev.title || TYPE_LABELS[ev.type]}
+                          </span>
                         </div>
                         <div className="text-xs text-muted truncate">
                           {clubTime(ev.start_at)}
                           {ev.location ? ` · ${ev.location}` : ""}
                           {ev.league ? ` · ${ev.league}` : ""}
                         </div>
-                      </div>
-                      {canEdit && ev.type !== "other" && (
+                      </Link>
+                      {canEdit && ev.type !== "other" && !ev.cancelled && (
                         <Link
                           href={`/${team.slug}/asistencia/evento/${ev.id}`}
                           className="text-xs font-bold text-gold hover:underline shrink-0"

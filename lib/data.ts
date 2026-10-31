@@ -539,6 +539,8 @@ export type CalendarEvent = {
   notes: string | null;
   parent_event_id?: string | null; // juego que pertenece a un torneo
   series_id?: string | null; // eventos creados juntos con "Se repite"
+  cancelled?: boolean | null; // el evento se canceló (queda en el calendario como registro)
+  cancel_reason?: string | null;
 };
 
 // Los juegos que pertenecen a cada torneo (por id del torneo). Si todavía no se
