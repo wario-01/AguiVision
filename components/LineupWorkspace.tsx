@@ -5,7 +5,7 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import LineupSheet, { SheetPlayer } from "@/components/LineupSheet";
-import { FORMATION_GROUPS, formationSlots, shortName, gameCode } from "@/lib/lineup";
+import { FORMATION_GROUPS, formationSlots, shortName, gameCode, cleanSubs, fieldAfter, subChain, PlannedSub } from "@/lib/lineup";
 
 type P = SheetPlayer & { position?: string | null };
 export type GameOption = { id: string; label: string; title: string; details: string; startAt: string };
@@ -48,7 +48,7 @@ export default function LineupWorkspace({
   players: P[];
   games: GameOption[];
   eventId: string | null;
-  initial: { formation: string; slots: (string | null)[]; out: string[]; notes: string };
+  initial: { formation: string; slots: (string | null)[]; out: string[]; subs: PlannedSub[]; notes: string };
   statsInit: Record<string, StatRow>;
   resultInit: ResultRow | null;
   before: React.ReactNode;
@@ -59,6 +59,10 @@ export default function LineupWorkspace({
   const [slotIds, setSlotIds] = useState<(string | null)[]>(initial.slots);
   const [out, setOut] = useState<string[]>(initial.out);
   const [notes, setNotes] = useState(initial.notes);
+  const [subsRaw, setSubsRaw] = useState<PlannedSub[]>(initial.subs);
+  const [newMin, setNewMin] = useState("");
+  const [newOut, setNewOut] = useState("");
+  const [newIn, setNewIn] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [snap, setSnap] = useState(JSON.stringify(initial));
   const [busy, setBusy] = useState(false);
@@ -66,7 +70,10 @@ export default function LineupWorkspace({
 
   const slots = useMemo(() => formationSlots(formation), [formation]);
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
-  const current = JSON.stringify({ formation, slots: slotIds, out, notes });
+  const validIds = useMemo(() => new Set(players.map((p) => p.id)), [players]);
+  // Los cambios que ya no tienen sentido (el jugador ya no está en el campo, etc.) se descartan solos.
+  const subs = useMemo(() => cleanSubs(subsRaw, slotIds, out, validIds), [subsRaw, slotIds, out, validIds]);
+  const current = JSON.stringify({ formation, slots: slotIds, out, subs, notes });
   const dirty = current !== snap;
   const game = games.find((g) => g.id === eventId) ?? null;
 
@@ -111,9 +118,36 @@ export default function LineupWorkspace({
     setMsg(null);
   };
 
+  const clearSel = () => setSel(null);
+  // Quién está en el campo / en la banca después del último cambio (para armar el siguiente).
+  const fieldNow = useMemo(() => fieldAfter(subs, slotIds), [subs, slotIds]);
+  const outOptions = slotIds.length ? players.filter((p) => fieldNow.has(p.id)) : [];
+  const inOptions = players.filter((p) => !fieldNow.has(p.id) && !out.includes(p.id));
+  const parseMin = (v: string): number | null => {
+    const clean = v.replace(/\D/g, "").slice(0, 3);
+    return clean === "" ? null : Math.min(120, Number(clean));
+  };
+  function addSub() {
+    if (!newOut || !newIn) return;
+    setSubsRaw([...subs, { out: newOut, in: newIn, minute: parseMin(newMin) }]);
+    setNewMin("");
+    setNewOut("");
+    setNewIn("");
+    setMsg(null);
+  }
+  function setMinute(idx: number, v: string) {
+    setSubsRaw(subs.map((x, k) => (k === idx ? { ...x, minute: parseMin(v) } : x)));
+    setMsg(null);
+  }
+  // Al quitar un cambio, los que venían después y ya no tienen sentido se descartan solos.
+  function removeSub(idx: number) {
+    setSubsRaw(subs.filter((_, k) => k !== idx));
+    setMsg(null);
+  }
+
   function clickPlayer(id: string) {
     if (!sel) return setSel(id);
-    if (sel === id) return setSel(null);
+    if (sel === id) return clearSel();
     const a = loc(sel);
     const b = loc(id);
     if (b.t === "slot") apply(move(sel, b));
@@ -122,22 +156,22 @@ export default function LineupWorkspace({
       const r1 = move(sel, b);
       apply(move(id, a, r1.ns, r1.no));
     }
-    setSel(null);
+    clearSel();
   }
   function clickSlot(i: number) {
     const occ = slotIds[i];
     if (sel) {
-      if (occ === sel) setSel(null);
+      if (occ === sel) clearSel();
       else {
         apply(move(sel, { t: "slot", i }));
-        setSel(null);
+        clearSel();
       }
     } else if (occ) setSel(occ);
   }
   function sendTo(t: "bench" | "out") {
     if (!sel) return;
     apply(move(sel, { t }));
-    setSel(null);
+    clearSel();
   }
 
   function changeFormation(f: string) {
@@ -145,7 +179,7 @@ export default function LineupWorkspace({
     // Se conservan los jugadores en el mismo orden; los que ya no caben pasan a suplentes.
     setFormation(f);
     setSlotIds(Array.from({ length: n }, (_, i) => slotIds[i] ?? null));
-    setSel(null);
+    clearSel();
     setMsg(null);
   }
   function autoFill() {
@@ -155,7 +189,7 @@ export default function LineupWorkspace({
   }
   function clearField() {
     setSlotIds(slotIds.map(() => null));
-    setSel(null);
+    clearSel();
   }
 
   function goToGame(id: string) {
@@ -170,7 +204,7 @@ export default function LineupWorkspace({
       const res = await fetch("/api/alineacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamSlug, eventId, formation, slots: slotIds, out, notes }),
+        body: JSON.stringify({ teamSlug, eventId, formation, slots: slotIds, out, subs, notes }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "No se pudo guardar");
@@ -232,7 +266,7 @@ export default function LineupWorkspace({
     }
   }
 
-  const chip = (p: P, extra = "") => (
+  const chip = (p: P, extra = "", note: string | null = null) => (
     <button
       key={p.id}
       type="button"
@@ -245,7 +279,11 @@ export default function LineupWorkspace({
         {p.jersey_number ?? "–"}
       </span>
       <span className="truncate">{p.full_name}</span>
-      {p.position && <span className={`ml-auto text-[10px] ${sel === p.id ? "text-bg" : "text-muted"}`}>{p.position}</span>}
+      {note ? (
+        <span className={`ml-auto text-[10px] font-extrabold shrink-0 ${sel === p.id ? "text-bg" : "text-ok"}`}>{note}</span>
+      ) : (
+        p.position && <span className={`ml-auto text-[10px] ${sel === p.id ? "text-bg" : "text-muted"}`}>{p.position}</span>
+      )}
     </button>
   );
   const inp = "w-14 box-border bg-bg border border-border rounded-md px-1.5 py-1 text-xs font-bold text-center";
@@ -338,6 +376,14 @@ export default function LineupWorkspace({
                           {shortName(p.full_name)}
                         </span>
                       )}
+                      {p && subChain(subs, p.id).length > 0 && byId.get(subChain(subs, p.id)[0].in) && (
+                        <span className="inline-flex items-center gap-1 mt-0.5 bg-white text-bg rounded-full pl-1 pr-2 py-px text-[9px] md:text-[10px] font-black shadow">
+                          <b className="w-3.5 h-3.5 rounded-full bg-ok flex items-center justify-center text-[8px]">↑</b>
+                          {shortName(byId.get(subChain(subs, p.id)[0].in)!.full_name)}
+                          {subChain(subs, p.id)[0].minute != null ? ` · ${subChain(subs, p.id)[0].minute}'` : ""}
+                          {subChain(subs, p.id).length > 1 && <span className="text-red"> +{subChain(subs, p.id).length - 1}</span>}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -347,16 +393,17 @@ export default function LineupWorkspace({
                 {sel && byId.get(sel) && (
                   <div className="bg-goldBgDim border border-goldBorderDim rounded-xl p-3 mb-3">
                     <div className="text-xs font-bold text-goldText mb-2">
-                      {byId.get(sel)!.full_name}: toca otro jugador o una posición para cambiarlos.
+                      {`${byId.get(sel)!.full_name}: toca otro jugador o una posición para cambiarlos.`}
                     </div>
                     <div className="flex gap-2 flex-wrap">
+
                       <button type="button" onClick={() => sendTo("bench")} className="bg-bg border border-border rounded-md px-2.5 py-1 text-[11px] font-bold">
                         A suplentes
                       </button>
                       <button type="button" onClick={() => sendTo("out")} className="bg-bg border border-border rounded-md px-2.5 py-1 text-[11px] font-bold">
                         No convocado
                       </button>
-                      <button type="button" onClick={() => setSel(null)} className="text-[11px] font-bold text-muted px-2">
+                      <button type="button" onClick={clearSel} className="text-[11px] font-bold text-muted px-2">
                         Cancelar
                       </button>
                     </div>
@@ -365,12 +412,84 @@ export default function LineupWorkspace({
                 <div className="text-[11px] font-extrabold text-gold tracking-widest mb-2">SUPLENTES ({bench.length})</div>
                 <div className="flex flex-col gap-1.5 mb-4">
                   {bench.length === 0 && <div className="text-xs text-muted">Sin suplentes.</div>}
-                  {bench.map((p) => chip(p))}
+                  {bench.map((p) => {
+                    const mine = subs.filter((x) => x.in === p.id);
+                    const who = mine[0] ? byId.get(mine[0].out) : null;
+                    const note = mine.length === 0 || !who ? null : mine.length > 1 ? `Entra ${mine.length} veces` : `Entra por ${shortName(who.full_name).split(" ")[0]}${mine[0].minute != null ? ` · ${mine[0].minute}'` : ""}`;
+                    return chip(p, "", note);
+                  })}
                 </div>
                 <div className="text-[11px] font-extrabold text-gold tracking-widest mb-2">NO CONVOCADOS ({outPlayers.length})</div>
                 <div className="flex flex-col gap-1.5">
                   {outPlayers.length === 0 && <div className="text-xs text-muted">Nadie.</div>}
                   {outPlayers.map((p) => chip(p, "opacity-80"))}
+                </div>
+                <div className="text-[11px] font-extrabold text-gold tracking-widest mt-4 mb-1">CAMBIOS ({subs.length})</div>
+                <div className="text-[10px] text-muted mb-2">Sin límite: un jugador puede salir y volver a entrar.</div>
+                <div className="flex flex-col gap-1.5">
+                  {subs.map((x, k) => (
+                    <div key={k} className="grid grid-cols-[52px_1fr_1fr_22px] gap-1.5 items-center bg-bg border border-border rounded-lg px-2 py-1.5 text-[11px] font-bold">
+                      <input
+                        inputMode="numeric"
+                        value={x.minute ?? ""}
+                        onChange={(e) => setMinute(k, e.target.value)}
+                        placeholder="min"
+                        aria-label="Minuto del cambio (opcional)"
+                        className="w-full box-border bg-panel2 rounded-md text-center py-1 font-black"
+                      />
+                      <span className="text-[#ff9b93] truncate">↓ {shortName(byId.get(x.out)?.full_name ?? "?")}</span>
+                      <span className="text-ok truncate">↑ {shortName(byId.get(x.in)?.full_name ?? "?")}</span>
+                      <button type="button" onClick={() => removeSub(k)} className="text-muted" aria-label="Quitar cambio">
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {slotIds.some(Boolean) ? (
+                    <div className="bg-panel2 border border-dashed border-border rounded-xl p-2.5 mt-1">
+                      <div className="text-[10px] font-extrabold text-gold tracking-widest mb-1.5">AGREGAR CAMBIO</div>
+                      <div className="grid grid-cols-[52px_1fr_1fr] gap-1.5 mb-2">
+                        <input
+                          inputMode="numeric"
+                          value={newMin}
+                          onChange={(e) => setNewMin(e.target.value)}
+                          placeholder="min"
+                          aria-label="Minuto (opcional)"
+                          className="w-full box-border bg-bg border border-border rounded-md text-center py-1 text-[11px] font-black"
+                        />
+                        <select value={newOut} onChange={(e) => setNewOut(e.target.value)} className="min-w-0 bg-bg border border-border rounded-md px-1 py-1 text-[11px] font-bold text-[#ff9b93]">
+                          <option value="">↓ Sale</option>
+                          {outOptions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.jersey_number != null ? `${p.jersey_number} ` : ""}
+                              {shortName(p.full_name)}
+                            </option>
+                          ))}
+                        </select>
+                        <select value={newIn} onChange={(e) => setNewIn(e.target.value)} className="min-w-0 bg-bg border border-border rounded-md px-1 py-1 text-[11px] font-bold text-ok">
+                          <option value="">↑ Entra</option>
+                          {inOptions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.jersey_number != null ? `${p.jersey_number} ` : ""}
+                              {shortName(p.full_name)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addSub}
+                        disabled={!newOut || !newIn}
+                        className="bg-gold text-bg rounded-md px-3 py-1 text-[11px] font-extrabold disabled:opacity-40"
+                      >
+                        + Agregar
+                      </button>
+                      <div className="text-[10px] text-muted mt-2">
+                        El minuto es opcional. “Sale” muestra quién está en el campo y “Entra” quién está en la banca después del último cambio.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted">Primero pon a los titulares en el campo.</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -495,6 +614,9 @@ export default function LineupWorkspace({
         game={game ? { title: game.title, details: game.details } : null}
         code={gameCode(ageCategory, game?.startAt ?? null)}
         notes={notes}
+        subs={subs
+          .map((x) => ({ minute: x.minute, out: byId.get(x.out), inn: byId.get(x.in) }))
+          .filter((x): x is { minute: number | null; out: P; inn: P } => !!x.out && !!x.inn)}
       />
     </>
   );

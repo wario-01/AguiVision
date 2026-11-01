@@ -12,7 +12,7 @@ import { getTeamAttendance } from "@/lib/data-asistencia";
 import { countRecords } from "@/lib/asistencia";
 import { createClient } from "@/lib/supabase/server";
 import { clubParts, clubTime } from "@/lib/tz";
-import { defaultFormation, isFormation, cleanLineup } from "@/lib/lineup";
+import { defaultFormation, isFormation, cleanLineup, cleanSubs } from "@/lib/lineup";
 
 const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -98,6 +98,7 @@ export default async function PerfilEquipoPage({
   const missingSql = !!lineupErr;
   const formation = isFormation((lineupRow as any)?.formation) ? (lineupRow as any).formation : defaultFormation(team.age_category);
   const cl = cleanLineup(formation, (lineupRow as any)?.slots, (lineupRow as any)?.out_ids, new Set(ids));
+  const subsInit = cleanSubs((lineupRow as any)?.subs, cl.slots, cl.out, new Set(ids));
 
   // Estadísticas de ese partido.
   let statsInit: Record<string, StatRow> = {};
@@ -237,7 +238,7 @@ export default async function PerfilEquipoPage({
         players={players.map((p) => ({ id: p.id, full_name: p.full_name, jersey_number: p.jersey_number ?? null, position: p.position ?? null }))}
         games={games}
         eventId={eventId}
-        initial={{ formation, slots: cl.slots, out: cl.out, notes: (lineupRow as any)?.notes ?? "" }}
+        initial={{ formation, slots: cl.slots, out: cl.out, subs: subsInit, notes: (lineupRow as any)?.notes ?? "" }}
         statsInit={statsInit}
         resultInit={resultInit}
         before={before}

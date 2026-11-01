@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
-import { isFormation, cleanLineup } from "@/lib/lineup";
+import { isFormation, cleanLineup, cleanSubs } from "@/lib/lineup";
 
 // POST /api/alineacion
 // json: { teamSlug, eventId (o null), formation, slots, out, notes }
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
   const { data: pl } = await admin.from("players").select("id").eq("team_id", team.id);
   const valid = new Set((pl ?? []).map((p: any) => p.id as string));
   const { slots, out } = cleanLineup(body.formation, body.slots, body.out, valid);
+  const subs = cleanSubs(body.subs, slots, out, valid);
   const notes = typeof body.notes === "string" && body.notes.trim() ? body.notes.trim().slice(0, 1000) : null;
 
   const row = { formation: body.formation, slots, out_ids: out, notes, updated_at: new Date().toISOString() };
@@ -54,9 +55,21 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  const { error } = existing
-    ? await admin.from("lineups").update(row).eq("id", existing.id)
-    : await admin.from("lineups").insert({ ...row, team_id: team.id, event_id: eventId });
+  const write = (r: Record<string, unknown>) =>
+    existing
+      ? admin.from("lineups").update(r).eq("id", existing.id)
+      : admin.from("lineups").insert({ ...r, team_id: team.id, event_id: eventId });
+  let { error } = await write({ ...row, subs });
+  // Si todavía no existe la columna "subs" (SQL sin correr), se guarda sin cambios planeados.
+  if (error && /subs/.test(error.message ?? "")) {
+    if (subs.length > 0) {
+      return NextResponse.json(
+        { error: "Falta correr el SQL de cambios planeados en Supabase (alineaciones-cambios.sql)." },
+        { status: 500 }
+      );
+    }
+    ({ error } = await write(row));
+  }
   if (error) return NextResponse.json({ error: "No se pudo guardar la alineación" }, { status: 500 });
 
   return NextResponse.json({ ok: true });

@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 1 de noviembre de 2026 (último paquete subido: 45).
+Última actualización: 1 de noviembre de 2026 (último paquete subido: 47 pendiente de reemplazar por 48).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -28,7 +28,7 @@
 - Videos en la galería de fotos (30 oct 2026): hasta 5 por vez de 600 MB, se pueden marcar como highlight (se envían a Mux, máximo 5 minutos). SQL: `supabase/fotos-4-videos.sql`.
 
 - Detalle de evento y eventos cancelados (31 oct 2026): al tocar un evento en Inicio o en el calendario se abre su detalle; un evento se puede marcar CANCELADO (queda en el calendario sin asistencia, con motivo). SQL: `supabase/calendario-cancelado.sql`.
-- Perfil del equipo (1 nov 2026, solo entrenadores): pestaña en Equipo con resumen, campograma con alineación (formaciones 11/9/7, suplentes, no convocados), hoja imprimible con logo, captura manual de estadísticas del partido (marcador, tiros, esquinas, faltas, cambios y por jugador: minutos, goles, asistencias, amarillas, rojas, atajadas) y tabla de la temporada. SQL: `supabase/alineaciones-estadisticas.sql`. Formación por defecto según categoría: U9 = 7v7, U11/U12 = 9v9, U14 = 11v11 (confirmar con Mario).
+- Perfil del equipo (1 nov 2026, solo entrenadores): pestaña en Equipo con resumen, campograma con alineación (formaciones 11/9/7, suplentes, no convocados), hoja imprimible con logo, captura manual de estadísticas del partido (marcador, tiros, esquinas, faltas, cambios y por jugador: minutos, goles, asistencias, amarillas, rojas, atajadas) y tabla de la temporada. SQL: `supabase/alineaciones-estadisticas.sql`. Formación por defecto según categoría: U9 = 7v7, U11/U12 = 9v9, U14 = 11v11 (confirmar con Mario). Cambios planeados sin límite y con reingreso (minuto opcional): lista en orden con "sale/entra"; se ven en el campo y en la hoja impresa. SQL: `supabase/alineaciones-cambios.sql`.
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:

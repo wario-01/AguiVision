@@ -112,7 +112,7 @@ body {
 .ls-r { text-align: right; font-size: 8pt; font-weight: 800; }
 .ls-r b { display: block; font-family: "Avant Garde", Arial, sans-serif; font-size: 14pt; }
 .ls-mid { display: grid; grid-template-columns: 1fr 2.2in; gap: 0.14in; margin-top: 0.12in; }
-.ls-pitch { position: relative; height: 4.2in; border: 0.03in solid #003c71; border-radius: 0.05in; }
+.ls-pitch { position: relative; height: 3.55in; border: 0.03in solid #003c71; border-radius: 0.05in; }
 .ls-pitch svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .ls-pl { position: absolute; transform: translate(-50%, -50%); text-align: center; width: 1.2in; }
 .ls-pl i { display: flex; width: 0.3in; height: 0.3in; border-radius: 50%; background: #fff; color: #003c71; font-style: normal; font-weight: 900; font-size: 10.5pt; align-items: center; justify-content: center; margin: 0 auto; border: 0.025in solid #003c71; }
@@ -136,3 +136,20 @@ body {
 .ls-table tr.sep td { border-top: 0.035in solid #003c71; }
 .ls-out { margin-top: 0.06in; font-size: 8pt; font-weight: 700; }
 .ls-ft { display: flex; justify-content: space-between; margin-top: 0.08in; font-size: 6.5pt; font-weight: 700; color: #35608f; }
+.ls-sub { display: inline-block; margin-top: 0.02in; font-style: normal; font-size: 7pt; font-weight: 900; background: #fff; border: 0.012in solid #003c71; border-radius: 99px; padding: 0 0.05in; white-space: nowrap; }
+.ls-st { margin-top: 0.1in; font-size: 7pt; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.ls-subs { margin-top: 0.04in; }
+.ls-subs td.nm { width: auto; }
+.ls-table td { height: 0.19in; }
+/* Ajustes para que la hoja (con cambios planeados) siga cabiendo en una sola carta */
+.ls-pitch { height: 3.35in; }
+.ls-side > div { margin-bottom: 0.07in; padding: 0.05in 0.08in; }
+.ls-box.big { height: 0.36in; }
+.ls-tg { gap: 0.025in 0.05in; }
+.ls-box { height: 0.18in; }
+.ls-notes { min-height: 0.7in; }
+.ls-line { height: 0.17in; }
+.ls-mid { margin-top: 0.09in; }
+.ls-table { margin-top: 0.08in; font-size: 8.5pt; }
+.ls-table td { height: 0.172in; }
+.ls-st { margin-top: 0.07in; }

@@ -80,3 +80,48 @@ export function cleanLineup(formation: string, slots: unknown, out: unknown, val
   }
   return { slots: cleanSlots, out: cleanOut };
 }
+
+// Cambios planeados, en orden: quién sale y quién entra (sin límite; un jugador puede volver a entrar).
+// El minuto es opcional. Cada cambio se valida contra quién está en el campo en ese momento.
+export type PlannedSub = { out: string; in: string; minute: number | null };
+
+export function cleanSubs(subs: unknown, slots: (string | null)[], out: string[], validIds: Set<string>): PlannedSub[] {
+  const field = new Set(slots.filter(Boolean) as string[]);
+  const res: PlannedSub[] = [];
+  for (const raw of Array.isArray(subs) ? subs : []) {
+    const o = raw?.out;
+    const i = raw?.in;
+    if (typeof o !== "string" || typeof i !== "string") continue;
+    if (!field.has(o) || !validIds.has(i) || field.has(i) || out.includes(i)) continue;
+    const m = raw?.minute;
+    const minute = typeof m === "number" && Number.isInteger(m) && m >= 0 && m <= 120 ? m : null;
+    field.delete(o);
+    field.add(i);
+    res.push({ out: o, in: i, minute });
+    if (res.length >= 60) break;
+  }
+  return res;
+}
+
+// Quién queda en el campo después de todos los cambios.
+export function fieldAfter(subs: PlannedSub[], slots: (string | null)[]): Set<string> {
+  const field = new Set(slots.filter(Boolean) as string[]);
+  for (const s of subs) {
+    field.delete(s.out);
+    field.add(s.in);
+  }
+  return field;
+}
+
+// Cadena de cambios de un puesto: el titular sale, entra X, X sale, entra Y...
+export function subChain<T extends { out: string; in: string }>(subs: T[], starterId: string): T[] {
+  const chain: T[] = [];
+  let cur = starterId;
+  for (const s of subs) {
+    if (s.out === cur) {
+      chain.push(s);
+      cur = s.in;
+    }
+  }
+  return chain;
+}

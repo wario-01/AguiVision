@@ -1,7 +1,7 @@
 // Hoja imprimible de la alineación (carta, vertical). Solo se ve al imprimir.
 // Sin hooks: se arma con lo que le pase LineupWorkspace.
 import React from "react";
-import { Slot, shortName } from "@/lib/lineup";
+import { Slot, shortName, subChain } from "@/lib/lineup";
 
 export type SheetPlayer = { id: string; full_name: string; jersey_number: number | null };
 
@@ -15,6 +15,7 @@ export default function LineupSheet({
   game,
   code,
   notes,
+  subs,
 }: {
   teamName: string;
   formation: string;
@@ -25,7 +26,9 @@ export default function LineupSheet({
   game: { title: string; details: string } | null;
   code: string;
   notes: string;
+  subs: { minute: number | null; out: SheetPlayer; inn: SheetPlayer }[];
 }) {
+  const chainOf = (id: string) => subChain(subs.map((x) => ({ out: x.out.id, in: x.inn.id, minute: x.minute, inn: x.inn })), id);
   const starters = placed.filter((p): p is SheetPlayer => !!p);
   const num = (p: SheetPlayer) => (p.jersey_number != null ? String(p.jersey_number) : "–");
   const list = (ps: SheetPlayer[]) => (ps.length ? ps.map((p) => `${num(p)} ${shortName(p.full_name)}`).join(" · ") : "—");
@@ -62,6 +65,13 @@ export default function LineupSheet({
               <div key={i} className={`ls-pl${i === 0 ? " gk" : ""}`} style={{ left: `${s.x}%`, top: `${s.y}%` }}>
                 <i>{p ? num(p) : ""}</i>
                 <s>{p ? shortName(p.full_name) : s.role}</s>
+                {p && chainOf(p.id).length > 0 && (
+                  <em className="ls-sub">
+                    ↑ {shortName(chainOf(p.id)[0].inn.full_name)}
+                    {chainOf(p.id)[0].minute != null ? ` ${chainOf(p.id)[0].minute}'` : ""}
+                    {chainOf(p.id).length > 1 ? ` +${chainOf(p.id).length - 1}` : ""}
+                  </em>
+                )}
               </div>
             );
           })}
@@ -93,6 +103,28 @@ export default function LineupSheet({
           </div>
         </div>
       </div>
+
+      <div className="ls-st">Cambios planeados</div>
+      <table className="ls-table ls-subs">
+        <thead>
+          <tr>
+            <th style={{ width: "0.6in" }}>Min.</th>
+            <th>Sale</th>
+            <th>Entra</th>
+            <th style={{ width: "1in" }}>Minuto real</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: Math.max(4, subs.length) }, (_, k) => subs[k] ?? null).map((x, k) => (
+            <tr key={k}>
+              <td>{x?.minute != null ? `${x.minute}'` : ""}</td>
+              <td className="nm">{x ? `${num(x.out)} ${x.out.full_name}` : ""}</td>
+              <td className="nm">{x ? `${num(x.inn)} ${x.inn.full_name}` : ""}</td>
+              <td />
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <table className="ls-table">
         <thead>
