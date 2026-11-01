@@ -69,7 +69,18 @@ export default async function EquipoPage({ params }: { params: { teamSlug: strin
       <Sidebar currentTeamSlug={team.slug} active="equipo" />
       <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-2xl">
         <div className="font-display text-2xl font-bold mb-1">Equipo</div>
-        <div className="text-sm text-muted mb-7">{team.name}</div>
+        <div className="text-sm text-muted mb-5">{team.name}</div>
+
+        {canInvite && (
+          <div className="flex gap-2 mb-6 flex-wrap">
+            <Link href={`/${team.slug}/equipo/perfil`} className="rounded-full px-4 py-2 text-xs font-extrabold border bg-panel border-border text-muted">
+              Perfil del equipo
+            </Link>
+            <span className="rounded-full px-4 py-2 text-xs font-extrabold border bg-gold text-bg border-gold">
+              Plantilla, miembros e invitaciones
+            </span>
+          </div>
+        )}
 
         {/* Tu propia foto de perfil — cualquiera puede cambiar la suya */}
         <div className="flex items-center gap-3 bg-panel border border-border rounded-2xl p-4 mb-8">

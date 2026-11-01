@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 30 de octubre de 2026.
+Última actualización: 1 de noviembre de 2026 (último paquete subido: 45).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -26,6 +26,9 @@
 - Colores y fuentes oficiales de la guía de marca Club América Nido Águila USA (azul #003C71, amarillo #F9E547, rojo #E03C31 con moderación; títulos Avant Garde Bold, texto Montserrat). Ver "Diseño".
 - Calendario (30 oct 2026): torneos con varios juegos adentro (rival, día, hora; se agregan también al editar) y eventos que se repiten (días de la semana hasta una fecha; se borra solo uno o toda la serie). SQL: `supabase/calendario-torneos-repeticion.sql`.
 - Videos en la galería de fotos (30 oct 2026): hasta 5 por vez de 600 MB, se pueden marcar como highlight (se envían a Mux, máximo 5 minutos). SQL: `supabase/fotos-4-videos.sql`.
+
+- Detalle de evento y eventos cancelados (31 oct 2026): al tocar un evento en Inicio o en el calendario se abre su detalle; un evento se puede marcar CANCELADO (queda en el calendario sin asistencia, con motivo). SQL: `supabase/calendario-cancelado.sql`.
+- Perfil del equipo (1 nov 2026, solo entrenadores): pestaña en Equipo con resumen, campograma con alineación (formaciones 11/9/7, suplentes, no convocados), hoja imprimible con logo, captura manual de estadísticas del partido (marcador, tiros, esquinas, faltas, cambios y por jugador: minutos, goles, asistencias, amarillas, rojas, atajadas) y tabla de la temporada. SQL: `supabase/alineaciones-estadisticas.sql`. Formación por defecto según categoría: U9 = 7v7, U11/U12 = 9v9, U14 = 11v11 (confirmar con Mario).
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
@@ -139,6 +142,8 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Pendiente: marcador manual del partido (dos números, solo cuerpo técnico) para mostrarlo en "Último partido" — pospuesto por ahora.
 
 ## Ideas / pendientes grandes
+- **Automatizar la captura de estadísticas del partido (pendiente, acordado 1 nov 2026)**: hoy el entrenador pasa a mano los datos de la hoja impresa. Siguiente etapa: tomar una foto de la hoja llena y que un modelo con visión (API de Anthropic, modelo pequeño tipo Haiku) lea los cuadros escritos a mano; la app muestra lo leído para corregir y confirmar, y luego guarda en `game_stats` / `game_results`. La hoja ya trae código del partido y un cuadro fijo por dato para facilitar la lectura. Costo estimado: medio centavo a unos pocos centavos por hoja (verificar precios vigentes); requiere crear una llave de API (cuenta aparte de la suscripción) en Vercel con límite de gasto mensual. Alternativa gratis ya disponible: captura manual en la app.
+- **Perfil del equipo, mejoras posibles**: evaluación promedio, OVR de la ficha y highlights por jugador en la tabla; marcar en el campograma a los que faltaron a la última práctica; goleadores en el perfil del jugador.
 - **Álbum de estampas** (fin de temporada): álbum imprimible por equipo y hojas de estampas con las fichas técnicas, cada niño recibe la misma cantidad de copias para regalar a sus compañeros (con una pregunta para conversar). Sin compartir por internet; posible QR dentro de la app en una segunda etapa. Sacar primero la ficha técnica y simular una página antes de construirlo.
 - **Manuales y presentación**: actualizar el manual de entrenadores, el de familias y la presentación para padres (fotos, recibos, evaluación U14, ficha técnica, nuevo diseño); completar el contacto del club en la presentación.
 - **Respaldo de fotos en la Buffalo** (rclone, solo copiar, cada semana o menos de 60 días): falta saber si hay una computadora siempre encendida.
