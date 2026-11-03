@@ -3,7 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import MuxThumb from "@/components/MuxThumb";
 import Link from "next/link";
 import { getMeasurements } from "@/lib/data-crecimiento";
-import { clubParts, clubTime } from "@/lib/tz";
+import { clubParts, clubTime, clubDateLabel } from "@/lib/tz";
 import { teamAccent } from "@/lib/team-accent";
 import { getTeamBySlug, getMatches, getHighlights, getCurrentUser, getUpcomingEvents } from "@/lib/data";
 
@@ -232,7 +232,7 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
               <div className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm font-bold truncate">{team.name} vs {lastMatch.opponent}</div>
-                  <div className="text-xs text-muted">{lastMatch.match_date}</div>
+                  <div className="text-xs text-muted">{clubDateLabel(lastMatch.match_date)}</div>
                 </div>
                 <span className="text-xs font-extrabold text-gold shrink-0">Ver partido</span>
               </div>
@@ -282,8 +282,11 @@ export default async function TeamHome({ params }: { params: { teamSlug: string 
             >
               <MuxThumb playbackId={m.video_playback_id} width={240} time={30} className="w-24 h-14 rounded-lg shrink-0" />
               <div className="flex flex-col gap-1.5 md:grid md:grid-cols-[1fr_140px_120px] md:items-center md:gap-4 flex-grow min-w-0">
-                <span className="text-sm font-bold">{team.name} vs {m.opponent}</span>
-                <span className="text-xs text-muted">{m.match_date}</span>
+                <span className="text-sm font-bold">
+                  {m.jornada != null && <span className="text-gold">J{m.jornada} · </span>}
+                  {team.name} vs {m.opponent}
+                </span>
+                <span className="text-xs text-muted">{clubDateLabel(m.match_date)}</span>
                 <span
                   className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full w-fit ${
                     m.video_status === "ready"

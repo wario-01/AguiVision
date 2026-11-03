@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import UploadForm from "@/components/UploadForm";
 import PhotoUploadForm from "@/components/PhotoUploadForm";
-import { getTeamBySlug, getMatches } from "@/lib/data";
+import { getTeamBySlug, getMatches, getPlayers } from "@/lib/data";
 import { clubParts } from "@/lib/tz";
 
 export default async function SubirPage({
@@ -24,11 +24,13 @@ export default async function SubirPage({
   const tab = !isStaff || searchParams.tab === "fotos" ? "fotos" : "video";
 
   let matchOpts: { id: string; label: string }[] = [];
+  let playerOpts: { id: string; name: string }[] = [];
   if (tab === "fotos") {
+    if (isStaff) playerOpts = (await getPlayers(team.slug)).map((p) => ({ id: p.id, name: p.full_name }));
     const matches = await getMatches(team.slug);
     matchOpts = matches.slice(0, 12).map((m) => ({
       id: m.id,
-      label: `vs ${m.opponent} · ${clubParts(m.match_date).ymd}`,
+      label: `${m.jornada != null ? `J${m.jornada} · ` : ""}vs ${m.opponent} · ${clubParts(m.match_date).ymd}`,
     }));
   }
 
@@ -67,7 +69,7 @@ export default async function SubirPage({
           </>
         ) : (
           <>
-            <PhotoUploadForm teamSlug={team.slug} matches={matchOpts} />
+            <PhotoUploadForm teamSlug={team.slug} matches={matchOpts} players={playerOpts} canHighlight={isStaff} />
             <div className="mt-8 text-xs text-muted">
               Para ver y descargar las fotos y videos (y marcar un video como highlight):{" "}
               <Link href={`/${team.slug}/fotos`} className="font-bold text-gold hover:underline">

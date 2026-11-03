@@ -29,3 +29,13 @@ export function clubTime(iso: string | Date): string {
   const d = typeof iso === "string" ? new Date(iso) : iso;
   return d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit", timeZone: CLUB_TZ });
 }
+
+// "mar 3 nov 2026" (hora del club).
+export function clubDateLabel(iso: string | Date): string {
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  if (isNaN(d.getTime())) return String(iso);
+  return d
+    .toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: CLUB_TZ })
+    .replace(/\./g, "")
+    .replace(",", "");
+}

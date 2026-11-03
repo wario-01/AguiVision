@@ -6,6 +6,8 @@ import HighlightForm from "@/components/HighlightForm";
 import DeleteMatchButtons from "@/components/DeleteMatchButtons";
 import MoveMatchForm from "@/components/MoveMatchForm";
 import DownloadMatchButton from "@/components/DownloadMatchButton";
+import MatchEditForm from "@/components/MatchEditForm";
+import { clubDateLabel, clubParts } from "@/lib/tz";
 
 export default async function MatchPage({
   params,
@@ -31,10 +33,13 @@ export default async function MatchPage({
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
       <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-4xl">
+        {match.jornada != null && (
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-gold mb-1">Jornada {match.jornada}</div>
+        )}
         <div className="font-display text-2xl font-bold mb-1">
           {team.name} vs {match.opponent}
         </div>
-        <div className="text-sm text-muted mb-7">{match.match_date}</div>
+        <div className="text-sm text-muted mb-7">{clubDateLabel(match.match_date)}</div>
 
         {match.video_status === "ready" && match.video_playback_id ? (
           <MatchPlayer playbackId={match.video_playback_id} />
@@ -47,6 +52,15 @@ export default async function MatchPage({
         )}
 
         {canMarkHighlights && match.video_status === "ready" && <DownloadMatchButton matchId={match.id} />}
+
+        {canMarkHighlights && (
+          <MatchEditForm
+            matchId={match.id}
+            opponent={match.opponent}
+            jornada={match.jornada ?? null}
+            dateYmd={clubParts(match.match_date).ymd}
+          />
+        )}
 
         {canMarkHighlights && <DeleteMatchButtons matchId={match.id} teamSlug={team.slug} />}
 

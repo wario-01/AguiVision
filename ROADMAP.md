@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 1 de noviembre de 2026 (último paquete subido: 47 pendiente de reemplazar por 48).
+Última actualización: 1 de noviembre de 2026 (último paquete subido: 48).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -29,6 +29,8 @@
 
 - Detalle de evento y eventos cancelados (31 oct 2026): al tocar un evento en Inicio o en el calendario se abre su detalle; un evento se puede marcar CANCELADO (queda en el calendario sin asistencia, con motivo). SQL: `supabase/calendario-cancelado.sql`.
 - Perfil del equipo (1 nov 2026, solo entrenadores): pestaña en Equipo con resumen, campograma con alineación (formaciones 11/9/7, suplentes, no convocados), hoja imprimible con logo, captura manual de estadísticas del partido (marcador, tiros, esquinas, faltas, cambios y por jugador: minutos, goles, asistencias, amarillas, rojas, atajadas) y tabla de la temporada. SQL: `supabase/alineaciones-estadisticas.sql`. Formación por defecto según categoría: U9 = 7v7, U11/U12 = 9v9, U14 = 11v11 (confirmar con Mario). Cambios planeados sin límite y con reingreso (minuto opcional): lista en orden con "sale/entra"; se ven en el campo y en la hoja impresa. SQL: `supabase/alineaciones-cambios.sql`.
+
+- Jornadas y highlight al subir (3 nov 2026): cada partido puede llevar número de jornada (se ordena J1, J2…) y se puede editar rival, jornada y fecha; al subir videos a la galería se pueden marcar como highlight (etiqueta y jugador) y se crean solos. SQL: `supabase/partidos-jornada.sql`.
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
@@ -142,6 +144,7 @@ Lo que queda de la auditoría de octubre 2026, de menor a mayor esfuerzo.
 - Pendiente: marcador manual del partido (dos números, solo cuerpo técnico) para mostrarlo en "Último partido" — pospuesto por ahora.
 
 ## Ideas / pendientes grandes
+- **Editor de highlights con dibujos y voz (diseño mostrado a Mario el 3 nov 2026, pendiente de aprobar)**: el video no se modifica; se guardan flechas, cuadros, círculos, texto y trazo libre con minuto de aparición y duración, y se dibujan encima al reproducir (SVG sincronizado con el video). Opción de pausar unos segundos en cada dibujo. Voz: grabación con el micrófono (MediaRecorder) mientras se ve el video, guardada en R2 y reproducida junto al video; probar en iPhone. Las familias lo ven en el reproductor normal. Etapas: 1) dibujos, 2) voz, 3) opcional: bajar MP4 con los dibujos incluidos (servicio externo de pago, ~$0.20–0.40 por video de 2 min).
 - **Automatizar la captura de estadísticas del partido (pendiente, acordado 1 nov 2026)**: hoy el entrenador pasa a mano los datos de la hoja impresa. Siguiente etapa: tomar una foto de la hoja llena y que un modelo con visión (API de Anthropic, modelo pequeño tipo Haiku) lea los cuadros escritos a mano; la app muestra lo leído para corregir y confirmar, y luego guarda en `game_stats` / `game_results`. La hoja ya trae código del partido y un cuadro fijo por dato para facilitar la lectura. Costo estimado: medio centavo a unos pocos centavos por hoja (verificar precios vigentes); requiere crear una llave de API (cuenta aparte de la suscripción) en Vercel con límite de gasto mensual. Alternativa gratis ya disponible: captura manual en la app.
 - **Perfil del equipo, mejoras posibles**: evaluación promedio, OVR de la ficha y highlights por jugador en la tabla; marcar en el campograma a los que faltaron a la última práctica; goleadores en el perfil del jugador.
 - **Álbum de estampas** (fin de temporada): álbum imprimible por equipo y hojas de estampas con las fichas técnicas, cada niño recibe la misma cantidad de copias para regalar a sus compañeros (con una pregunta para conversar). Sin compartir por internet; posible QR dentro de la app en una segunda etapa. Sacar primero la ficha técnica y simular una página antes de construirlo.

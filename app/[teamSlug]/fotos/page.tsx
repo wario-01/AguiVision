@@ -44,7 +44,7 @@ export default async function FotosPage({ params }: { params: { teamSlug: string
   const matchOpts = isStaff
     ? (await getMatches(team.slug)).slice(0, 30).map((m) => ({
         id: m.id,
-        label: `vs ${m.opponent} · ${clubParts(m.match_date).ymd}`,
+        label: `${m.jornada != null ? `J${m.jornada} · ` : ""}vs ${m.opponent} · ${clubParts(m.match_date).ymd}`,
       }))
     : [];
   const playerOpts = isStaff ? (await getPlayers(team.slug)).map((pl) => ({ id: pl.id, name: pl.full_name })) : [];

@@ -31,6 +31,7 @@ export type Match = {
   duration_seconds: number | null;
   video_status: "none" | "uploading" | "processing" | "ready";
   video_playback_id?: string | null;
+  jornada?: number | null; // número de jornada (orden en que se jugaron los partidos)
 };
 
 export type Highlight = {

@@ -4,6 +4,8 @@ import { useState } from "react";
 
 type MatchOpt = { id: string; label: string };
 type Item = { name: string; state: "wait" | "up" | "ok" | "error"; msg?: string; pct?: number };
+type Hl = { on: boolean; playerId: string; label: string; shared: boolean };
+const NO_HL: Hl = { on: false, playerId: "", label: "", shared: false };
 type Prepared = { full: Blob; thumb: Blob; name: string; kind: "photo" | "video"; duration?: number; type: string };
 
 const MAX_VIDEO_MB = 600;
@@ -104,8 +106,19 @@ async function videoThumb(file: File): Promise<{ thumb: Blob; duration?: number 
   }
 }
 
-export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: string; matches: MatchOpt[] }) {
+export default function PhotoUploadForm({
+  teamSlug,
+  matches,
+  players = [],
+  canHighlight = false,
+}: {
+  teamSlug: string;
+  matches: MatchOpt[];
+  players?: { id: string; name: string }[];
+  canHighlight?: boolean;
+}) {
   const [files, setFiles] = useState<File[]>([]);
+  const [hl, setHl] = useState<Record<number, Hl>>({});
   const [matchId, setMatchId] = useState(matches[0]?.id ?? "");
   const [album, setAlbum] = useState("");
   const [items, setItems] = useState<Item[]>([]);
@@ -113,6 +126,9 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
   const [message, setMessage] = useState("");
 
   const other = matchId === "";
+  const getHl = (i: number): Hl => hl[i] ?? NO_HL;
+  const setHlItem = (i: number, patch: Partial<Hl>) => setHl((prev) => ({ ...prev, [i]: { ...(prev[i] ?? NO_HL), ...patch } }));
+  const videoIdx = files.map((f, i) => (isVideoFile(f) ? i : -1)).filter((i) => i >= 0);
 
   function setItem(i: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -125,6 +141,9 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
     const big = files.find((f) => isVideoFile(f) && f.size > MAX_VIDEO_MB * 1024 * 1024);
     if (big) return setMessage(`"${big.name}" pesa más de ${MAX_VIDEO_MB} MB. Recórtalo o elige otro.`);
     if (other && !album.trim()) return setMessage("Escribe el nombre del álbum (por ejemplo: Torneo de otoño).");
+    const wantHl = canHighlight && !other ? videoIdx.filter((i) => getHl(i).on) : [];
+    const noLabel = wantHl.find((i) => !getHl(i).label.trim());
+    if (noLabel !== undefined) return setMessage(`Escribe la etiqueta del highlight para "${files[noLabel].name}" (por ejemplo: Gol de Mateo).`);
     setBusy(true);
     setMessage("");
     setItems(files.map((f) => ({ name: f.name, state: "wait" })));
@@ -205,12 +224,47 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
         }).catch(() => {});
       }
       const okCount = prepared.length - failed.length;
+
+      // 4) los videos marcados como highlight se envían a Mux (uno por uno)
+      let hlOk = 0;
+      const hlErrors: string[] = [];
+      for (let k = 0; k < prepared.length; k++) {
+        const idx = okIdx[k];
+        const h = getHl(idx);
+        if (!(canHighlight && !other && prepared[k].kind === "video" && h.on)) continue;
+        if (failed.includes(data.items[k].id)) continue;
+        try {
+          const r = await fetch("/api/fotos/highlight", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              teamSlug,
+              photoId: data.items[k].id,
+              matchId,
+              label: h.label.trim(),
+              playerId: h.playerId || undefined,
+              shared: h.shared,
+            }),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.error ?? "No se pudo crear el highlight");
+          hlOk++;
+        } catch (err: any) {
+          hlErrors.push(`${prepared[k].name}: ${err.message}`);
+        }
+      }
+
       setMessage(
-        failed.length === 0
+        (failed.length === 0
           ? `Listo: ${okCount} archivo${okCount === 1 ? "" : "s"} en la galería.`
-          : `Se subieron ${okCount}; ${failed.length} fallaron — vuelve a elegirlos y súbelos otra vez.`
+          : `Se subieron ${okCount}; ${failed.length} fallaron — vuelve a elegirlos y súbelos otra vez.`) +
+          (hlOk > 0 ? ` ${hlOk} highlight${hlOk === 1 ? "" : "s"} creado${hlOk === 1 ? "" : "s"}: se están procesando y aparecen en unos minutos.` : "") +
+          (hlErrors.length > 0 ? ` No se pudo crear: ${hlErrors.join(" · ")}` : "")
       );
-      if (failed.length === 0) setFiles([]);
+      if (failed.length === 0) {
+        setFiles([]);
+        setHl({});
+      }
     } catch (err: any) {
       setMessage(err.message ?? "Ocurrió un error");
     } finally {
@@ -234,7 +288,10 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
             accept="image/*,video/*"
             multiple
             className="hidden"
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 60))}
+            onChange={(e) => {
+              setFiles(Array.from(e.target.files ?? []).slice(0, 60));
+              setHl({});
+            }}
           />
         </label>
       </div>
@@ -261,6 +318,62 @@ export default function PhotoUploadForm({ teamSlug, matches }: { teamSlug: strin
           maxLength={80}
           className="w-full box-border bg-bg border border-border rounded-lg px-3.5 py-2.5 text-sm font-semibold mb-3"
         />
+      )}
+
+      {canHighlight && videoIdx.length > 0 && (
+        <div className="bg-panel border border-border rounded-2xl p-4 mb-4">
+          <div className="text-sm font-bold mb-1">¿Alguno de estos videos es un highlight?</div>
+          {other ? (
+            <div className="text-xs text-muted">Para marcar highlights, elige arriba el partido del álbum (los highlights van dentro de un partido).</div>
+          ) : (
+            <>
+              <div className="text-xs text-muted mb-3">Máximo 5 minutos por video. Se crea solo al terminar de subir.</div>
+              <div className="flex flex-col gap-3">
+                {videoIdx.map((i) => {
+                  const h = getHl(i);
+                  return (
+                    <div key={i} className="bg-bg border border-border rounded-xl p-3">
+                      <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                        <input type="checkbox" checked={h.on} onChange={(e) => setHlItem(i, { on: e.target.checked })} />
+                        <span className="truncate">Marcar como highlight: {files[i].name}</span>
+                      </label>
+                      {h.on && (
+                        <div className="mt-2.5 flex flex-col gap-2">
+                          <input
+                            type="text"
+                            value={h.label}
+                            onChange={(e) => setHlItem(i, { label: e.target.value })}
+                            placeholder="Etiqueta, ej: Gol de Mateo"
+                            maxLength={80}
+                            className="w-full box-border bg-panel border border-border rounded-lg px-3 py-2 text-sm font-semibold"
+                          />
+                          <select
+                            value={h.playerId}
+                            onChange={(e) => setHlItem(i, { playerId: e.target.value })}
+                            className="w-full box-border bg-panel border border-border rounded-lg px-3 py-2 text-sm font-semibold"
+                          >
+                            <option value="">Todo el equipo</option>
+                            {players.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                          {h.playerId && (
+                            <label className="flex items-center gap-2 text-xs font-bold text-muted cursor-pointer">
+                              <input type="checkbox" checked={h.shared} onChange={(e) => setHlItem(i, { shared: e.target.checked })} />
+                              Compartir con todo el equipo (si no, solo lo ve la familia de ese jugador)
+                            </label>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {busy && items.length > 0 && (
