@@ -34,7 +34,7 @@ const TOOLS: { id: Tool; label: string; icon: string }[] = [
 ];
 
 const HINTS: Record<Tool, string> = {
-  select: "Toca un dibujo para elegirlo y mover sus puntos. Para dibujar, elige una herramienta.",
+  select: "Toca un dibujo para elegirlo y mover sus puntos. Para dibujar, elige una herramienta (después de cada dibujo se vuelve a Elegir).",
   arrow: "Arrastra, o toca el inicio y luego el final de la flecha.",
   rect: "Arrastra de una esquina a la opuesta, o toca una esquina y luego la otra.",
   circle: "Arrastra de una esquina a la opuesta, o toca una esquina y luego la otra.",
@@ -219,6 +219,10 @@ export default function HighlightAnnotator({
     const a: Anno = { id: newId(), color, t, d: Math.min(DEFAULT_DURATION, maxD), pause: 0, ...partial };
     commit([...annos, a]);
     setSelId(a.id);
+    // Al terminar un dibujo, volvemos a "Elegir" para poder ajustarlo con sus puntos
+    // (si no, tocar un punto empezaría un dibujo nuevo en vez de moverlo).
+    cancelDrawing();
+    setTool("select");
   }
 
   // ---------- dibujar sobre el video ----------
@@ -755,8 +759,14 @@ export default function HighlightAnnotator({
                 />
               ))}
             </div>
-            {sel && full && (
-              <button type="button" onClick={() => remove(sel.id)} className={`${btn} bg-panel border-red text-red`} aria-label="Borrar dibujo">
+            {full && (
+              <button
+                type="button"
+                onClick={() => sel && remove(sel.id)}
+                disabled={!sel}
+                className={`${btn} bg-panel border-red text-red disabled:opacity-30`}
+                aria-label="Borrar dibujo"
+              >
                 🗑
               </button>
             )}
@@ -805,6 +815,8 @@ export default function HighlightAnnotator({
                 : "Así lo verán las familias: los dibujos aparecen solos y el video se pausa donde lo pusiste."
               : pendingPt
               ? "Ahora toca el punto final."
+              : tool === "select" && sel
+              ? "Arrastra los puntos amarillos para ajustar el dibujo. Para dibujar otro, elige una herramienta."
               : HINTS[tool]}
           </div>
         </div>
