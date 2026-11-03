@@ -9,6 +9,7 @@ import MuxPlayer from "@mux/mux-player-react";
 import AnnotationLayer from "@/components/AnnotationLayer";
 import { usePlayerClock } from "@/components/usePlayerClock";
 import { useVoiceSync } from "@/components/useVoiceSync";
+import { useMusicSync } from "@/components/useMusicSync";
 import {
   Anno,
   AnnoType,
@@ -69,6 +70,9 @@ export default function HighlightAnnotator({
   initial,
   initialVoice,
   r2Ready,
+  initialTracks,
+  initialMusicId,
+  initialMusicVolume,
 }: {
   teamSlug: string;
   highlightId: string;
@@ -77,6 +81,9 @@ export default function HighlightAnnotator({
   initial: Anno[];
   initialVoice: { url: string; start: number } | null;
   r2Ready: boolean;
+  initialTracks: { id: string; title: string; url: string; builtin?: boolean }[];
+  initialMusicId: string | null;
+  initialMusicVolume: number;
 }) {
   const playerRef = useRef<any>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -108,6 +115,18 @@ export default function HighlightAnnotator({
   const wasMuted = useRef(false);
   const activeVoice = pendingVoice ? { url: pendingVoice.url, start: pendingVoice.start } : voice;
   const vs = useVoiceSync({ url: activeVoice?.url ?? null, start: activeVoice?.start ?? 0, now, paused, enabled: !recording });
+
+  // música de fondo
+  const [tracks, setTracks] = useState(initialTracks);
+  const [musicId, setMusicId] = useState<string | null>(initialMusicId);
+  const [musicVol, setMusicVol] = useState(initialMusicVolume);
+  const [musicBusy, setMusicBusy] = useState(false);
+  const musicTrack = tracks.find((t) => t.id === musicId) ?? null;
+  const ms = useMusicSync({ url: musicTrack?.url ?? null, volume: musicVol, now, paused, enabled: !recording, duck: vs.speaking });
+  const unlockAll = () => {
+    vs.unlock();
+    ms.unlock();
+  };
 
   // pantalla completa
   const [full, setFull] = useState(false);
@@ -141,7 +160,7 @@ export default function HighlightAnnotator({
   const togglePlay = () => {
     const p = el();
     if (!p) return;
-    vs.unlock();
+    unlockAll();
     if (p.paused) p.play?.();
     else p.pause?.();
   };
@@ -492,6 +511,80 @@ export default function HighlightAnnotator({
     }
   }
 
+  // ---------- música ----------
+  async function saveMusic(id: string | null, vol: number) {
+    setMusicBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/highlights/music", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ highlightId, trackId: id, volume: vol }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "No se pudo guardar la música");
+      setMsg({ ok: true, text: id ? "Música guardada" : "Música quitada" });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message ?? "Ocurrió un error" });
+    } finally {
+      setMusicBusy(false);
+    }
+  }
+  async function uploadTrack(file: File) {
+    setMsg(null);
+    const mime = (file.type || "").split(";")[0] || (file.name.toLowerCase().endsWith(".mp3") ? "audio/mpeg" : "");
+    const title = file.name.replace(/\.[^.]+$/, "").slice(0, 80);
+    setMusicBusy(true);
+    let createdId: string | null = null;
+    try {
+      const r1 = await fetch("/api/musica", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamSlug, title, mime, size: file.size }),
+      });
+      const d1 = await r1.json().catch(() => ({}));
+      if (!r1.ok) throw new Error(d1.error ?? "No se pudo preparar la subida");
+      createdId = d1.track.id;
+      const up = await fetch(d1.uploadUrl, { method: "PUT", headers: { "Content-Type": mime }, body: file });
+      if (!up.ok) throw new Error("No se pudo subir la canción. Inténtalo otra vez.");
+      setTracks((t) => [...t, d1.track]);
+      setMusicId(d1.track.id);
+      await saveMusic(d1.track.id, musicVol);
+    } catch (err: any) {
+      if (createdId) {
+        fetch("/api/musica", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teamSlug, id: createdId }),
+        }).catch(() => {});
+      }
+      setMsg({ ok: false, text: err.message ?? "Ocurrió un error" });
+      setMusicBusy(false);
+      return;
+    }
+    setMusicBusy(false);
+  }
+  async function deleteTrack() {
+    if (!musicTrack) return;
+    if (!confirm(`¿Borrar "${musicTrack.title}" de la biblioteca? Los highlights que la usan se quedarán sin música.`)) return;
+    setMusicBusy(true);
+    try {
+      const res = await fetch("/api/musica", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamSlug, id: musicTrack.id }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo borrar");
+      setTracks((t) => t.filter((x) => x.id !== musicTrack.id));
+      setMusicId(null);
+      setMsg({ ok: true, text: "Canción borrada" });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message ?? "Ocurrió un error" });
+    } finally {
+      setMusicBusy(false);
+    }
+  }
+
   // ---------- pantalla completa ----------
   async function enterFull() {
     setFull(true);
@@ -614,7 +707,7 @@ export default function HighlightAnnotator({
       : [];
 
   return (
-    <div className={full ? "fixed inset-0 z-[100] bg-bg flex flex-col" : ""}>
+    <div className={full ? "fixed inset-0 z-[100] bg-bg flex flex-col" : ""} onPointerDownCapture={unlockAll}>
       <div className={full ? "flex flex-col flex-1 min-h-0" : "grid gap-5 lg:grid-cols-[1fr_330px]"}>
         <div className={full ? "flex flex-col flex-1 min-h-0 min-w-0" : "min-w-0"}>
           {/* video + dibujos */}
@@ -871,6 +964,80 @@ export default function HighlightAnnotator({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* música */}
+          <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="music-panel">
+            <div className="text-[11px] font-extrabold text-gold tracking-widest uppercase mb-2">Música de fondo</div>
+            <select
+              value={musicId ?? ""}
+              disabled={musicBusy}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                setMusicId(id);
+                saveMusic(id, musicVol);
+              }}
+              className={input}
+              aria-label="Canción"
+            >
+              <option value="">Sin música</option>
+              <optgroup label="Incluidas en la app">
+                {tracks.filter((t) => t.builtin).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title}
+                  </option>
+                ))}
+              </optgroup>
+              {tracks.some((t) => !t.builtin) && (
+                <optgroup label="Subidas por el equipo">
+                  {tracks.filter((t) => !t.builtin).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            {musicTrack && (
+              <div className="mt-3">
+                <label className="block text-xs font-bold text-muted mb-1">Volumen: {Math.round(musicVol * 100)}%</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round(musicVol * 100)}
+                  onChange={(e) => setMusicVol(Number(e.target.value) / 100)}
+                  onPointerUp={() => saveMusic(musicId, musicVol)}
+                  onKeyUp={() => saveMusic(musicId, musicVol)}
+                  className="w-full"
+                  aria-label="Volumen de la música"
+                />
+                <div className="text-[11px] text-muted mt-1">Baja sola mientras se oye tu voz. Dale play al video para oírla.</div>
+                {!musicTrack.builtin && (
+                  <button type="button" onClick={deleteTrack} disabled={musicBusy} className="text-xs font-bold text-red mt-2">
+                    Borrar esta canción de la biblioteca
+                  </button>
+                )}
+              </div>
+            )}
+            <label className={`mt-3 inline-block bg-bg border border-border rounded-lg px-3 py-2.5 text-xs font-bold cursor-pointer ${musicBusy || !r2Ready ? "opacity-50 pointer-events-none" : ""}`}>
+              {musicBusy ? "Procesando..." : "+ Subir otra canción (MP3, máx. 15 MB)"}
+              <input
+                type="file"
+                accept="audio/*,.mp3,.m4a,.wav,.ogg"
+                className="hidden"
+                data-testid="music-file"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) uploadTrack(f);
+                }}
+              />
+            </label>
+            <div className="text-[11px] text-muted mt-2 leading-relaxed">
+              Las canciones incluidas son de Pixabay Music. Si subes otras, usa solo música libre de derechos. Lo que subas queda en la biblioteca del equipo para todos los highlights.
+            </div>
           </div>
 
           {sel ? (

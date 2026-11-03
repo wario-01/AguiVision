@@ -1,0 +1,9 @@
+Música incluida en la biblioteca de AguiVision. Todas descargadas de Pixabay Music (licencia Pixabay: uso gratuito, sin crédito obligatorio; no se pueden revender ni redistribuir como archivo suelto).
+Si agregas o cambias pistas, anota aquí el autor, el sitio y la licencia.
+
+metal-intenso.mp3          — "Sport Intense Metal Fast and Strong" · autor: strawberry_candy (Pixabay)
+indie-rock-animado.mp3     — "Upbeat Indie Rock" · autor: EchoBrainz (Pixabay)
+epica-cinematografica.mp3  — "Rebel Moon – Inspiring Emotional Epic Cinematic Trailer (short)" · autor: AudioAtlant (Pixabay)
+rock-indie-deportivo.mp3   — "Sport Upbeat Rock Indie Music" · autor: 331Music (Pixabay)
+musica-de-fondo.mp3        — "Background Music" · autor: LNPLUSMUSIC (Pixabay)
+rock-energetico.mp3        — "Sport Rock Energetic Intro" · autor: AudioEra (Pixabay)

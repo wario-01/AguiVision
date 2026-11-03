@@ -7,16 +7,19 @@ import MuxPlayer from "@mux/mux-player-react";
 import AnnotationLayer from "@/components/AnnotationLayer";
 import { usePlayerClock } from "@/components/usePlayerClock";
 import { useVoiceSync } from "@/components/useVoiceSync";
+import { useMusicSync } from "@/components/useMusicSync";
 import type { Anno } from "@/lib/annotations";
 
 export default function AnnotatedPlayer({
   playbackId,
   annotations,
   voice,
+  music,
 }: {
   playbackId: string;
   annotations: Anno[];
   voice?: { url: string; start: number } | null;
+  music?: { url: string; volume: number; title?: string } | null;
 }) {
   const ref = useRef<any>(null);
   const [aspect, setAspect] = useState(16 / 9);
@@ -25,6 +28,11 @@ export default function AnnotatedPlayer({
   const lastNow = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const vs = useVoiceSync({ url: voice?.url ?? null, start: voice?.start ?? 0, now, paused });
+  const ms = useMusicSync({ url: music?.url ?? null, volume: music?.volume ?? 0.25, now, paused, duck: vs.speaking });
+  const unlockAll = () => {
+    vs.unlock();
+    ms.unlock();
+  };
 
   // Pausas automáticas: el video se detiene unos segundos cuando aparece un dibujo con pausa.
   useEffect(() => {
@@ -54,7 +62,7 @@ export default function AnnotatedPlayer({
 
   return (
     <div>
-    <div className="rounded-2xl overflow-hidden border border-border" onPointerDownCapture={vs.unlock}>
+    <div className="rounded-2xl overflow-hidden border border-border" onPointerDownCapture={unlockAll}>
       <div className="relative w-full" style={{ aspectRatio: String(aspect) }}>
         <MuxPlayer
           ref={ref}
@@ -71,13 +79,19 @@ export default function AnnotatedPlayer({
         <AnnotationLayer annos={annotations} aspect={aspect} now={now} />
       </div>
     </div>
-    {voice && (
-      <div className="flex items-center gap-3 mt-2 text-xs font-bold text-muted">
-        <span>🎙 Con la voz del entrenador</span>
-        <button type="button" onClick={() => { vs.setMuted(!vs.muted); vs.unlock(); }} className="bg-panel border border-border rounded-lg px-3 py-1.5 text-text">
-          {vs.muted ? "🔇 Activar voz" : "🔊 Silenciar voz"}
-        </button>
-        {vs.blocked && <span className="text-goldText">Toca el video para activar la voz</span>}
+    {(voice || music) && (
+      <div className="flex items-center gap-2 mt-2 text-xs font-bold text-muted flex-wrap">
+        {voice && (
+          <button type="button" onClick={() => { vs.setMuted(!vs.muted); unlockAll(); }} className="bg-panel border border-border rounded-lg px-3 py-1.5 text-text">
+            {vs.muted ? "🔇 Activar voz" : "🎙 Silenciar voz"}
+          </button>
+        )}
+        {music && (
+          <button type="button" onClick={() => { ms.setMuted(!ms.muted); unlockAll(); }} className="bg-panel border border-border rounded-lg px-3 py-1.5 text-text">
+            {ms.muted ? "🔇 Activar música" : "🎵 Silenciar música"}
+          </button>
+        )}
+        {(vs.blocked || ms.blocked) && <span className="text-goldText">Toca el video para activar el sonido</span>}
       </div>
     )}
     </div>

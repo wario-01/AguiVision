@@ -6,6 +6,7 @@ import { getTeamBySlug } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
 import { isR2Configured, r2ViewUrl } from "@/lib/r2";
+import { BUILTIN_TRACKS } from "@/lib/music-library";
 
 export default async function DibujarHighlightPage({
   params,
@@ -45,6 +46,28 @@ export default async function DibujarHighlightPage({
     }
   } catch {}
 
+  // Música: biblioteca del equipo y la canción elegida para este highlight
+  let tracks: { id: string; title: string; url: string; builtin?: boolean }[] = BUILTIN_TRACKS.map((t) => ({ ...t, builtin: true }));
+  let musicId: string | null = null;
+  let musicVolume = 0.25;
+  try {
+    if (isR2Configured) {
+      const { data: tr, error: te } = await supabase
+        .from("music_tracks")
+        .select("id, title, r2_key")
+        .eq("team_id", team.id)
+        .order("created_at", { ascending: true });
+      if (!te) tracks = [...tracks, ...(tr ?? []).map((t: any) => ({ id: t.id, title: t.title, url: r2ViewUrl(t.r2_key) }))];
+    }
+  } catch {}
+  try {
+    const { data: m, error: me } = await supabase.from("highlights").select("music_id, music_volume").eq("id", hl.id).maybeSingle();
+    if (!me) {
+      musicId = ((m as any)?.music_id as string | null) ?? null;
+      musicVolume = Number((m as any)?.music_volume) || 0.25;
+    }
+  } catch {}
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
@@ -55,7 +78,7 @@ export default async function DibujarHighlightPage({
           </Link>{" "}
           / Dibujar
         </div>
-        <div className="font-display text-2xl font-bold mb-4">Dibujos y voz</div>
+        <div className="font-display text-2xl font-bold mb-4">Dibujos, voz y música</div>
         {missingColumn && (
           <div className="bg-panel border border-red rounded-xl px-4 py-3 mb-4 text-sm">
             Falta correr el SQL <b>highlights-dibujos.sql</b> en Supabase para poder guardar los dibujos.
@@ -70,6 +93,9 @@ export default async function DibujarHighlightPage({
             initial={annotations}
             initialVoice={voice}
             r2Ready={isR2Configured}
+            initialTracks={tracks}
+            initialMusicId={musicId}
+            initialMusicVolume={musicVolume}
           />
         ) : (
           <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">

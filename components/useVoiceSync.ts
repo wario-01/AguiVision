@@ -73,5 +73,11 @@ export function useVoiceSync(opts: {
       });
   }, []);
 
-  return { muted, setMuted, blocked, unlock };
+  // ¿se está oyendo la voz ahora? (la música baja de volumen mientras tanto)
+  const a0 = audio.current;
+  const speaking = Boolean(
+    url && enabled && !muted && !paused && a0 && Number.isFinite(a0.duration) && now >= start && now - start <= a0.duration
+  );
+
+  return { muted, setMuted, blocked, unlock, speaking };
 }

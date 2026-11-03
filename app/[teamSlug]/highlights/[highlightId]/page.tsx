@@ -6,6 +6,7 @@ import AnnotatedPlayer from "@/components/AnnotatedPlayer";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
 import { isR2Configured, r2ViewUrl } from "@/lib/r2";
+import { builtinTrack } from "@/lib/music-library";
 import Link from "next/link";
 import DeleteHighlightButton from "@/components/DeleteHighlightButton";
 import ShareHighlightToggle from "@/components/ShareHighlightToggle";
@@ -45,6 +46,25 @@ export default async function HighlightPage({
     }
   } catch {}
 
+  // Música de fondo (si las columnas aún no existen, no hay música)
+  let music: { url: string; volume: number; title: string } | null = null;
+  try {
+    const supabase = await createClient();
+    if (supabase) {
+      const { data, error } = await supabase.from("highlights").select("music_id, music_volume").eq("id", highlight.id).maybeSingle();
+      const mid = (data as any)?.music_id as string | null | undefined;
+      const vol = Number((data as any)?.music_volume) || 0.25;
+      if (!error && mid) {
+        const b = builtinTrack(mid);
+        if (b) music = { url: b.url, volume: vol, title: b.title };
+        else if (isR2Configured) {
+          const { data: t } = await supabase.from("music_tracks").select("title, r2_key").eq("id", mid).maybeSingle();
+          if (t) music = { url: r2ViewUrl((t as any).r2_key), volume: vol, title: (t as any).title };
+        }
+      }
+    }
+  } catch {}
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
@@ -62,8 +82,8 @@ export default async function HighlightPage({
 
         {highlight.clip_playback_id ? (
           <>
-            {annotations.length > 0 || voice ? (
-              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} voice={voice} />
+            {annotations.length > 0 || voice || music ? (
+              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} voice={voice} music={music} />
             ) : (
               <MatchPlayer playbackId={highlight.clip_playback_id} />
             )}
@@ -80,14 +100,14 @@ export default async function HighlightPage({
             </a>
             <div className="text-xs text-muted mt-2">
               Puede tardar un minuto extra en estar disponible después de que el clip se ve por primera vez.
-              {(annotations.length > 0 || voice) && " El archivo descargado es el video original, sin los dibujos ni la voz."}
+              {(annotations.length > 0 || voice || music) && " El archivo descargado es el video original, sin los dibujos, la voz ni la música."}
             </div>
             {canDelete && (
               <Link
                 href={`/${team.slug}/highlights/${highlight.id}/dibujar`}
                 className="inline-flex items-center gap-2 mt-4 ml-2 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold"
               >
-                ✎ {annotations.length > 0 || voice ? "Editar dibujos y voz" : "Dibujar y grabar voz"}
+                ✎ {annotations.length > 0 || voice || music ? "Editar dibujos, voz y música" : "Dibujar, grabar voz y música"}
               </Link>
             )}
           </>
