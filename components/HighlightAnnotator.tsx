@@ -8,6 +8,7 @@ import Link from "next/link";
 import MuxPlayer from "@mux/mux-player-react";
 import AnnotationLayer from "@/components/AnnotationLayer";
 import { usePlayerClock } from "@/components/usePlayerClock";
+import { useVoiceSync } from "@/components/useVoiceSync";
 import {
   Anno,
   AnnoType,
@@ -66,12 +67,16 @@ export default function HighlightAnnotator({
   playbackId,
   title,
   initial,
+  initialVoice,
+  r2Ready,
 }: {
   teamSlug: string;
   highlightId: string;
   playbackId: string;
   title: string;
   initial: Anno[];
+  initialVoice: { url: string; start: number } | null;
+  r2Ready: boolean;
 }) {
   const playerRef = useRef<any>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -90,6 +95,25 @@ export default function HighlightAnnotator({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // voz
+  type Pending = { blob: Blob; url: string; start: number; duration: number; mime: string };
+  const [voice, setVoice] = useState(initialVoice);
+  const [pendingVoice, setPendingVoice] = useState<Pending | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recSecs, setRecSecs] = useState(0);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const recStartedAt = useRef(0);
+  const recVideoStart = useRef(0);
+  const wasMuted = useRef(false);
+  const activeVoice = pendingVoice ? { url: pendingVoice.url, start: pendingVoice.start } : voice;
+  const vs = useVoiceSync({ url: activeVoice?.url ?? null, start: activeVoice?.start ?? 0, now, paused, enabled: !recording });
+
+  // pantalla completa
+  const [full, setFull] = useState(false);
+  const [fit, setFit] = useState({ w: 0, h: 0 });
+  const stageRef = useRef<HTMLDivElement>(null);
+
   const pending = useRef<Pt | null>(null);
   const gesture = useRef<
     | null
@@ -102,6 +126,7 @@ export default function HighlightAnnotator({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dirty = JSON.stringify(annos) !== saved;
+  const hasVoice = Boolean(activeVoice);
   const sel = annos.find((a) => a.id === selId) ?? null;
   const sorted = useMemo(() => [...annos].sort((a, b) => a.t - b.t), [annos]);
 
@@ -116,6 +141,7 @@ export default function HighlightAnnotator({
   const togglePlay = () => {
     const p = el();
     if (!p) return;
+    vs.unlock();
     if (p.paused) p.play?.();
     else p.pause?.();
   };
@@ -130,7 +156,7 @@ export default function HighlightAnnotator({
     if (!p) return;
     if (now < lastNow.current - 0.5) for (const a of annos) if (a.t > now - 0.1) fired.current.delete(a.id);
     lastNow.current = now;
-    if (!previewing || paused) return;
+    if (!previewing || paused || hasVoice || recording) return; // con voz el video no se pausa solo
     for (const a of annos) {
       if (a.pause > 0 && !fired.current.has(a.id) && now >= a.t && now < a.t + 0.6) {
         fired.current.add(a.id);
@@ -142,7 +168,7 @@ export default function HighlightAnnotator({
         break;
       }
     }
-  }, [now, paused, previewing, annos]);
+  }, [now, paused, previewing, annos, hasVoice, recording]);
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
   }, []);
@@ -326,6 +352,187 @@ export default function HighlightAnnotator({
     if (gesture.current?.kind === "handle") gesture.current = null;
   }
 
+  // ---------- voz ----------
+  const pickMime = () => {
+    const list = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+    return list.find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(m)) ?? "";
+  };
+  async function startRecording() {
+    setMsg(null);
+    if (!r2Ready) return setMsg({ ok: false, text: "Falta conectar el almacenamiento (Cloudflare R2) para guardar la voz." });
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      return setMsg({ ok: false, text: "Este navegador no puede grabar audio. Prueba con Chrome o Safari actualizado." });
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return setMsg({ ok: false, text: "No se pudo usar el micrófono. Permite el acceso en tu navegador e inténtalo otra vez." });
+    }
+    const mime = pickMime();
+    let rec: MediaRecorder;
+    try {
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      return setMsg({ ok: false, text: "No se pudo iniciar la grabación en este dispositivo." });
+    }
+    cancelDrawing();
+    setTool("select");
+    setPreviewing(false);
+    setSelId(null);
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
+    rec.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const type = rec.mimeType || mime || "audio/webm";
+      const blob = new Blob(chunks, { type });
+      const duration = (performance.now() - recStartedAt.current) / 1000;
+      if (blob.size < 1000 || duration < 0.5) return setMsg({ ok: false, text: "La grabación quedó vacía. Inténtalo de nuevo." });
+      setPendingVoice((old) => {
+        if (old) URL.revokeObjectURL(old.url);
+        return { blob, url: URL.createObjectURL(blob), start: recVideoStart.current, duration, mime: type };
+      });
+    };
+    const p = el();
+    recVideoStart.current = Math.round((Number(p?.currentTime) || 0) * 100) / 100;
+    wasMuted.current = Boolean(p?.muted);
+    if (p) p.muted = true; // el video va en silencio mientras hablas (así el micrófono no lo recoge)
+    recRef.current = rec;
+    recStartedAt.current = performance.now();
+    rec.start(1000);
+    setRecSecs(0);
+    setRecording(true);
+    p?.play?.();
+  }
+  const stopRecording = useCallback(() => {
+    const rec = recRef.current;
+    recRef.current = null;
+    if (rec && rec.state !== "inactive") rec.stop();
+    const p = playerRef.current;
+    if (p) {
+      p.muted = wasMuted.current;
+      p.pause?.();
+    }
+    setRecording(false);
+  }, []);
+  useEffect(() => {
+    if (!recording) return;
+    const id = setInterval(() => setRecSecs((performance.now() - recStartedAt.current) / 1000), 250);
+    return () => clearInterval(id);
+  }, [recording]);
+  // la grabación se detiene sola al terminar el video o si alguien pausa el video
+  useEffect(() => {
+    if (!recording) return;
+    const sinceStart = performance.now() - recStartedAt.current;
+    if ((duration > 0 && now >= duration - 0.1) || (paused && sinceStart > 1200)) stopRecording();
+  }, [recording, now, paused, duration, stopRecording]);
+  useEffect(() => () => {
+    if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
+  }, []);
+
+  async function saveVoice() {
+    if (!pendingVoice) return;
+    setVoiceBusy(true);
+    setMsg(null);
+    try {
+      const r1 = await fetch("/api/highlights/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ highlightId, mime: pendingVoice.mime, size: pendingVoice.blob.size }),
+      });
+      const d1 = await r1.json().catch(() => ({}));
+      if (!r1.ok) throw new Error(d1.error ?? "No se pudo preparar la subida");
+      const up = await fetch(d1.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": pendingVoice.mime.split(";")[0] },
+        body: pendingVoice.blob,
+      });
+      if (!up.ok) throw new Error("No se pudo subir el audio. Inténtalo otra vez.");
+      const r2 = await fetch("/api/highlights/voice", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ highlightId, key: d1.key, start: pendingVoice.start, duration: pendingVoice.duration }),
+      });
+      const d2 = await r2.json().catch(() => ({}));
+      if (!r2.ok) throw new Error(d2.error ?? "No se pudo guardar la voz");
+      setVoice({ url: pendingVoice.url, start: pendingVoice.start });
+      setPendingVoice(null);
+      setMsg({ ok: true, text: "Voz guardada" });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message ?? "Ocurrió un error" });
+    } finally {
+      setVoiceBusy(false);
+    }
+  }
+  function discardVoice() {
+    if (pendingVoice) URL.revokeObjectURL(pendingVoice.url);
+    setPendingVoice(null);
+  }
+  async function removeVoice() {
+    if (!confirm("¿Quitar la voz de este highlight?")) return;
+    setVoiceBusy(true);
+    try {
+      const res = await fetch("/api/highlights/voice", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ highlightId }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo quitar la voz");
+      setVoice(null);
+      setMsg({ ok: true, text: "Voz quitada" });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message ?? "Ocurrió un error" });
+    } finally {
+      setVoiceBusy(false);
+    }
+  }
+
+  // ---------- pantalla completa ----------
+  async function enterFull() {
+    setFull(true);
+    try {
+      await document.documentElement.requestFullscreen?.();
+      await (screen.orientation as any)?.lock?.("landscape");
+    } catch {}
+  }
+  function exitFull() {
+    setFull(false);
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      (screen.orientation as any)?.unlock?.();
+    } catch {}
+  }
+  useEffect(() => {
+    const onFs = () => {
+      if (!document.fullscreenElement) setFull((f) => (f ? false : f));
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+  useEffect(() => {
+    if (!full) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const box = stageRef.current;
+    const measure = () => {
+      if (!box) return;
+      const w0 = box.clientWidth;
+      const h0 = box.clientHeight;
+      if (w0 <= 0 || h0 <= 0) return;
+      setFit(aspect >= w0 / h0 ? { w: w0, h: w0 / aspect } : { w: h0 * aspect, h: h0 });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (box) ro.observe(box);
+    window.addEventListener("resize", measure);
+    return () => {
+      document.body.style.overflow = prev;
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [full, aspect]);
+
   // ---------- teclado (computadora) ----------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -347,6 +554,8 @@ export default function HighlightAnnotator({
         e.preventDefault();
         remove(selId);
       } else if (e.key === "Escape") {
+        if (recording) stopRecording();
+        else if (full && tool === "select" && !pendingPt) exitFull();
         cancelDrawing();
         setTool("select");
       }
@@ -358,14 +567,14 @@ export default function HighlightAnnotator({
   // avisar si hay cambios sin guardar
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
-      if (dirty) {
+      if (dirty || pendingVoice || recording) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
-  }, [dirty]);
+  }, [dirty, pendingVoice, recording]);
 
   async function save() {
     setBusy(true);
@@ -401,12 +610,19 @@ export default function HighlightAnnotator({
       : [];
 
   return (
-    <div>
-      <div className="grid gap-5 lg:grid-cols-[1fr_330px]">
-        <div className="min-w-0">
+    <div className={full ? "fixed inset-0 z-[100] bg-bg flex flex-col" : ""}>
+      <div className={full ? "flex flex-col flex-1 min-h-0" : "grid gap-5 lg:grid-cols-[1fr_330px]"}>
+        <div className={full ? "flex flex-col flex-1 min-h-0 min-w-0" : "min-w-0"}>
           {/* video + dibujos */}
-          <div className="mx-auto" style={{ width: `min(100%, ${72 * aspect}vh)` }}>
-            <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ aspectRatio: String(aspect) }}>
+          <div
+            className={full ? "flex flex-col flex-1 min-h-0" : "mx-auto"}
+            style={full ? undefined : { width: `min(100%, ${72 * aspect}vh)` }}
+          >
+            <div ref={stageRef} className={full ? "flex-1 min-h-0 flex items-center justify-center bg-black" : ""}>
+            <div
+              className={`relative rounded-xl overflow-hidden bg-black ${full ? "" : "w-full"}`}
+              style={full ? { width: fit.w, height: fit.h } : { aspectRatio: String(aspect) }}
+            >
               <MuxPlayer
                 ref={playerRef}
                 playbackId={playbackId}
@@ -450,9 +666,10 @@ export default function HighlightAnnotator({
                 />
               ))}
             </div>
+            </div>
 
             {/* controles del video */}
-            <div className="flex items-center gap-2 mt-3">
+            <div className={`flex items-center gap-2 ${full ? "px-3 pt-2" : "mt-3"}`}>
               <button type="button" onClick={() => seek(now - 1)} className={`${btn} bg-panel border-border`} aria-label="Atrás 1 segundo">
                 ⏪
               </button>
@@ -478,7 +695,7 @@ export default function HighlightAnnotator({
             </div>
 
             {/* línea de tiempo (solo computadora) */}
-            <div className="hidden lg:block relative h-9 mt-3 bg-panel border border-border rounded-lg overflow-hidden">
+            <div className={`${full ? "hidden" : "hidden lg:block"} relative h-9 mt-3 bg-panel border border-border rounded-lg overflow-hidden`}>
               {duration > 0 &&
                 sorted.map((a) => (
                   <button
@@ -507,7 +724,7 @@ export default function HighlightAnnotator({
           </div>
 
           {/* herramientas */}
-          <div className="flex flex-wrap items-center gap-2 mt-4">
+          <div className={`flex flex-wrap items-center gap-2 ${full ? "px-3 py-2" : "mt-4"}`}>
             {TOOLS.map((t) => (
               <button
                 key={t.id}
@@ -538,6 +755,30 @@ export default function HighlightAnnotator({
                 />
               ))}
             </div>
+            {sel && full && (
+              <button type="button" onClick={() => remove(sel.id)} className={`${btn} bg-panel border-red text-red`} aria-label="Borrar dibujo">
+                🗑
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="rec-toggle"
+              onClick={() => (recording ? stopRecording() : startRecording())}
+              disabled={voiceBusy}
+              className={`${btn} ${recording ? "bg-red text-white border-red" : "bg-panel border-border"}`}
+            >
+              {recording ? `■ Detener ${fmt(recSecs)}` : "🎙"}
+              {!recording && <span className="hidden sm:inline">Grabar voz</span>}
+            </button>
+            <button
+              type="button"
+              data-testid="full-toggle"
+              onClick={() => (full ? exitFull() : enterFull())}
+              className={`${btn} bg-panel border-border`}
+              aria-label={full ? "Salir de pantalla completa" : "Pantalla completa"}
+            >
+              {full ? "✕ Salir" : "⛶"}
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -552,12 +793,16 @@ export default function HighlightAnnotator({
               }}
               className={`${btn} ml-auto ${previewing ? "bg-red text-white border-red" : "bg-panel border-border"}`}
             >
-              {previewing ? "■ Salir de la prueba" : "▶ Probar con pausas"}
+              {previewing ? "■ Salir de la prueba" : hasVoice ? "▶ Probar con voz" : "▶ Probar con pausas"}
             </button>
           </div>
-          <div className="text-xs text-muted mt-2 min-h-[1.25rem]">
-            {previewing
-              ? "Así lo verán las familias: los dibujos aparecen solos y el video se pausa donde lo pusiste."
+          <div className={`text-xs text-muted ${full ? (pendingPt || recording || previewing ? "px-3 pb-2" : "hidden") : "mt-2 min-h-[1.25rem]"}`}>
+            {recording
+              ? "● Grabando: habla mientras ves el video. Se detiene al terminar el video o con el botón rojo."
+              : previewing
+              ? hasVoice
+                ? "Así lo verán las familias: los dibujos aparecen solos y se oye tu voz."
+                : "Así lo verán las familias: los dibujos aparecen solos y el video se pausa donde lo pusiste."
               : pendingPt
               ? "Ahora toca el punto final."
               : HINTS[tool]}
@@ -565,7 +810,57 @@ export default function HighlightAnnotator({
         </div>
 
         {/* panel derecho */}
-        <div className="min-w-0">
+        <div className={full ? "hidden" : "min-w-0"}>
+          {/* voz */}
+          <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="voice-panel">
+            <div className="text-[11px] font-extrabold text-gold tracking-widest uppercase mb-2">Voz del entrenador</div>
+            {recording ? (
+              <div className="text-sm">
+                <div className="font-bold text-red mb-2">● Grabando {fmt(recSecs)}</div>
+                <button type="button" onClick={stopRecording} className="bg-red text-white rounded-lg px-4 py-2.5 text-sm font-extrabold">
+                  ■ Detener
+                </button>
+              </div>
+            ) : pendingVoice ? (
+              <div className="text-sm">
+                <div className="font-bold mb-1">Voz grabada ({fmt(pendingVoice.duration)}, desde {fmt(pendingVoice.start)})</div>
+                <div className="text-xs text-muted mb-3">Pulsa Probar para oírla con el video. Todavía no está guardada.</div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={saveVoice} disabled={voiceBusy} className="bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold disabled:opacity-50">
+                    {voiceBusy ? "Subiendo..." : "Guardar voz"}
+                  </button>
+                  <button type="button" onClick={startRecording} disabled={voiceBusy} className="bg-bg border border-border rounded-lg px-3 py-2.5 text-xs font-bold">
+                    Grabar de nuevo
+                  </button>
+                  <button type="button" onClick={discardVoice} disabled={voiceBusy} className="text-xs font-bold text-red px-2">
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ) : voice ? (
+              <div className="text-sm">
+                <div className="font-bold mb-3">Voz guardada (empieza en {fmt(voice.start)})</div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={startRecording} disabled={voiceBusy} className="bg-bg border border-border rounded-lg px-3 py-2.5 text-xs font-bold">
+                    🎙 Grabar de nuevo
+                  </button>
+                  <button type="button" onClick={removeVoice} disabled={voiceBusy} className="text-xs font-bold text-red px-2">
+                    Quitar voz
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm">
+                <button type="button" onClick={startRecording} className="bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold">
+                  🎙 Grabar voz
+                </button>
+                <div className="text-xs text-muted mt-2 leading-relaxed">
+                  Pon el video donde quieras empezar y habla mientras lo ves; los dibujos aparecen solos. El video va en silencio mientras grabas. Con voz, el video ya no se pausa solo.
+                </div>
+              </div>
+            )}
+          </div>
+
           {sel ? (
             <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="panel">
               <div className="flex items-center justify-between mb-3">

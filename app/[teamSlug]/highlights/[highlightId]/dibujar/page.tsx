@@ -5,6 +5,7 @@ import HighlightAnnotator from "@/components/HighlightAnnotator";
 import { getTeamBySlug } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
+import { isR2Configured, r2ViewUrl } from "@/lib/r2";
 
 export default async function DibujarHighlightPage({
   params,
@@ -35,6 +36,15 @@ export default async function DibujarHighlightPage({
     missingColumn = true;
   }
 
+  let voice: { url: string; start: number } | null = null;
+  try {
+    if (isR2Configured) {
+      const { data, error } = await supabase.from("highlights").select("voice_key, voice_start").eq("id", hl.id).maybeSingle();
+      const key = (data as any)?.voice_key as string | null | undefined;
+      if (!error && key) voice = { url: r2ViewUrl(key), start: Number((data as any).voice_start) || 0 };
+    }
+  } catch {}
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
@@ -45,7 +55,7 @@ export default async function DibujarHighlightPage({
           </Link>{" "}
           / Dibujar
         </div>
-        <div className="font-display text-2xl font-bold mb-4">Dibujar sobre el video</div>
+        <div className="font-display text-2xl font-bold mb-4">Dibujos y voz</div>
         {missingColumn && (
           <div className="bg-panel border border-red rounded-xl px-4 py-3 mb-4 text-sm">
             Falta correr el SQL <b>highlights-dibujos.sql</b> en Supabase para poder guardar los dibujos.
@@ -58,6 +68,8 @@ export default async function DibujarHighlightPage({
             playbackId={hl.clip_playback_id}
             title={hl.label}
             initial={annotations}
+            initialVoice={voice}
+            r2Ready={isR2Configured}
           />
         ) : (
           <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">

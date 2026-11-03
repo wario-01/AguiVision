@@ -6,15 +6,25 @@ import { useEffect, useRef, useState } from "react";
 import MuxPlayer from "@mux/mux-player-react";
 import AnnotationLayer from "@/components/AnnotationLayer";
 import { usePlayerClock } from "@/components/usePlayerClock";
+import { useVoiceSync } from "@/components/useVoiceSync";
 import type { Anno } from "@/lib/annotations";
 
-export default function AnnotatedPlayer({ playbackId, annotations }: { playbackId: string; annotations: Anno[] }) {
+export default function AnnotatedPlayer({
+  playbackId,
+  annotations,
+  voice,
+}: {
+  playbackId: string;
+  annotations: Anno[];
+  voice?: { url: string; start: number } | null;
+}) {
   const ref = useRef<any>(null);
   const [aspect, setAspect] = useState(16 / 9);
   const { now, paused } = usePlayerClock(ref);
   const fired = useRef(new Set<string>());
   const lastNow = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vs = useVoiceSync({ url: voice?.url ?? null, start: voice?.start ?? 0, now, paused });
 
   // Pausas automáticas: el video se detiene unos segundos cuando aparece un dibujo con pausa.
   useEffect(() => {
@@ -25,7 +35,7 @@ export default function AnnotatedPlayer({ playbackId, annotations }: { playbackI
       for (const a of annotations) if (a.t > now - 0.1) fired.current.delete(a.id);
     }
     lastNow.current = now;
-    if (paused) return;
+    if (paused || voice) return; // con voz, el video no se detiene solo (la voz va pegada al video)
     for (const a of annotations) {
       if (a.pause > 0 && !fired.current.has(a.id) && now >= a.t && now < a.t + 0.6) {
         fired.current.add(a.id);
@@ -37,13 +47,14 @@ export default function AnnotatedPlayer({ playbackId, annotations }: { playbackI
         break;
       }
     }
-  }, [now, paused, annotations]);
+  }, [now, paused, annotations, voice]);
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-border">
+    <div>
+    <div className="rounded-2xl overflow-hidden border border-border" onPointerDownCapture={vs.unlock}>
       <div className="relative w-full" style={{ aspectRatio: String(aspect) }}>
         <MuxPlayer
           ref={ref}
@@ -59,6 +70,16 @@ export default function AnnotatedPlayer({ playbackId, annotations }: { playbackI
         />
         <AnnotationLayer annos={annotations} aspect={aspect} now={now} />
       </div>
+    </div>
+    {voice && (
+      <div className="flex items-center gap-3 mt-2 text-xs font-bold text-muted">
+        <span>🎙 Con la voz del entrenador</span>
+        <button type="button" onClick={() => { vs.setMuted(!vs.muted); vs.unlock(); }} className="bg-panel border border-border rounded-lg px-3 py-1.5 text-text">
+          {vs.muted ? "🔇 Activar voz" : "🔊 Silenciar voz"}
+        </button>
+        {vs.blocked && <span className="text-goldText">Toca el video para activar la voz</span>}
+      </div>
+    )}
     </div>
   );
 }

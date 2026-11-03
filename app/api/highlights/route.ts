@@ -4,6 +4,7 @@ import { mux, isMuxConfigured } from "@/lib/mux";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { r2Delete } from "@/lib/r2";
 
 // POST /api/highlights
 // body: { matchId, playerId, label, startSeconds, endSeconds }
@@ -187,6 +188,13 @@ export async function DELETE(req: Request) {
     .eq("id", body.highlightId)
     .single();
 
+  // voz del entrenador (si la columna todavía no existe, simplemente no hay voz)
+  let voiceKey: string | null = null;
+  try {
+    const { data: v, error: ve } = await supabase.from("highlights").select("voice_key").eq("id", body.highlightId).maybeSingle();
+    if (!ve) voiceKey = (v as any)?.voice_key ?? null;
+  } catch {}
+
   // borra la fila primero: si RLS lo rechaza (no sos coach/assistant de ese
   // equipo), no llegamos a tocar nada en Mux
   const { data: deleted, error } = await supabase
@@ -197,6 +205,8 @@ export async function DELETE(req: Request) {
   if (error || !deleted || deleted.length === 0) {
     return NextResponse.json({ error: "No tenés permiso para borrar este highlight" }, { status: 403 });
   }
+
+  if (voiceKey) await r2Delete(voiceKey);
 
   if (isMuxConfigured && mux && highlight?.clip_asset_id) {
     try {

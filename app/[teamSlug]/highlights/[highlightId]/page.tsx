@@ -5,6 +5,7 @@ import MatchPlayer from "@/components/MatchPlayer";
 import AnnotatedPlayer from "@/components/AnnotatedPlayer";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
+import { isR2Configured, r2ViewUrl } from "@/lib/r2";
 import Link from "next/link";
 import DeleteHighlightButton from "@/components/DeleteHighlightButton";
 import ShareHighlightToggle from "@/components/ShareHighlightToggle";
@@ -33,6 +34,17 @@ export default async function HighlightPage({
     }
   } catch {}
 
+  // Voz del entrenador (si la columna aún no existe, no hay voz)
+  let voice: { url: string; start: number } | null = null;
+  try {
+    const supabase = await createClient();
+    if (supabase && isR2Configured) {
+      const { data, error } = await supabase.from("highlights").select("voice_key, voice_start").eq("id", highlight.id).maybeSingle();
+      const key = (data as any)?.voice_key as string | null | undefined;
+      if (!error && key) voice = { url: r2ViewUrl(key), start: Number((data as any).voice_start) || 0 };
+    }
+  } catch {}
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
@@ -50,8 +62,8 @@ export default async function HighlightPage({
 
         {highlight.clip_playback_id ? (
           <>
-            {annotations.length > 0 ? (
-              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} />
+            {annotations.length > 0 || voice ? (
+              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} voice={voice} />
             ) : (
               <MatchPlayer playbackId={highlight.clip_playback_id} />
             )}
@@ -68,14 +80,14 @@ export default async function HighlightPage({
             </a>
             <div className="text-xs text-muted mt-2">
               Puede tardar un minuto extra en estar disponible después de que el clip se ve por primera vez.
-              {annotations.length > 0 && " El archivo descargado es el video original, sin los dibujos."}
+              {(annotations.length > 0 || voice) && " El archivo descargado es el video original, sin los dibujos ni la voz."}
             </div>
             {canDelete && (
               <Link
                 href={`/${team.slug}/highlights/${highlight.id}/dibujar`}
                 className="inline-flex items-center gap-2 mt-4 ml-2 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold"
               >
-                ✎ {annotations.length > 0 ? "Editar dibujos" : "Dibujar sobre el video"}
+                ✎ {annotations.length > 0 || voice ? "Editar dibujos y voz" : "Dibujar y grabar voz"}
               </Link>
             )}
           </>
