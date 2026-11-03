@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { getTeamBySlug, getHighlights } from "@/lib/data";
 import MatchPlayer from "@/components/MatchPlayer";
+import AnnotatedPlayer from "@/components/AnnotatedPlayer";
+import { createClient } from "@/lib/supabase/server";
+import { cleanAnnotations } from "@/lib/annotations";
 import Link from "next/link";
 import DeleteHighlightButton from "@/components/DeleteHighlightButton";
 import ShareHighlightToggle from "@/components/ShareHighlightToggle";
@@ -20,6 +23,16 @@ export default async function HighlightPage({
 
   const canDelete = team.role === "coach" || team.role === "assistant";
 
+  // Dibujos del entrenador (si la columna aún no existe, simplemente no hay dibujos)
+  let annotations: ReturnType<typeof cleanAnnotations> = [];
+  try {
+    const supabase = await createClient();
+    if (supabase) {
+      const { data, error } = await supabase.from("highlights").select("annotations").eq("id", highlight.id).maybeSingle();
+      if (!error) annotations = cleanAnnotations((data as any)?.annotations);
+    }
+  } catch {}
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="highlights" />
@@ -37,7 +50,11 @@ export default async function HighlightPage({
 
         {highlight.clip_playback_id ? (
           <>
-            <MatchPlayer playbackId={highlight.clip_playback_id} />
+            {annotations.length > 0 ? (
+              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} />
+            ) : (
+              <MatchPlayer playbackId={highlight.clip_playback_id} />
+            )}
             <a
               href={`https://stream.mux.com/${highlight.clip_playback_id}/capped-1080p.mp4?download=${encodeURIComponent(
                 `${highlight.label}-${highlight.player_name}`
@@ -51,7 +68,16 @@ export default async function HighlightPage({
             </a>
             <div className="text-xs text-muted mt-2">
               Puede tardar un minuto extra en estar disponible después de que el clip se ve por primera vez.
+              {annotations.length > 0 && " El archivo descargado es el video original, sin los dibujos."}
             </div>
+            {canDelete && (
+              <Link
+                href={`/${team.slug}/highlights/${highlight.id}/dibujar`}
+                className="inline-flex items-center gap-2 mt-4 ml-2 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold"
+              >
+                ✎ {annotations.length > 0 ? "Editar dibujos" : "Dibujar sobre el video"}
+              </Link>
+            )}
           </>
         ) : (
           <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">
