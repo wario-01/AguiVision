@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getFinanceAccess, seasonOf } from "@/lib/finance";
+import { getFinanceAccess, seasonOf, currentFees, membershipFor } from "@/lib/finance";
 import { clubParts } from "@/lib/tz";
 
 // GET /api/recibos/previo?reason=anualidad&playerId=...&playerName=...&teamName=...&date=YYYY-MM-DD
@@ -29,7 +29,13 @@ export async function GET(req: Request) {
     exempt = !!ex;
   }
   if (reason !== "anualidad" && reason !== "membresia") {
-    return NextResponse.json({ previousCents: 0, lastTotalCents: null, exempt });
+    return NextResponse.json({ previousCents: 0, lastTotalCents: null, exempt, agreedTotalCents: null });
+  }
+  // Cuota acordada (solo anualidad): el total queda fijo.
+  let agreed: { totalCents: number; monthlyCents: number; note: string; by: string } | null = null;
+  if (playerId && reason === "anualidad") {
+    const f = (await currentFees(admin, season)).get(playerId);
+    if (f) agreed = { totalCents: f.total_cents, monthlyCents: f.monthly_cents, note: f.note, by: f.set_by_name };
   }
   let q = admin
     .from("receipts")
@@ -46,5 +52,9 @@ export async function GET(req: Request) {
     previousCents: rows.reduce((n: number, r: any) => n + r.amount_cents, 0),
     lastTotalCents: rows[0]?.total_cents ?? null,
     exempt,
+    agreedTotalCents: agreed?.totalCents ?? null,
+    agreedMonthlyCents: agreed?.monthlyCents ?? null,
+    agreedNote: agreed ? `${agreed.note} (${agreed.by})` : null,
+    membershipCents: membershipFor(season),
   });
 }

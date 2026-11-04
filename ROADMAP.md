@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 1 de noviembre de 2026 (último paquete subido: 54).
+Última actualización: 4 de noviembre de 2026 (último paquete subido: 55; en curso: 56 cuota acordada).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -162,4 +162,10 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 - Empezar por simular una página del álbum y una hoja de estampas (como se hizo con la ficha) y mostrársela a Mario antes de tocar el código.
 - Para imprimir: la ficha ya es un SVG que se ve igual impresa (`.ficha-card`, ancho de 4 pulgadas en `app/globals.css`). Ojo: el holograma es solo de pantalla; al imprimir sale con los colores pero sin movimiento.
 - Preguntas abiertas: tamaño de la estampa (¿varias por hoja carta?), número de copias por niño, quién imprime, qué pregunta lleva cada una, si el álbum incluye a los entrenadores.
-- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 54.
+- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 55.
+
+## Finanzas: cuota acordada (paquete 56)
+- Tabla `player_fees` (historial; la vigente es la más reciente). Solo dueño y quienes expiden recibos pueden ajustar; cada cambio lleva motivo, nombre y fecha.
+- Cuota mensual × meses. Ingreso tarde: mes dividido en 4 semanas (días 1-7 = 4/4, 8-14 = 3/4, 15-21 = 2/4, 22+ = no se cobra ese mes). El total se puede ajustar a mano.
+- El total del recibo de anualidad queda fijo (lo impone el servidor). Es por temporada: la siguiente vuelve a $1,320.
+- Membresía: pago único, $90 en 2026-27 (`MEMBERSHIP_FEE_CENTS` en lib/finance-shared.ts; cambia solo por temporada).

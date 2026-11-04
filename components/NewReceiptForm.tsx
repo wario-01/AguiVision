@@ -33,6 +33,9 @@ export default function NewReceiptForm({
   const [exempt, setExempt] = useState(false);
   const [previous, setPrevious] = useState(0);
   const [lastTotal, setLastTotal] = useState<number | null>(null);
+  const [locked, setLocked] = useState(false); // anualidad de jugador registrado: el total no se escribe a mano
+  const [agreedNote, setAgreedNote] = useState<string | null>(null);
+  const [monthlyC, setMonthlyC] = useState(MONTHLY_FEE_CENTS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,6 +50,10 @@ export default function NewReceiptForm({
     setPrevious(0);
     setLastTotal(null);
     setExempt(false);
+    setLocked(false);
+    setAgreedNote(null);
+    setMonthlyC(MONTHLY_FEE_CENTS);
+    if (tracksBalance) setTotal("");
     if (!playerName) return;
     const qs = new URLSearchParams({ reason, date, teamName, playerName });
     if (playerId && !isOther) qs.set("playerId", playerId);
@@ -57,9 +64,17 @@ export default function NewReceiptForm({
         if (cancelled) return;
         setExempt(d.exempt === true);
         setPrevious(d.previousCents ?? 0);
-        if (d.lastTotalCents != null) {
+        if (reason === "anualidad" && playerId && !isOther) {
+          // El total lo fija la cuota acordada (o la estándar); se cambia con «Ajustar cuota» en el reporte.
+          setLocked(true);
+          setTotal(String((d.agreedTotalCents ?? ANNUAL_FEE_CENTS) / 100));
+          setAgreedNote(d.agreedTotalCents != null ? d.agreedNote ?? "Cuota acordada" : null);
+          if (d.agreedMonthlyCents) setMonthlyC(d.agreedMonthlyCents);
+        } else if (d.lastTotalCents != null) {
           setLastTotal(d.lastTotalCents);
           setTotal((t) => (t === "" ? String(d.lastTotalCents / 100) : t));
+        } else if (reason === "membresia" && d.membershipCents) {
+          setTotal((t) => (t === "" ? String(d.membershipCents / 100) : t));
         }
       })
       .catch(() => {});
@@ -73,7 +88,7 @@ export default function NewReceiptForm({
     if (reason === "anualidad") setTotal((t) => (t === "" ? String(ANNUAL_FEE_CENTS / 100) : t));
   }, [reason]);
   function setMonths(n: number) {
-    setAmount(String((n * MONTHLY_FEE_CENTS) / 100));
+    setAmount(String((n * monthlyC) / 100));
   }
 
   const amountC = Math.round((Number(amount.replace(/[$,\s]/g, "")) || 0) * 100);
@@ -158,8 +173,13 @@ export default function NewReceiptForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={label}>Total a pagar (USD) {tracksBalance ? "" : "(opcional)"}</label>
-          <input inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder={tracksBalance ? "Ej: 600" : "Igual al monto"} className={input} />
-          {tracksBalance && lastTotal != null && (
+          <input inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} readOnly={locked} placeholder={tracksBalance ? "Ej: 600" : "Igual al monto"} className={`${input} ${locked ? "opacity-70" : ""}`} />
+          {locked && (
+            <div className="text-[11px] text-gold mt-1">
+              🔒 {agreedNote ? `Cuota acordada: ${agreedNote}.` : "Cuota estándar de la temporada."} Para cambiarla usa «Ajustar cuota» en el reporte de Anualidad.
+            </div>
+          )}
+          {tracksBalance && !locked && lastTotal != null && (
             <div className="text-[11px] text-muted mt-1">Tomado del último recibo de esta temporada.</div>
           )}
         </div>
@@ -168,7 +188,7 @@ export default function NewReceiptForm({
           <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ej: 110" className={input} />
           {reason === "anualidad" && (
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <span className="text-[11px] text-muted">Meses ($110 c/u):</span>
+              <span className="text-[11px] text-muted">Meses ({money(monthlyC)} c/u):</span>
               {[1, 2, 3, 4, 6, 12].map((n) => (
                 <button type="button" key={n} onClick={() => setMonths(n)} className="text-[11px] font-bold rounded-full px-2.5 py-1 border border-borderMuted text-muted hover:text-text">
                   {n}

@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import RecibosShell from "@/components/RecibosShell";
 import PrintButton from "@/components/PrintButton";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getFinanceAccess, ANNUAL_FEE_CENTS, REASONS, REASON_KEYS, METHODS, money, receiptNo, seasonOf, seasonOptions, Receipt } from "@/lib/finance";
+import { getFinanceAccess, ANNUAL_FEE_CENTS, REASONS, REASON_KEYS, METHODS, money, receiptNo, seasonOf, seasonOptions, Receipt, currentFees } from "@/lib/finance";
+import FeeAdjust from "@/components/FeeAdjust";
 import { clubParts } from "@/lib/tz";
 
 const usDate = (ymd: string) => {
@@ -91,7 +92,7 @@ export default async function RecibosPage({
       .eq("season", season);
     const exempt = new Map<string, string>((exData ?? []).map((e: any) => [e.player_id, e.note ?? ""] as [string, string]));
 
-    type G = { key: string; team: string; player: string; playerId: string | null; paid: number; count: number; lastTotal: number; items: Receipt[] };
+    type G = { key: string; team: string; player: string; playerId: string | null; paid: number; count: number; lastTotal: number; items: Receipt[]; fee?: import("@/lib/finance-shared").PlayerFee };
     const groups = new Map<string, G>();
     // `shown` viene del más nuevo al más viejo: el primero de cada jugador es su último recibo.
     for (const r of shown) {
@@ -122,6 +123,16 @@ export default async function RecibosPage({
         }
       }
     }
+    // Cuota acordada: si existe, ese es el total del jugador (aunque los recibos viejos digan otro).
+    const fees = tab === "anualidad" ? await currentFees(admin, season) : new Map<string, import("@/lib/finance-shared").PlayerFee>();
+    const canAdjust = access.level === "owner" || access.canIssue;
+    groups.forEach((g) => {
+      const f = g.playerId ? fees.get(g.playerId) : undefined;
+      if (f) {
+        g.fee = f;
+        g.lastTotal = f.total_cents;
+      }
+    });
     const teams = Array.from(new Set(Array.from(groups.values()).map((g) => g.team))).sort();
     const list = Array.from(groups.values()).sort((a, b) => a.team.localeCompare(b.team) || a.player.localeCompare(b.player));
     const totalPaid = list.reduce((n, g) => n + g.paid, 0);
@@ -201,6 +212,14 @@ export default async function RecibosPage({
                         <span className="text-[11px] font-extrabold rounded-full px-2.5 py-1 border border-goldBorderDim text-goldText bg-goldBgDim">
                           Exento{exempt.get(g.playerId as string) ? ` · ${exempt.get(g.playerId as string)}` : ""}
                         </span>
+                      )}
+                      {g.fee && !isExempt(g) && (
+                        <span className="text-[11px] font-extrabold rounded-full px-2.5 py-1 border border-goldBorderDim text-goldText bg-goldBgDim" title={`${g.fee.note} · ${g.fee.set_by_name}`}>
+                          {g.fee.joined_on ? (g.fee.monthly_cents === 11000 ? "Entró tarde" : "Acordada + tarde") : "Cuota acordada"}
+                        </span>
+                      )}
+                      {canAdjust && tab === "anualidad" && g.playerId && !isExempt(g) && (
+                        <FeeAdjust playerId={g.playerId} playerName={g.player} season={season} current={g.fee ?? null} />
                       )}
                       {tracksBalance && !isExempt(g) && (
                         <span className="text-xs text-muted">

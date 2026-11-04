@@ -22,3 +22,16 @@ export async function getFinanceAccess(): Promise<FinanceAccess | null> {
   if (!row) return null;
   return { level: row.level as FinanceLevel, name: row.full_name, email: row.email, canIssue: row.can_issue === true };
 }
+
+/** Cuota acordada vigente (la más reciente) por jugador, para una temporada. */
+export async function currentFees(admin: any, season: string): Promise<Map<string, import("@/lib/finance-shared").PlayerFee>> {
+  const { data } = await admin
+    .from("player_fees")
+    .select("*")
+    .eq("season", season)
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  const m = new Map<string, any>();
+  for (const f of data ?? []) if (!m.has(f.player_id)) m.set(f.player_id, f);
+  return m;
+}

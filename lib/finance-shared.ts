@@ -79,3 +79,44 @@ export function toCents(v: unknown): number | null {
   return Math.round(n * 100);
 }
 
+
+// Membresía: se paga de un solo golpe. El precio cambia solo de una temporada a otra.
+export const MEMBERSHIP_FEE_CENTS: Record<string, number> = { "2026-27": 9000 };
+export const MEMBERSHIP_DEFAULT_CENTS = 9000;
+export const membershipFor = (season: string) => MEMBERSHIP_FEE_CENTS[season] ?? MEMBERSHIP_DEFAULT_CENTS;
+
+/**
+ * Meses de cobro de la temporada (junio a mayo) para quien entra en `joinedYmd`.
+ * Los meses completos después del de ingreso cuentan enteros; el mes de ingreso se
+ * divide en 4 semanas (días 1-7 → 4/4, 8-14 → 3/4, 15-21 → 2/4) y la semana de
+ * ingreso cuenta. Si entra del día 22 en adelante, ese mes no se cobra.
+ * Sin fecha, o si entra antes de la temporada → 12 meses.
+ */
+export function monthsOwed(joinedYmd: string | null | undefined, season: string): number {
+  if (!joinedYmd) return 12;
+  const [y, m, d] = joinedYmd.split("-").map(Number);
+  if (!y || !m || !d) return 12;
+  const start = Number(season.slice(0, 4));
+  const idx = (y - start) * 12 + (m - 6); // 0 = junio, 11 = mayo
+  if (idx <= 0) return 12;
+  if (idx > 11) return 0;
+  const weeks = d <= 7 ? 4 : d <= 14 ? 3 : d <= 21 ? 2 : 0;
+  return 11 - idx + weeks / 4;
+}
+
+/** Total acordado = cuota mensual × meses (puede tener cuartos de mes). */
+export const agreedTotalCents = (monthlyCents: number, months: number) => Math.round(monthlyCents * months);
+
+export type PlayerFee = {
+  id: string;
+  player_id: string;
+  season: string;
+  monthly_cents: number;
+  months: number;
+  total_cents: number;
+  joined_on: string | null;
+  note: string;
+  set_by_name: string;
+  set_by_email: string;
+  created_at: string;
+};

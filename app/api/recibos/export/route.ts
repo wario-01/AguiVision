@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getFinanceAccess, REASONS, REASON_KEYS, METHODS, ANNUAL_FEE_CENTS, seasonOptions, receiptNo, Receipt } from "@/lib/finance";
+import { getFinanceAccess, REASONS, REASON_KEYS, METHODS, ANNUAL_FEE_CENTS, seasonOptions, receiptNo, Receipt, currentFees } from "@/lib/finance";
 
 // GET /api/recibos/export?season=2026-27 → CSV (se abre en Excel) con todos los recibos.
 function csvCell(v: string | number | null) {
@@ -86,6 +86,13 @@ async function resumen(admin: any, season: string, reason: string, teamFilter: s
       const key = `${team}|${p.id}`;
       if (!groups.has(key)) groups.set(key, { team, player: p.full_name, playerId: p.id, paid: 0, count: 0, total: ANNUAL_FEE_CENTS });
     }
+  }
+  if (reason === "anualidad") {
+    const fees = await currentFees(admin, season);
+    groups.forEach((g) => {
+      const f = g.playerId ? fees.get(g.playerId) : undefined;
+      if (f) g.total = f.total_cents;
+    });
   }
   const list = Array.from(groups.values()).sort((a, b) => a.team.localeCompare(b.team) || a.player.localeCompare(b.player));
   const tracks = reason === "anualidad" || reason === "membresia";

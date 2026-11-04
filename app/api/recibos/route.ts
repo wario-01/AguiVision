@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getFinanceAccess, seasonOf, toCents, REASONS, METHODS, Reason, Method } from "@/lib/finance";
+import { getFinanceAccess, seasonOf, toCents, REASONS, METHODS, Reason, Method, ANNUAL_FEE_CENTS, currentFees } from "@/lib/finance";
 import { clubParts } from "@/lib/tz";
 
 // POST /api/recibos
@@ -60,6 +60,12 @@ export async function POST(req: Request) {
   const today = clubParts(new Date()).ymd;
   const date = typeof body.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : today;
   const season = seasonOf(date);
+
+  // Anualidad de un jugador registrado: el total lo fija la cuota acordada (o la estándar), no el navegador.
+  if (reason === "anualidad" && playerId) {
+    const f = (await currentFees(admin, season)).get(playerId);
+    total = f ? f.total_cents : ANNUAL_FEE_CENTS;
+  }
 
   // Saldo: en anualidad y membresía se descuentan los pagos anteriores de la misma temporada.
   let previous = 0;
