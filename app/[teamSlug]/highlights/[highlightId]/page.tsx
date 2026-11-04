@@ -35,6 +35,16 @@ export default async function HighlightPage({
     }
   } catch {}
 
+  // Video final: si ya tiene los dibujos, la voz y la música pegados, se ve como un video normal.
+  let videoEdited = false;
+  try {
+    const supabase = await createClient();
+    if (supabase) {
+      const { data, error } = await supabase.from("highlights").select("video_edited").eq("id", highlight.id).maybeSingle();
+      if (!error) videoEdited = Boolean((data as any)?.video_edited);
+    }
+  } catch {}
+
   // Voz del entrenador (si la columna aún no existe, no hay voz)
   let voice: { url: string; start: number } | null = null;
   try {
@@ -82,7 +92,7 @@ export default async function HighlightPage({
 
         {highlight.clip_playback_id ? (
           <>
-            {annotations.length > 0 || voice || music ? (
+            {!videoEdited && (annotations.length > 0 || voice || music) ? (
               <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} voice={voice} music={music} />
             ) : (
               <MatchPlayer playbackId={highlight.clip_playback_id} />
@@ -100,14 +110,15 @@ export default async function HighlightPage({
             </a>
             <div className="text-xs text-muted mt-2">
               Puede tardar un minuto extra en estar disponible después de que el clip se ve por primera vez.
-              {(annotations.length > 0 || voice || music) && " El archivo descargado es el video original, sin los dibujos, la voz ni la música."}
+              {!videoEdited && (annotations.length > 0 || voice || music) && " El archivo descargado es el video original, sin los dibujos, la voz ni la música."}
+              {videoEdited && " Este es el video final: incluye los dibujos, la voz y la música."}
             </div>
             {canDelete && (
               <Link
                 href={`/${team.slug}/highlights/${highlight.id}/dibujar`}
                 className="inline-flex items-center gap-2 mt-4 ml-2 bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold"
               >
-                ✎ {annotations.length > 0 || voice || music ? "Editar dibujos, voz y música" : "Dibujar, grabar voz y música"}
+                ✎ {videoEdited || annotations.length > 0 || voice || music ? "Editar dibujos, voz y música" : "Dibujar, grabar voz y música"}
               </Link>
             )}
           </>

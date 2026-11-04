@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
   const tags = parsePassthrough(event.data?.passthrough);
 
-  if (isAdminConfigured && (tags.match || tags.highlight || tags.live)) {
+  if (isAdminConfigured && (tags.match || tags.highlight || tags.live || tags.final)) {
     const admin = createAdminClient();
     if (admin) {
       // "video.asset.ready" cubre los partidos subidos a mano. Para una
@@ -101,11 +101,29 @@ export async function POST(req: Request) {
             .eq("id", tags.match);
         } else if (tags.highlight) {
           await admin.from("highlights").update({ clip_playback_id: playbackId }).eq("id", tags.highlight);
+        } else if (tags.final) {
+          // El video final (con dibujos, voz y música) reemplaza al clip: se guarda el nuevo y se borra el viejo.
+          const { data: cur } = await admin.from("highlights").select("clip_asset_id").eq("id", tags.final).maybeSingle();
+          const oldAssetId = (cur as any)?.clip_asset_id as string | null | undefined;
+          const { error: upErr } = await admin
+            .from("highlights")
+            .update({ clip_asset_id: asset.id, clip_playback_id: playbackId, video_edited: true, final_status: null })
+            .eq("id", tags.final);
+          if (!upErr && oldAssetId && oldAssetId !== asset.id) {
+            try {
+              await mux.video.assets.delete(oldAssetId);
+            } catch (err) {
+              console.error("No se pudo borrar el clip anterior en Mux:", err);
+            }
+          }
         }
       }
 
       if (event.type === "video.asset.errored" && tags.match) {
         await admin.from("matches").update({ video_status: "none" }).eq("id", tags.match);
+      }
+      if (event.type === "video.asset.errored" && tags.final) {
+        await admin.from("highlights").update({ final_status: "error" }).eq("id", tags.final);
       }
 
       if (event.type === "video.live_stream.active" && tags.live) {

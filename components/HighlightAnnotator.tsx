@@ -10,6 +10,7 @@ import AnnotationLayer from "@/components/AnnotationLayer";
 import { usePlayerClock } from "@/components/usePlayerClock";
 import { useVoiceSync } from "@/components/useVoiceSync";
 import { useMusicSync } from "@/components/useMusicSync";
+import { exportFinalVideo, exportSupported, uploadToMux } from "@/lib/exportFinalVideo";
 import {
   Anno,
   AnnoType,
@@ -73,6 +74,7 @@ export default function HighlightAnnotator({
   initialTracks,
   initialMusicId,
   initialMusicVolume,
+  initialFinalStatus,
 }: {
   teamSlug: string;
   highlightId: string;
@@ -84,6 +86,7 @@ export default function HighlightAnnotator({
   initialTracks: { id: string; title: string; url: string; builtin?: boolean }[];
   initialMusicId: string | null;
   initialMusicVolume: number;
+  initialFinalStatus: string | null;
 }) {
   const playerRef = useRef<any>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -127,6 +130,15 @@ export default function HighlightAnnotator({
     vs.unlock();
     ms.unlock();
   };
+
+  // video final
+  type Fin = { phase: "idle" | "recording" | "uploading" | "processing" | "done" | "error"; pct: number; text?: string };
+  const [fin, setFin] = useState<Fin>({
+    phase: initialFinalStatus === "processing" ? "processing" : "idle",
+    pct: 0,
+    text: initialFinalStatus === "error" ? "La última vez Mux no pudo procesar el video final. Puedes intentarlo otra vez." : undefined,
+  });
+  const finBusy = fin.phase === "recording" || fin.phase === "uploading";
 
   // pantalla completa
   const [full, setFull] = useState(false);
@@ -585,6 +597,60 @@ export default function HighlightAnnotator({
     }
   }
 
+  // ---------- video final ----------
+  async function createFinal() {
+    setMsg(null);
+    const bad = exportSupported();
+    if (bad) return setFin({ phase: "error", pct: 0, text: bad });
+    if (dirty || pendingVoice) return setFin({ phase: "error", pct: 0, text: "Primero guarda los dibujos y la voz." });
+    if (annos.length === 0 && !activeVoice && !musicTrack) return setFin({ phase: "error", pct: 0, text: "Agrega al menos un dibujo, voz o música." });
+    const secs = Math.round(duration || 0);
+    if (
+      !confirm(
+        `Se va a grabar el video final: dura lo mismo que el clip (unos ${secs} segundos). Deja esta pestaña abierta y la pantalla encendida. Al terminar, reemplaza el clip del highlight (para cambiarlo después usas «Volver a editar»). ¿Continuar?`
+      )
+    )
+      return;
+    cancelDrawing();
+    setPreviewing(false);
+    pauseVideo();
+    try {
+      setFin({ phase: "recording", pct: 0, text: "Grabando el video final..." });
+      const { blob } = await exportFinalVideo({
+        videoUrl: `https://stream.mux.com/${playbackId}/capped-1080p.mp4`,
+        annos,
+        voice: activeVoice,
+        music: musicTrack ? { url: musicTrack.url, volume: musicVol } : null,
+        onProgress: (p) => setFin({ phase: "recording", pct: p.d > 0 ? p.t / p.d : 0, text: `Grabando ${fmt(p.t)} de ${fmt(p.d)}` }),
+      });
+      setFin({ phase: "uploading", pct: 0, text: "Subiendo el video..." });
+      const r1 = await fetch("/api/highlights/final", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ highlightId }),
+      });
+      const d1 = await r1.json().catch(() => ({}));
+      if (!r1.ok) throw new Error(d1.error ?? "No se pudo preparar la subida");
+      await uploadToMux(d1.uploadUrl, blob, (f) => setFin({ phase: "uploading", pct: f, text: `Subiendo el video ${Math.round(f * 100)}%` }));
+      const r2 = await fetch("/api/highlights/final", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ highlightId }),
+      });
+      if (!r2.ok) throw new Error((await r2.json().catch(() => ({}))).error ?? "No se pudo guardar");
+      setFin({ phase: "processing", pct: 1, text: "Mux está procesando el video (1 o 2 minutos)..." });
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => setTimeout(r, 5000));
+        const st = await fetch(`/api/highlights/final?highlightId=${highlightId}`).then((r) => r.json()).catch(() => null);
+        if (st?.videoEdited) return setFin({ phase: "done", pct: 1, text: "Listo: el highlight ya usa el video final." });
+        if (st?.finalStatus === "error") throw new Error("Mux no pudo procesar el video. Inténtalo otra vez.");
+      }
+      setFin({ phase: "processing", pct: 1, text: "Mux sigue procesando. Revisa el highlight en unos minutos." });
+    } catch (err: any) {
+      setFin({ phase: "error", pct: 0, text: err.message ?? "Ocurrió un error" });
+    }
+  }
+
   // ---------- pantalla completa ----------
   async function enterFull() {
     setFull(true);
@@ -664,14 +730,14 @@ export default function HighlightAnnotator({
   // avisar si hay cambios sin guardar
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
-      if (dirty || pendingVoice || recording) {
+      if (dirty || pendingVoice || recording || finBusy) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
-  }, [dirty, pendingVoice, recording]);
+  }, [dirty, pendingVoice, recording, finBusy]);
 
   async function save() {
     setBusy(true);
@@ -1038,6 +1104,46 @@ export default function HighlightAnnotator({
             <div className="text-[11px] text-muted mt-2 leading-relaxed">
               Las canciones incluidas son de Pixabay Music. Si subes otras, usa solo música libre de derechos. Lo que subas queda en la biblioteca del equipo para todos los highlights.
             </div>
+          </div>
+
+          {/* video final */}
+          <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="final-panel">
+            <div className="text-[11px] font-extrabold text-gold tracking-widest uppercase mb-2">Video final</div>
+            <div className="text-xs text-muted leading-relaxed mb-3">
+              Pega los dibujos, tu voz y la música al clip y reemplaza el video del highlight. Así lo ven todos y se puede descargar tal cual.
+              Se graba en tiempo real, con esta pestaña abierta.
+            </div>
+            {finBusy || fin.phase === "processing" ? (
+              <div>
+                <div className="h-2 rounded bg-bg overflow-hidden mb-2">
+                  <div className="h-full bg-gold" style={{ width: `${Math.round(fin.pct * 100)}%` }} />
+                </div>
+                <div className="text-xs font-bold">{fin.text}</div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-testid="final-btn"
+                onClick={createFinal}
+                disabled={recording || voiceBusy || musicBusy}
+                className="bg-gold text-bg rounded-lg px-4 py-2.5 text-sm font-extrabold disabled:opacity-50"
+              >
+                🎬 Crear video final
+              </button>
+            )}
+            {(fin.phase === "error" || fin.phase === "done") && fin.text && (
+              <div className={`mt-2 text-xs font-bold ${fin.phase === "done" ? "text-ok" : "text-red"}`}>
+                {fin.text}
+                {fin.phase === "done" && (
+                  <div className="mt-1">
+                    <Link href={`/${teamSlug}/highlights/${highlightId}`} className="text-gold hover:underline">
+                      Ver el highlight
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+            {fin.phase === "idle" && fin.text && <div className="mt-2 text-xs font-bold text-red">{fin.text}</div>}
           </div>
 
           {sel ? (

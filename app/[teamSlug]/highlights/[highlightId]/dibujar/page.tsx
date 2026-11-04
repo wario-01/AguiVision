@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import HighlightAnnotator from "@/components/HighlightAnnotator";
+import ReeditPanel from "@/components/ReeditPanel";
 import { getTeamBySlug } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
@@ -46,6 +47,17 @@ export default async function DibujarHighlightPage({
     }
   } catch {}
 
+  // Video final (si las columnas aún no existen, se trata como "sin video final")
+  let videoEdited = false;
+  let finalStatus: string | null = null;
+  try {
+    const { data: f, error: fe } = await supabase.from("highlights").select("video_edited, final_status").eq("id", hl.id).maybeSingle();
+    if (!fe) {
+      videoEdited = Boolean((f as any)?.video_edited);
+      finalStatus = ((f as any)?.final_status as string | null) ?? null;
+    }
+  } catch {}
+
   // Música: biblioteca del equipo y la canción elegida para este highlight
   let tracks: { id: string; title: string; url: string; builtin?: boolean }[] = BUILTIN_TRACKS.map((t) => ({ ...t, builtin: true }));
   let musicId: string | null = null;
@@ -84,7 +96,9 @@ export default async function DibujarHighlightPage({
             Falta correr el SQL <b>highlights-dibujos.sql</b> en Supabase para poder guardar los dibujos.
           </div>
         )}
-        {hl.clip_playback_id ? (
+        {hl.clip_playback_id && videoEdited ? (
+          <ReeditPanel teamSlug={team.slug} highlightId={hl.id} playbackId={hl.clip_playback_id} />
+        ) : hl.clip_playback_id ? (
           <HighlightAnnotator
             teamSlug={team.slug}
             highlightId={hl.id}
@@ -95,6 +109,7 @@ export default async function DibujarHighlightPage({
             r2Ready={isR2Configured}
             initialTracks={tracks}
             initialMusicId={musicId}
+            initialFinalStatus={finalStatus}
             initialMusicVolume={musicVolume}
           />
         ) : (
