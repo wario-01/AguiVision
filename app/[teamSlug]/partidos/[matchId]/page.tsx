@@ -32,7 +32,7 @@ export default async function MatchPage({
   return (
     <div className="flex h-screen w-full">
       <Sidebar currentTeamSlug={team.slug} active="inicio" />
-      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-4xl">
+      <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11 max-w-4xl xl:max-w-7xl">
         {match.jornada != null && (
           <div className="text-[11px] font-extrabold uppercase tracking-widest text-gold mb-1">Jornada {match.jornada}</div>
         )}
@@ -41,17 +41,34 @@ export default async function MatchPage({
         </div>
         <div className="text-sm text-muted mb-7">{clubDateLabel(match.match_date)}</div>
 
-        {match.video_status === "ready" && match.video_playback_id ? (
-          <MatchPlayer playbackId={match.video_playback_id} />
-        ) : (
-          <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">
-            {match.video_status === "processing" || match.video_status === "uploading"
-              ? "El video todavía se está procesando — esta página se actualiza sola cuando esté listo (recargá en unos minutos)."
-              : "Este partido todavía no tiene video subido."}
-          </div>
-        )}
+        {/* En pantallas grandes, el video y «Marcar highlight» van lado a lado para no tener que subir y bajar. */}
+        <div
+          className={
+            canMarkHighlights && match.video_status === "ready"
+              ? "xl:grid xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-6 xl:items-start"
+              : ""
+          }
+        >
+          <div className="min-w-0">
+            {match.video_status === "ready" && match.video_playback_id ? (
+              <MatchPlayer playbackId={match.video_playback_id} />
+            ) : (
+              <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">
+                {match.video_status === "processing" || match.video_status === "uploading"
+                  ? "El video todavía se está procesando — esta página se actualiza sola cuando esté listo (recargá en unos minutos)."
+                  : "Este partido todavía no tiene video subido."}
+              </div>
+            )}
 
-        {canMarkHighlights && match.video_status === "ready" && <DownloadMatchButton matchId={match.id} />}
+            {canMarkHighlights && match.video_status === "ready" && <DownloadMatchButton matchId={match.id} />}
+          </div>
+
+          {canMarkHighlights && match.video_status === "ready" && (
+            <div className="xl:sticky xl:top-4">
+              <HighlightForm matchId={match.id} players={players} />
+            </div>
+          )}
+        </div>
 
         {canMarkHighlights && (
           <MatchEditForm
@@ -66,9 +83,6 @@ export default async function MatchPage({
 
         {moveTargets.length > 0 && <MoveMatchForm matchId={match.id} teams={moveTargets} />}
 
-        {canMarkHighlights && match.video_status === "ready" && (
-          <HighlightForm matchId={match.id} players={players} />
-        )}
       </div>
     </div>
   );

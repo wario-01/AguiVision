@@ -22,7 +22,7 @@ export default async function RecibosShell({
       on ? "bg-cream border-cream text-bg" : "border-transparent text-muted hover:text-text"
     }`;
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-screen print:min-h-0 bg-bg">
       <div className="no-print bg-sidebar border-b border-border">
         <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-3">
           <img src="/logo.png" alt="Nido Austin" className="w-[30px] h-[30px] rounded-full object-contain" />

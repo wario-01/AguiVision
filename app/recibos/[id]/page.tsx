@@ -18,7 +18,7 @@ export default async function ReciboPage({ params }: { params: { id: string } })
 
   return (
     <RecibosShell access={access} active="reportes">
-      <style>{`@media print { @page { size: 5.5in 8.5in; margin: 0.2in; } .receipt-wrap { width: 100%; max-width: none; margin: 0; } }`}</style>
+      <style>{`@media print { @page { size: 5.5in 8.5in; margin: 0.2in; } html, body { height: auto !important; } .receipt-wrap { width: 5in !important; max-width: 100% !important; margin: 0 auto !important; break-inside: avoid; page-break-inside: avoid; } }`}</style>
       <div className="no-print mb-3">
         <Link href="/recibos?tab=historial" className="text-xs font-bold text-muted hover:text-text">← Historial de recibos</Link>
       </div>

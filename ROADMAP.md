@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 1 de noviembre de 2026 (último paquete subido: 53).
+Última actualización: 1 de noviembre de 2026 (último paquete subido: 54).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -31,6 +31,8 @@
 - Perfil del equipo (1 nov 2026, solo entrenadores): pestaña en Equipo con resumen, campograma con alineación (formaciones 11/9/7, suplentes, no convocados), hoja imprimible con logo, captura manual de estadísticas del partido (marcador, tiros, esquinas, faltas, cambios y por jugador: minutos, goles, asistencias, amarillas, rojas, atajadas) y tabla de la temporada. SQL: `supabase/alineaciones-estadisticas.sql`. Formación por defecto según categoría: U9 = 7v7, U11/U12 = 9v9, U14 = 11v11 (confirmar con Mario). Cambios planeados sin límite y con reingreso (minuto opcional): lista en orden con "sale/entra"; se ven en el campo y en la hoja impresa. SQL: `supabase/alineaciones-cambios.sql`.
 
 - Jornadas y highlight al subir (3 nov 2026): cada partido puede llevar número de jornada (se ordena J1, J2…) y se puede editar rival, jornada y fecha; al subir videos a la galería se pueden marcar como highlight (etiqueta y jugador) y se crean solos. SQL: `supabase/partidos-jornada.sql`.
+
+- Pantalla del partido y recibo (4 nov 2026): en computadora grande, «Marcar highlight» va a la derecha del video (ya no hay que bajar y subir), con botones «Usar el del video» para tomar el segundo actual; los datos del partido, borrar y mover quedan debajo. El recibo se imprime con tamaño fijo (5 in de ancho) para que quepa en una sola hoja en cualquier papel.
 
 ## Siguiente: producto
 0. **Reunión ejecutiva (8 oct 2026)** — puntos que salieron, en orden de dificultad:
@@ -160,4 +162,4 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 - Empezar por simular una página del álbum y una hoja de estampas (como se hizo con la ficha) y mostrársela a Mario antes de tocar el código.
 - Para imprimir: la ficha ya es un SVG que se ve igual impresa (`.ficha-card`, ancho de 4 pulgadas en `app/globals.css`). Ojo: el holograma es solo de pantalla; al imprimir sale con los colores pero sin movimiento.
 - Preguntas abiertas: tamaño de la estampa (¿varias por hoja carta?), número de copias por niño, quién imprime, qué pregunta lleva cada una, si el álbum incluye a los entrenadores.
-- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 53.
+- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 54.

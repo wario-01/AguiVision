@@ -14,6 +14,19 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
   const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
 
+  // Toma el segundo en que está el video de arriba (así no hay que leerlo y escribirlo a mano).
+  function videoSecond(): number | null {
+    const el: any = document.querySelector("mux-player") ?? document.querySelector("video");
+    const t = Number(el?.currentTime);
+    return Number.isFinite(t) ? t : null;
+  }
+  function useVideoTime(which: "start" | "end") {
+    const t = videoSecond();
+    if (t === null) return;
+    if (which === "start") setStart(formatSeconds(Math.floor(t)));
+    else setEnd(formatSeconds(Math.ceil(t)));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const startSeconds = parseTimeToSeconds(start);
@@ -63,7 +76,7 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-5 mt-6">
+    <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-2xl p-5 mt-6 xl:mt-0">
       <div className="font-display text-base font-semibold mb-4">Marcar highlight</div>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
@@ -96,7 +109,12 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Desde (mm:ss o h:mm:ss)</label>
+          <label className="flex items-center justify-between text-xs font-bold text-muted mb-1.5">
+            <span>Desde (mm:ss)</span>
+            <button type="button" onClick={() => useVideoTime("start")} className="text-gold hover:underline">
+              ⏱ Usar el del video
+            </button>
+          </label>
           <input
             type="text"
             value={start}
@@ -106,7 +124,12 @@ export default function HighlightForm({ matchId, players }: { matchId: string; p
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-muted mb-1.5">Hasta (mm:ss o h:mm:ss)</label>
+          <label className="flex items-center justify-between text-xs font-bold text-muted mb-1.5">
+            <span>Hasta (mm:ss)</span>
+            <button type="button" onClick={() => useVideoTime("end")} className="text-gold hover:underline">
+              ⏱ Usar el del video
+            </button>
+          </label>
           <input
             type="text"
             value={end}
