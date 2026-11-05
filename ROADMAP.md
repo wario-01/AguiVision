@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 5 de noviembre de 2026 (último paquete subido: 59; en curso: 61 pausas con voz).
+Última actualización: 5 de noviembre de 2026 (último paquete subido: 61; en curso: 62 guardar dibujos y voz juntos).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.

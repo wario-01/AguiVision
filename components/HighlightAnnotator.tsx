@@ -128,6 +128,7 @@ export default function HighlightAnnotator({
   const [recording, setRecording] = useState(false);
   const [recSecs, setRecSecs] = useState(0);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceErr, setVoiceErr] = useState("");
   const recRef = useRef<MediaRecorder | null>(null);
   const recStartedAt = useRef(0);
   const recVideoStart = useRef(0);
@@ -440,6 +441,7 @@ export default function HighlightAnnotator({
   };
   async function startRecording() {
     setMsg(null);
+    setVoiceErr("");
     if (!r2Ready) return setMsg({ ok: false, text: "Falta conectar el almacenamiento (Cloudflare R2) para guardar la voz." });
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       return setMsg({ ok: false, text: "Este navegador no puede grabar audio. Prueba con Chrome o Safari actualizado." });
@@ -514,10 +516,11 @@ export default function HighlightAnnotator({
     if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
   }, []);
 
-  async function saveVoice() {
-    if (!pendingVoice) return;
+  async function saveVoice(): Promise<boolean> {
+    if (!pendingVoice) return true;
     setVoiceBusy(true);
     setMsg(null);
+    setVoiceErr("");
     try {
       const r1 = await fetch("/api/highlights/voice", {
         method: "POST",
@@ -542,8 +545,12 @@ export default function HighlightAnnotator({
       setVoice({ url: pendingVoice.url, start: pendingVoice.start, pauses: pendingVoice.pauses });
       setPendingVoice(null);
       setMsg({ ok: true, text: "Voz guardada" });
+      return true;
     } catch (err: any) {
-      setMsg({ ok: false, text: err.message ?? "Ocurrió un error" });
+      const text = err.message ?? "Ocurrió un error";
+      setMsg({ ok: false, text });
+      setVoiceErr(text);
+      return false;
     } finally {
       setVoiceBusy(false);
     }
@@ -650,7 +657,9 @@ export default function HighlightAnnotator({
     setMsg(null);
     const bad = exportSupported();
     if (bad) return setFin({ phase: "error", pct: 0, text: bad });
-    if (dirty || pendingVoice) return setFin({ phase: "error", pct: 0, text: "Primero guarda los dibujos y la voz." });
+    if (dirty && pendingVoice) return setFin({ phase: "error", pct: 0, text: "Primero pulsa «Guardar dibujos y voz» (abajo a la derecha)." });
+    if (pendingVoice) return setFin({ phase: "error", pct: 0, text: voiceErr ? `La voz no se ha guardado: ${voiceErr}` : "La voz todavía no está guardada: pulsa «Guardar voz» en el panel de voz." });
+    if (dirty) return setFin({ phase: "error", pct: 0, text: "Hay dibujos sin guardar: pulsa «Guardar dibujos» (abajo a la derecha)." });
     if (annos.length === 0 && !activeVoice && !musicTrack) return setFin({ phase: "error", pct: 0, text: "Agrega al menos un dibujo, voz o música." });
     const secs = Math.round(duration || 0);
     if (
@@ -789,6 +798,13 @@ export default function HighlightAnnotator({
     return () => window.removeEventListener("beforeunload", h);
   }, [dirty, pendingVoice, recording, finBusy]);
 
+  async function saveAll() {
+    if (pendingVoice) {
+      const ok = await saveVoice();
+      if (!ok) return;
+    }
+    if (dirty) await save();
+  }
   async function save() {
     setBusy(true);
     setMsg(null);
@@ -1063,6 +1079,7 @@ export default function HighlightAnnotator({
                     Descartar
                   </button>
                 </div>
+                {voiceErr && <div className="text-xs font-bold text-red mt-2">{voiceErr}</div>}
               </div>
             ) : voice ? (
               <div className="text-sm">
@@ -1338,11 +1355,11 @@ export default function HighlightAnnotator({
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
-              onClick={save}
-              disabled={busy || !dirty}
+              onClick={saveAll}
+              disabled={busy || voiceBusy || (!dirty && !pendingVoice)}
               className="bg-gold text-bg rounded-lg px-5 py-3 text-sm font-extrabold disabled:opacity-50"
             >
-              {busy ? "Guardando..." : "Guardar dibujos"}
+              {busy || voiceBusy ? "Guardando..." : pendingVoice ? "Guardar dibujos y voz" : "Guardar dibujos"}
             </button>
             <Link href={`/${teamSlug}/highlights/${highlightId}`} className="text-sm font-bold text-muted hover:text-text">
               Volver al highlight
