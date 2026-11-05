@@ -9,13 +9,16 @@ import { usePlayerClock } from "@/components/usePlayerClock";
 import { useVoiceSync } from "@/components/useVoiceSync";
 import { useMusicSync } from "@/components/useMusicSync";
 import type { Anno } from "@/lib/annotations";
+import type { CamTrack } from "@/lib/camera-track";
 
 export default function AnnotatedPlayer({
   playbackId,
   annotations,
   voice,
   music,
+  camTrack,
 }: {
+  camTrack?: CamTrack | null;
   playbackId: string;
   annotations: Anno[];
   voice?: { url: string; start: number } | null;
@@ -76,7 +79,7 @@ export default function AnnotatedPlayer({
             if (w > 0 && h > 0) setAspect(w / h);
           }}
         />
-        <AnnotationLayer annos={annotations} aspect={aspect} now={now} />
+        <AnnotationLayer annos={annotations} aspect={aspect} now={now} track={camTrack} />
       </div>
     </div>
     {(voice || music) && (

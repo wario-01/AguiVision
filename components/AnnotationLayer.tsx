@@ -3,6 +3,7 @@
 // así los trazos escalan parejo en cualquier pantalla.
 import React from "react";
 import { Anno, isActive, inkFor } from "@/lib/annotations";
+import { shiftAnno, type CamTrack } from "@/lib/camera-track";
 
 const W = 1000;
 const SW = 6; // grosor de línea
@@ -98,7 +99,9 @@ export default function AnnotationLayer({
   now,
   selectedId,
   extra,
+  track,
 }: {
+  track?: CamTrack | null; // movimiento de la cámara: los dibujos siguen la escena
   annos: Anno[];
   aspect: number;
   now: number;
@@ -113,7 +116,8 @@ export default function AnnotationLayer({
       style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
       aria-hidden="true"
     >
-      {annos.map((a) => {
+      {annos.map((a0) => {
+        const a = shiftAnno(a0, track, now);
         if (isActive(a, now)) {
           return (
             <g key={a.id} opacity={annoOpacity(a, now)}>

@@ -10,6 +10,7 @@ export type ExportOpts = {
   videoUrl: string;
   annos: Anno[];
   voice?: { url: string; start: number } | null;
+  track?: import("@/lib/camera-track").CamTrack | null; // movimiento de cámara (los dibujos siguen la escena)
   music?: { url: string; volume: number } | null;
   maxWidth?: number;
   onProgress?: (p: ExportProgress) => void;
@@ -181,7 +182,7 @@ export async function exportFinalVideo(o: ExportOpts): Promise<{ blob: Blob; mim
           if (performance.now() - hiddenSince > 1500) return reject(new Error("Saliste de esta pestaña mientras se grababa. Vuelve a intentarlo y déjala abierta."));
         } else hiddenSince = 0;
         ctx.drawImage(video, 0, 0, W, H);
-        drawAnnotations(ctx, o.annos, video.currentTime, W, H);
+        drawAnnotations(ctx, o.annos, video.currentTime, W, H, o.track);
         const now = performance.now();
         if (now - lastReport > 250) {
           lastReport = now;
@@ -195,7 +196,7 @@ export async function exportFinalVideo(o: ExportOpts): Promise<{ blob: Blob; mim
     });
     // un último cuadro y un respiro para que el audio termine de entrar
     ctx.drawImage(video, 0, 0, W, H);
-    drawAnnotations(ctx, o.annos, video.currentTime, W, H);
+    drawAnnotations(ctx, o.annos, video.currentTime, W, H, o.track);
     await new Promise((r) => setTimeout(r, 400));
     const stopP = new Promise<void>((r) => (rec.onstop = () => r()));
     rec.stop();

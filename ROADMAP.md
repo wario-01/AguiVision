@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 4 de noviembre de 2026 (último paquete subido: 56; en curso: 57 varios hijos por correo).
+Última actualización: 5 de noviembre de 2026 (último paquete subido: 57; en curso: 58 voz y cámara).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -162,10 +162,14 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 - Empezar por simular una página del álbum y una hoja de estampas (como se hizo con la ficha) y mostrársela a Mario antes de tocar el código.
 - Para imprimir: la ficha ya es un SVG que se ve igual impresa (`.ficha-card`, ancho de 4 pulgadas en `app/globals.css`). Ojo: el holograma es solo de pantalla; al imprimir sale con los colores pero sin movimiento.
 - Preguntas abiertas: tamaño de la estampa (¿varias por hoja carta?), número de copias por niño, quién imprime, qué pregunta lleva cada una, si el álbum incluye a los entrenadores.
-- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 56.
+- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 57.
 
 ## Finanzas: cuota acordada (paquete 56)
 - Tabla `player_fees` (historial; la vigente es la más reciente). Solo dueño y quienes expiden recibos pueden ajustar; cada cambio lleva motivo, nombre y fecha.
 - Cuota mensual × meses. Ingreso tarde: mes dividido en 4 semanas (días 1-7 = 4/4, 8-14 = 3/4, 15-21 = 2/4, 22+ = no se cobra ese mes). El total se puede ajustar a mano.
 - El total del recibo de anualidad queda fijo (lo impone el servidor). Es por temporada: la siguiente vuelve a $1,320.
 - Membresía: pago único, $90 en 2026-27 (`MEMBERSHIP_FEE_CENTS` en lib/finance-shared.ts; cambia solo por temporada).
+
+## Editor: voz estable y seguimiento de cámara (paquete 58)
+- Voz: se decodifica completa con Web Audio y arranca en el segundo exacto (`components/useVoiceSync.ts`); ya no depende de saltar dentro del archivo grabado (Firefox/Chrome lo graban sin duración y se cortaba). Se detiene si el video se atora cargando. El audio se entrega desde `/api/highlights/voice/file` (mismo sitio, sin necesitar CORS en R2).
+- Cámara: al abrir el editor se mide el movimiento de la escena (`lib/camera-track.ts`, cada 0.1 s, solo arriba/abajo/lados; no mide zoom) y se guarda en `highlights.cam_track` (SQL `highlights-camara.sql`). Los dibujos se mueven con la escena en editor, reproductor y video final; cada dibujo se puede dejar fijo con «Sigue el movimiento de la cámara». Prueba con video sintético: error < 0.6 % del ancho.

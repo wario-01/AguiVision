@@ -1,6 +1,7 @@
 // Pinta los dibujos de un highlight en un canvas (para armar el video final).
 // Es la misma geometría que components/AnnotationLayer.tsx (SVG), escalada al ancho del canvas.
 import { Anno, isActive, inkFor } from "@/lib/annotations";
+import { shiftAnno, type CamTrack } from "@/lib/camera-track";
 
 const SW = 6;
 const FONT = 38;
@@ -18,13 +19,14 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-export function drawAnnotations(ctx: CanvasRenderingContext2D, annos: Anno[], now: number, W: number, H: number) {
+export function drawAnnotations(ctx: CanvasRenderingContext2D, annos: Anno[], now: number, W: number, H: number, track?: CamTrack | null) {
   const s = W / 1000;
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  for (const a of annos) {
-    if (!isActive(a, now)) continue;
+  for (const a0 of annos) {
+    if (!isActive(a0, now)) continue;
+    const a = shiftAnno(a0, track, now);
     const op = opacity(a, now);
     if (op <= 0) continue;
     const P = a.pts.map(([x, y]) => [x * W, y * H] as [number, number]);

@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import MuxPlayer from "@mux/mux-player-react";
 import AnnotationLayer from "@/components/AnnotationLayer";
+import { analyzeCamera, deltaFor, shiftAnno, type CamTrack } from "@/lib/camera-track";
 import { usePlayerClock } from "@/components/usePlayerClock";
 import { useVoiceSync } from "@/components/useVoiceSync";
 import { useMusicSync } from "@/components/useMusicSync";
@@ -75,7 +76,11 @@ export default function HighlightAnnotator({
   initialMusicId,
   initialMusicVolume,
   initialFinalStatus,
+  initialTrack,
+  camMissing,
 }: {
+  initialTrack?: CamTrack | null;
+  camMissing?: boolean;
   teamSlug: string;
   highlightId: string;
   playbackId: string;
@@ -92,6 +97,16 @@ export default function HighlightAnnotator({
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [aspect, setAspect] = useState(16 / 9);
   const { now, duration, paused } = usePlayerClock(playerRef);
+
+  // Movimiento de cámara: los dibujos siguen la escena (se mide solo al abrir el editor).
+  const [track, setTrack] = useState<CamTrack | null>(initialTrack ?? null);
+  const [cam, setCam] = useState<{ phase: "idle" | "working" | "done" | "error"; pct: number; text: string }>({
+    phase: initialTrack ? "done" : "idle",
+    pct: 0,
+    text: initialTrack ? "Cámara medida: los dibujos siguen la escena." : "",
+  });
+  const camTried = useRef(false);
+  const camAbort = useRef<AbortController | null>(null);
 
   const [annos, setAnnos] = useState<Anno[]>(initial);
   const [saved, setSaved] = useState(JSON.stringify(initial));
@@ -160,6 +175,47 @@ export default function HighlightAnnotator({
   const hasVoice = Boolean(activeVoice);
   const sel = annos.find((a) => a.id === selId) ?? null;
   const sorted = useMemo(() => [...annos].sort((a, b) => a.t - b.t), [annos]);
+
+  // ---------- movimiento de cámara ----------
+  const measureCamera = useCallback(async () => {
+    camAbort.current?.abort();
+    const ac = new AbortController();
+    camAbort.current = ac;
+    setCam({ phase: "working", pct: 0, text: "Midiendo el movimiento de la cámara..." });
+    try {
+      const r = await analyzeCamera(
+        `https://stream.mux.com/${playbackId}/capped-1080p.mp4`,
+        (f) => setCam({ phase: "working", pct: f, text: `Midiendo el movimiento de la cámara ${Math.round(f * 100)}%` }),
+        ac.signal
+      );
+      if (ac.signal.aborted) return;
+      const good = r.total > 0 && r.usable / r.total >= 0.4;
+      const next = good ? r.track : null;
+      if (!camMissing) {
+        const res = await fetch("/api/highlights/annotations", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ highlightId, camTrack: next }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo guardar la medición");
+      }
+      setTrack(next);
+      setCam(
+        good
+          ? { phase: "done", pct: 1, text: r.maxShift < 0.01 ? "La cámara casi no se mueve en este clip." : "Cámara medida: los dibujos siguen la escena." }
+          : { phase: "error", pct: 0, text: "No pude medir bien la cámara en este clip (poca textura o mucho movimiento). Los dibujos se quedan fijos en la pantalla." }
+      );
+    } catch (err: any) {
+      if (ac.signal.aborted) return;
+      setCam({ phase: "error", pct: 0, text: `${err?.message ?? "No se pudo medir la cámara."} Los dibujos se quedan fijos en la pantalla.` });
+    }
+  }, [playbackId, highlightId, camMissing]);
+  useEffect(() => {
+    if (camTried.current || track || camMissing || duration <= 0) return;
+    camTried.current = true;
+    measureCamera();
+  }, [duration, track, camMissing, measureCamera]);
+  useEffect(() => () => camAbort.current?.abort(), []);
 
   // ---------- control del video ----------
   const el = () => playerRef.current as any;
@@ -248,6 +304,9 @@ export default function HighlightAnnotator({
     const t = round1(Math.max(0, now));
     const maxD = duration > 0 ? Math.max(1, round1(duration - t)) : DEFAULT_DURATION;
     const a: Anno = { id: newId(), color, t, d: Math.min(DEFAULT_DURATION, maxD), pause: 0, ...partial };
+    // Lo dibujado está en coordenadas de la pantalla en este instante: se guarda relativo al segundo en que aparece.
+    const [cdx, cdy] = deltaFor(a, track, now);
+    if (cdx || cdy) a.pts = a.pts.map(([x, y]) => [Math.max(0, Math.min(1, x - cdx)), Math.max(0, Math.min(1, y - cdy))] as Pt);
     commit([...annos, a]);
     setSelId(a.id);
     // Al terminar un dibujo, volvemos a "Elegir" para poder ajustarlo con sus puntos
@@ -276,7 +335,7 @@ export default function HighlightAnnotator({
     let best: { id: string; area: number } | null = null;
     for (const a of annos) {
       if (!isActive(a, now) && a.id !== selId) continue;
-      const [x0, y0, x1, y1] = bbox(a, aspect);
+      const [x0, y0, x1, y1] = bbox(shiftAnno(a, track, now), aspect);
       if (p[0] >= x0 - pad && p[0] <= x1 + pad && p[1] >= y0 - pad && p[1] <= y1 + pad) {
         const area = (x1 - x0 + pad) * (y1 - y0 + pad);
         if (!best || area < best.area) best = { id: a.id, area };
@@ -370,6 +429,7 @@ export default function HighlightAnnotator({
     setAnnos((arr) =>
       arr.map((a) => {
         if (a.id !== g.id) return a;
+        const [cdx, cdy] = deltaFor(a, track, now);
         if (g.idx < 0) {
           // mover todo el dibujo
           return {
@@ -377,7 +437,8 @@ export default function HighlightAnnotator({
             pts: a.pts.map(([x, y]) => [Math.max(0, Math.min(1, x + dx)), Math.max(0, Math.min(1, y + dy))] as Pt),
           };
         }
-        const pts = a.pts.map((q, i) => (i === g.idx ? p : q)) as Pt[];
+        const pc: Pt = [Math.max(0, Math.min(1, p[0] - cdx)), Math.max(0, Math.min(1, p[1] - cdy))];
+        const pts = a.pts.map((q, i) => (i === g.idx ? pc : q)) as Pt[];
         return { ...a, pts };
       })
     );
@@ -619,6 +680,7 @@ export default function HighlightAnnotator({
       const { blob } = await exportFinalVideo({
         videoUrl: `https://stream.mux.com/${playbackId}/capped-1080p.mp4`,
         annos,
+        track,
         voice: activeVoice,
         music: musicTrack ? { url: musicTrack.url, volume: musicVol } : null,
         onProgress: (p) => setFin({ phase: "recording", pct: p.d > 0 ? p.t / p.d : 0, text: `Grabando ${fmt(p.t)} de ${fmt(p.d)}` }),
@@ -762,14 +824,15 @@ export default function HighlightAnnotator({
   const btn = "min-w-11 h-11 px-3 rounded-xl border text-sm font-extrabold flex items-center justify-center gap-1.5";
   const input = "w-full box-border bg-bg border border-border rounded-lg px-2.5 py-2 text-sm font-semibold";
   const drawing = tool !== "select" && !previewing;
+  const selView = sel ? shiftAnno(sel, track, now) : null;
   const handlePts: { idx: number; pt: Pt }[] =
-    sel && !previewing && tool === "select"
-      ? sel.type === "free"
+    selView && !previewing && tool === "select"
+      ? selView.type === "free"
         ? (() => {
-            const [x0, y0, x1, y1] = bbox(sel, aspect);
+            const [x0, y0, x1, y1] = bbox(selView, aspect);
             return [{ idx: -1, pt: [(x0 + x1) / 2, (y0 + y1) / 2] as Pt }];
           })()
-        : sel.pts.map((pt, idx) => ({ idx, pt }))
+        : selView.pts.map((pt, idx) => ({ idx, pt }))
       : [];
 
   return (
@@ -798,7 +861,7 @@ export default function HighlightAnnotator({
                   if (w > 0 && h > 0) setAspect(w / h);
                 }}
               />
-              <AnnotationLayer annos={annos} aspect={aspect} now={now} selectedId={previewing ? null : selId} extra={draft ? [draft] : []} />
+              <AnnotationLayer annos={annos} aspect={aspect} now={now} track={track} selectedId={previewing ? null : selId} extra={draft ? [draft] : []} />
               {pendingPt && (
                 <div
                   className="absolute w-4 h-4 rounded-full border-2 border-white bg-gold pointer-events-none"
@@ -1106,6 +1169,33 @@ export default function HighlightAnnotator({
             </div>
           </div>
 
+          {/* cámara */}
+          <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="cam-panel">
+            <div className="text-[11px] font-extrabold text-gold tracking-widest uppercase mb-2">Seguimiento de cámara</div>
+            {camMissing ? (
+              <div className="text-xs text-muted leading-relaxed">Falta correr el SQL <b>highlights-camara.sql</b> en Supabase para activarlo.</div>
+            ) : (
+              <>
+                {cam.phase === "working" && (
+                  <div className="h-2 rounded bg-bg overflow-hidden mb-2">
+                    <div className="h-full bg-gold" style={{ width: `${Math.round(cam.pct * 100)}%` }} />
+                  </div>
+                )}
+                <div className={`text-xs leading-relaxed ${cam.phase === "error" ? "text-red font-bold" : "text-muted"}`}>
+                  {cam.text || "Se mide solo al abrir el editor."}
+                </div>
+                <div className="text-[11px] text-muted mt-1.5 leading-relaxed">
+                  Si la cámara se mueve, los dibujos se mueven con la escena. Se puede quitar en cada dibujo.
+                </div>
+                {cam.phase !== "working" && (
+                  <button type="button" onClick={measureCamera} className="mt-2 text-xs font-bold text-gold hover:underline">
+                    Volver a medir
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
           {/* video final */}
           <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="final-panel">
             <div className="text-[11px] font-extrabold text-gold tracking-widest uppercase mb-2">Video final</div>
@@ -1191,6 +1281,17 @@ export default function HighlightAnnotator({
                   />
                 </div>
               </div>
+              {track && (
+                <label className="flex items-center gap-2 text-xs font-bold mb-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    data-testid="follow-toggle"
+                    checked={sel.follow !== false}
+                    onChange={(e) => patch(sel.id, { follow: e.target.checked })}
+                  />
+                  Sigue el movimiento de la cámara
+                </label>
+              )}
               <label className="block text-xs font-bold text-muted mb-1">Pausar el video al aparecer</label>
               <select value={sel.pause} onChange={(e) => patch(sel.id, { pause: Number(e.target.value) })} className={input}>
                 {PAUSE_OPTIONS.map((p) => (

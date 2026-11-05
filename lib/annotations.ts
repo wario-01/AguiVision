@@ -17,6 +17,7 @@ export type Anno = {
   pause: number; // segundos que se pausa el video al aparecer (0 = no pausa)
   pts: Pt[]; // flecha/cuadro/círculo: 2 puntos · texto: 1 punto · libre: varios
   text?: string;
+  follow?: boolean; // false = se queda fija en la pantalla (por defecto sigue el movimiento de la cámara)
 };
 
 export const ANNO_COLORS = ["#F9E547", "#FFFFFF", "#E6483C", "#4ADE80"];
@@ -85,6 +86,7 @@ export function cleanAnnotations(raw: unknown): Anno[] {
       pause: Number.isFinite(pause) ? Math.round(clamp(pause, 0, 10)) : 0,
       pts,
       ...(text ? { text } : {}),
+      ...(x?.follow === false ? { follow: false } : {}),
     });
   }
   return out;

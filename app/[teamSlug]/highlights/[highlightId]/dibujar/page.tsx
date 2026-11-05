@@ -6,6 +6,7 @@ import ReeditPanel from "@/components/ReeditPanel";
 import { getTeamBySlug } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
+import { cleanTrack, type CamTrack } from "@/lib/camera-track";
 import { isR2Configured, r2ViewUrl } from "@/lib/r2";
 import { BUILTIN_TRACKS } from "@/lib/music-library";
 
@@ -38,12 +39,22 @@ export default async function DibujarHighlightPage({
     missingColumn = true;
   }
 
+  let camTrack: CamTrack | null = null;
+  let camMissing = false;
+  try {
+    const { data, error } = await supabase.from("highlights").select("cam_track").eq("id", hl.id).maybeSingle();
+    if (error) camMissing = true;
+    else camTrack = cleanTrack((data as any)?.cam_track);
+  } catch {
+    camMissing = true;
+  }
+
   let voice: { url: string; start: number } | null = null;
   try {
     if (isR2Configured) {
       const { data, error } = await supabase.from("highlights").select("voice_key, voice_start").eq("id", hl.id).maybeSingle();
       const key = (data as any)?.voice_key as string | null | undefined;
-      if (!error && key) voice = { url: r2ViewUrl(key), start: Number((data as any).voice_start) || 0 };
+      if (!error && key) voice = { url: `/api/highlights/voice/file?id=${hl.id}&v=${encodeURIComponent(key)}`, start: Number((data as any).voice_start) || 0 };
     }
   } catch {}
 
@@ -111,6 +122,8 @@ export default async function DibujarHighlightPage({
             initialMusicId={musicId}
             initialFinalStatus={finalStatus}
             initialMusicVolume={musicVolume}
+            initialTrack={camTrack}
+            camMissing={camMissing}
           />
         ) : (
           <div className="border border-dashed border-borderMuted rounded-2xl p-10 text-center text-muted text-sm">

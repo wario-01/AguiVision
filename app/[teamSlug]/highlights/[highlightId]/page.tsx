@@ -5,6 +5,7 @@ import MatchPlayer from "@/components/MatchPlayer";
 import AnnotatedPlayer from "@/components/AnnotatedPlayer";
 import { createClient } from "@/lib/supabase/server";
 import { cleanAnnotations } from "@/lib/annotations";
+import { cleanTrack, type CamTrack } from "@/lib/camera-track";
 import { isR2Configured, r2ViewUrl } from "@/lib/r2";
 import { builtinTrack } from "@/lib/music-library";
 import Link from "next/link";
@@ -45,6 +46,16 @@ export default async function HighlightPage({
     }
   } catch {}
 
+  // Movimiento de cámara medido (si la columna aún no existe, los dibujos quedan fijos)
+  let camTrack: CamTrack | null = null;
+  try {
+    const supabase = await createClient();
+    if (supabase) {
+      const { data, error } = await supabase.from("highlights").select("cam_track").eq("id", highlight.id).maybeSingle();
+      if (!error) camTrack = cleanTrack((data as any)?.cam_track);
+    }
+  } catch {}
+
   // Voz del entrenador (si la columna aún no existe, no hay voz)
   let voice: { url: string; start: number } | null = null;
   try {
@@ -52,7 +63,7 @@ export default async function HighlightPage({
     if (supabase && isR2Configured) {
       const { data, error } = await supabase.from("highlights").select("voice_key, voice_start").eq("id", highlight.id).maybeSingle();
       const key = (data as any)?.voice_key as string | null | undefined;
-      if (!error && key) voice = { url: r2ViewUrl(key), start: Number((data as any).voice_start) || 0 };
+      if (!error && key) voice = { url: `/api/highlights/voice/file?id=${highlight.id}&v=${encodeURIComponent(key)}`, start: Number((data as any).voice_start) || 0 };
     }
   } catch {}
 
@@ -93,7 +104,7 @@ export default async function HighlightPage({
         {highlight.clip_playback_id ? (
           <>
             {!videoEdited && (annotations.length > 0 || voice || music) ? (
-              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} voice={voice} music={music} />
+              <AnnotatedPlayer playbackId={highlight.clip_playback_id} annotations={annotations} voice={voice} music={music} camTrack={camTrack} />
             ) : (
               <MatchPlayer playbackId={highlight.clip_playback_id} />
             )}
