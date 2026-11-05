@@ -49,12 +49,18 @@ export default async function DibujarHighlightPage({
     camMissing = true;
   }
 
-  let voice: { url: string; start: number } | null = null;
+  let voice: { url: string; start: number; pauses?: boolean } | null = null;
   try {
     if (isR2Configured) {
       const { data, error } = await supabase.from("highlights").select("voice_key, voice_start").eq("id", hl.id).maybeSingle();
       const key = (data as any)?.voice_key as string | null | undefined;
       if (!error && key) voice = { url: `/api/highlights/voice/file?id=${hl.id}&v=${encodeURIComponent(key)}`, start: Number((data as any).voice_start) || 0 };
+      if (!error && key) {
+        try {
+          const { data: vp, error: vpe } = await supabase.from("highlights").select("voice_pauses").eq("id", hl.id).maybeSingle();
+          if (!vpe && voice) voice = { ...voice, pauses: (vp as any)?.voice_pauses === true };
+        } catch {}
+      }
     }
   } catch {}
 

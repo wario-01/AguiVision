@@ -57,7 +57,8 @@ export async function POST(req: Request) {
   return NextResponse.json({ uploadUrl: r2UploadUrl(key, 900), key });
 }
 
-// PATCH { highlightId, key, start, duration } -> guarda la voz en el highlight
+// PATCH { highlightId, key, start, duration, pauses } -> guarda la voz en el highlight
+// `start` va en "tiempo de presentación" (segundo del video + pausas ya cumplidas) cuando pauses = true.
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => null);
   const ctx = await context(body?.highlightId);
@@ -74,9 +75,20 @@ export async function PATCH(req: Request) {
   }
   const { error } = await ctx.admin
     .from("highlights")
-    .update({ voice_key: key, voice_start: Math.round(start * 100) / 100, voice_duration: Math.round(duration * 100) / 100 })
+    .update({
+      voice_key: key,
+      voice_start: Math.round(start * 100) / 100,
+      voice_duration: Math.round(duration * 100) / 100,
+      voice_pauses: body.pauses === true,
+    })
     .eq("id", ctx.hl.id);
-  if (error) return NextResponse.json({ error: "No se pudo guardar la voz" }, { status: 500 });
+  if (error) {
+    const missing = /voice_pauses/.test(error.message ?? "");
+    return NextResponse.json(
+      { error: missing ? "Falta correr el SQL de pausas con voz en Supabase (highlights-voz-pausas.sql)." : "No se pudo guardar la voz" },
+      { status: 500 }
+    );
+  }
   if (old && old !== key) await r2Delete(old);
   return NextResponse.json({ ok: true });
 }

@@ -11,6 +11,7 @@ export type ExportOpts = {
   annos: Anno[];
   voice?: { url: string; start: number } | null;
   track?: import("@/lib/camera-track").CamTrack | null; // movimiento de cámara (los dibujos siguen la escena)
+  pauses?: boolean; // true = el video se congela en los dibujos con pausa; la voz va en tiempo de presentación
   music?: { url: string; volume: number } | null;
   maxWidth?: number;
   onProgress?: (p: ExportProgress) => void;
@@ -142,12 +143,14 @@ export async function exportFinalVideo(o: ExportOpts): Promise<{ blob: Blob; mim
     const tv = video.currentTime;
     const tac = ac.currentTime;
     const T = (videoT: number) => tac + (videoT - tv);
+    // Con pausas, la voz va en "tiempo de presentación" (segundos reales desde que arranca la grabación).
+    const Tv = (p: number) => (o.pauses ? tac + (p - tv) : T(p));
 
     if (voiceBuf && o.voice) {
       const s = ac.createBufferSource();
       s.buffer = voiceBuf;
       s.connect(dest);
-      const startAt = T(o.voice.start);
+      const startAt = Tv(o.voice.start);
       if (startAt >= tac) s.start(startAt);
       else s.start(tac, tac - startAt);
       sources.push(s);
@@ -163,7 +166,7 @@ export async function exportFinalVideo(o: ExportOpts): Promise<{ blob: Blob; mim
       s.start(tac, tv % musicBuf.duration);
       sources.push(s);
       if (voiceBuf && o.voice) {
-        const v0 = T(o.voice.start);
+        const v0 = Tv(o.voice.start);
         const v1 = v0 + voiceBuf.duration;
         g.gain.setTargetAtTime(o.music.volume * DUCK, Math.max(tac, v0), 0.15);
         g.gain.setTargetAtTime(o.music.volume, Math.max(tac, v1), 0.3);
@@ -173,6 +176,9 @@ export async function exportFinalVideo(o: ExportOpts): Promise<{ blob: Blob; mim
     const total = video.duration || 0;
     let hiddenSince = 0;
     let lastReport = 0;
+    const pauseList = o.pauses ? o.annos.filter((a) => a.pause > 0).sort((a, b) => a.t - b.t) : [];
+    const firedP = new Set<string>();
+    let resumeAt = 0;
     await new Promise<void>((resolve, reject) => {
       const frame = () => {
         if (stopped) return;
@@ -181,6 +187,21 @@ export async function exportFinalVideo(o: ExportOpts): Promise<{ blob: Blob; mim
           hiddenSince = hiddenSince || performance.now();
           if (performance.now() - hiddenSince > 1500) return reject(new Error("Saliste de esta pestaña mientras se grababa. Vuelve a intentarlo y déjala abierta."));
         } else hiddenSince = 0;
+        // pausas de los dibujos: el video se congela y se sigue grabando (la voz y la música siguen)
+        if (resumeAt && performance.now() >= resumeAt) {
+          resumeAt = 0;
+          video.play().catch(() => {});
+        }
+        if (!resumeAt && !video.paused) {
+          for (const a of pauseList) {
+            if (!firedP.has(a.id) && video.currentTime >= a.t && video.currentTime < a.t + 0.6) {
+              firedP.add(a.id);
+              video.pause();
+              resumeAt = performance.now() + a.pause * 1000;
+              break;
+            }
+          }
+        }
         ctx.drawImage(video, 0, 0, W, H);
         drawAnnotations(ctx, o.annos, video.currentTime, W, H, o.track);
         const now = performance.now();

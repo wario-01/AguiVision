@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 5 de noviembre de 2026 (último paquete subido: 58; en curso: 59 arreglo de compilación).
+Última actualización: 5 de noviembre de 2026 (último paquete subido: 59; en curso: 61 pausas con voz).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -173,3 +173,8 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 ## Editor: voz estable y seguimiento de cámara (paquete 58)
 - Voz: se decodifica completa con Web Audio y arranca en el segundo exacto (`components/useVoiceSync.ts`); ya no depende de saltar dentro del archivo grabado (Firefox/Chrome lo graban sin duración y se cortaba). Se detiene si el video se atora cargando. El audio se entrega desde `/api/highlights/voice/file` (mismo sitio, sin necesitar CORS en R2).
 - Cámara: al abrir el editor se mide el movimiento de la escena (`lib/camera-track.ts`, cada 0.1 s, solo arriba/abajo/lados; no mide zoom) y se guarda en `highlights.cam_track` (SQL `highlights-camara.sql`). Los dibujos se mueven con la escena en editor, reproductor y video final; cada dibujo se puede dejar fijo con «Sigue el movimiento de la cámara». Prueba con video sintético: error < 0.6 % del ancho.
+
+## Pausas con voz (paquete 61, incluye el 60)
+- Las pausas de los dibujos ahora funcionan con voz: el video se congela y la voz/música siguen (tiempo de presentación = segundo del video + pausas cumplidas; `components/usePresentation.ts`). La voz se graba con las pausas activas y guarda `voice_pauses = true` (SQL `highlights-voz-pausas.sql`). Las voces anteriores (sin la bandera) se tratan como antes: sin pausas. Si se cambian pausas después de grabar, hay que regrabar la voz.
+- Video final: congela el video en las pausas y sigue grabando; la voz/música van en tiempo real.
+- Voz y música ignoran parpadeos cortos de «pausado»; el panel de voz muestra una línea de diagnóstico (arranques y cortes).

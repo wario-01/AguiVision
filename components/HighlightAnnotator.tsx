@@ -10,6 +10,7 @@ import AnnotationLayer from "@/components/AnnotationLayer";
 import { analyzeCamera, deltaFor, shiftAnno, type CamTrack } from "@/lib/camera-track";
 import { usePlayerClock } from "@/components/usePlayerClock";
 import { useVoiceSync } from "@/components/useVoiceSync";
+import { usePresentation } from "@/components/usePresentation";
 import { useMusicSync } from "@/components/useMusicSync";
 import { exportFinalVideo, exportSupported, uploadToMux } from "@/lib/exportFinalVideo";
 import {
@@ -86,7 +87,7 @@ export default function HighlightAnnotator({
   playbackId: string;
   title: string;
   initial: Anno[];
-  initialVoice: { url: string; start: number } | null;
+  initialVoice: { url: string; start: number; pauses?: boolean } | null;
   r2Ready: boolean;
   initialTracks: { id: string; title: string; url: string; builtin?: boolean }[];
   initialMusicId: string | null;
@@ -121,7 +122,7 @@ export default function HighlightAnnotator({
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // voz
-  type Pending = { blob: Blob; url: string; start: number; duration: number; mime: string };
+  type Pending = { blob: Blob; url: string; start: number; duration: number; mime: string; pauses: boolean };
   const [voice, setVoice] = useState(initialVoice);
   const [pendingVoice, setPendingVoice] = useState<Pending | null>(null);
   const [recording, setRecording] = useState(false);
@@ -131,8 +132,18 @@ export default function HighlightAnnotator({
   const recStartedAt = useRef(0);
   const recVideoStart = useRef(0);
   const wasMuted = useRef(false);
-  const activeVoice = pendingVoice ? { url: pendingVoice.url, start: pendingVoice.start } : voice;
-  const vs = useVoiceSync({ url: activeVoice?.url ?? null, start: activeVoice?.start ?? 0, now, paused, enabled: !recording });
+  const activeVoice = pendingVoice ? { url: pendingVoice.url, start: pendingVoice.start, pauses: pendingVoice.pauses } : voice;
+  // Pausas de los dibujos: se ejecutan al grabar y al "Probar" (salvo con una voz grabada antes de que existieran las pausas).
+  // La voz y la música siguen corriendo mientras el video está congelado ("tiempo de presentación").
+  const honor = recording || (previewing && (!activeVoice || activeVoice.pauses === true));
+  const pres = usePresentation(playerRef, annos, now, paused, honor);
+  const vs = useVoiceSync({
+    url: activeVoice?.url ?? null,
+    start: activeVoice?.start ?? 0,
+    now: pres.pNow,
+    paused: pres.userPaused,
+    enabled: !recording && (previewing || activeVoice?.pauses !== true),
+  });
 
   // música de fondo
   const [tracks, setTracks] = useState(initialTracks);
@@ -140,7 +151,7 @@ export default function HighlightAnnotator({
   const [musicVol, setMusicVol] = useState(initialMusicVolume);
   const [musicBusy, setMusicBusy] = useState(false);
   const musicTrack = tracks.find((t) => t.id === musicId) ?? null;
-  const ms = useMusicSync({ url: musicTrack?.url ?? null, volume: musicVol, now, paused, enabled: !recording, duck: vs.speaking });
+  const ms = useMusicSync({ url: musicTrack?.url ?? null, volume: musicVol, now: pres.pNow, paused: pres.userPaused, enabled: !recording, duck: vs.speaking });
   const unlockAll = () => {
     vs.unlock();
     ms.unlock();
@@ -167,9 +178,6 @@ export default function HighlightAnnotator({
     | { kind: "free" }
     | { kind: "handle"; id: string; idx: number; last: Pt }
   >(null);
-  const fired = useRef(new Set<string>());
-  const lastNow = useRef(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dirty = JSON.stringify(annos) !== saved;
   const hasVoice = Boolean(activeVoice);
@@ -236,29 +244,6 @@ export default function HighlightAnnotator({
     const p = el();
     if (p && !p.paused) p.pause();
   };
-
-  // En "Probar", las pausas automáticas funcionan igual que para las familias.
-  useEffect(() => {
-    const p = playerRef.current;
-    if (!p) return;
-    if (now < lastNow.current - 0.5) for (const a of annos) if (a.t > now - 0.1) fired.current.delete(a.id);
-    lastNow.current = now;
-    if (!previewing || paused || hasVoice || recording) return; // con voz el video no se pausa solo
-    for (const a of annos) {
-      if (a.pause > 0 && !fired.current.has(a.id) && now >= a.t && now < a.t + 0.6) {
-        fired.current.add(a.id);
-        p.pause();
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => {
-          if (playerRef.current?.paused) playerRef.current.play?.();
-        }, a.pause * 1000);
-        break;
-      }
-    }
-  }, [now, paused, previewing, annos, hasVoice, recording]);
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
 
   // ---------- cambios con deshacer ----------
   const commit = useCallback((next: Anno[]) => {
@@ -487,11 +472,13 @@ export default function HighlightAnnotator({
       if (blob.size < 1000 || duration < 0.5) return setMsg({ ok: false, text: "La grabación quedó vacía. Inténtalo de nuevo." });
       setPendingVoice((old) => {
         if (old) URL.revokeObjectURL(old.url);
-        return { blob, url: URL.createObjectURL(blob), start: recVideoStart.current, duration, mime: type };
+        return { blob, url: URL.createObjectURL(blob), start: recVideoStart.current, duration, mime: type, pauses: true };
       });
     };
     const p = el();
-    recVideoStart.current = Math.round((Number(p?.currentTime) || 0) * 100) / 100;
+    const v0 = Math.round((Number(p?.currentTime) || 0) * 100) / 100;
+    pres.markPassed(v0);
+    recVideoStart.current = Math.round(pres.pAt(v0) * 100) / 100; // la voz se ubica en tiempo de presentación (incluye las pausas)
     wasMuted.current = Boolean(p?.muted);
     if (p) p.muted = true; // el video va en silencio mientras hablas (así el micrófono no lo recoge)
     recRef.current = rec;
@@ -521,8 +508,8 @@ export default function HighlightAnnotator({
   useEffect(() => {
     if (!recording) return;
     const sinceStart = performance.now() - recStartedAt.current;
-    if ((duration > 0 && now >= duration - 0.1) || (paused && sinceStart > 1200)) stopRecording();
-  }, [recording, now, paused, duration, stopRecording]);
+    if ((duration > 0 && now >= duration - 0.1) || (pres.userPaused && sinceStart > 1200)) stopRecording();
+  }, [recording, now, pres.userPaused, duration, stopRecording]);
   useEffect(() => () => {
     if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
   }, []);
@@ -548,11 +535,11 @@ export default function HighlightAnnotator({
       const r2 = await fetch("/api/highlights/voice", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ highlightId, key: d1.key, start: pendingVoice.start, duration: pendingVoice.duration }),
+        body: JSON.stringify({ highlightId, key: d1.key, start: pendingVoice.start, duration: pendingVoice.duration, pauses: pendingVoice.pauses }),
       });
       const d2 = await r2.json().catch(() => ({}));
       if (!r2.ok) throw new Error(d2.error ?? "No se pudo guardar la voz");
-      setVoice({ url: pendingVoice.url, start: pendingVoice.start });
+      setVoice({ url: pendingVoice.url, start: pendingVoice.start, pauses: pendingVoice.pauses });
       setPendingVoice(null);
       setMsg({ ok: true, text: "Voz guardada" });
     } catch (err: any) {
@@ -682,6 +669,7 @@ export default function HighlightAnnotator({
         annos,
         track,
         voice: activeVoice,
+        pauses: !activeVoice || activeVoice.pauses === true,
         music: musicTrack ? { url: musicTrack.url, volume: musicVol } : null,
         onProgress: (p) => setFin({ phase: "recording", pct: p.d > 0 ? p.t / p.d : 0, text: `Grabando ${fmt(p.t)} de ${fmt(p.d)}` }),
       });
@@ -1016,7 +1004,7 @@ export default function HighlightAnnotator({
               onClick={() => {
                 cancelDrawing();
                 setTool("select");
-                fired.current.clear();
+                pres.reset();
                 setSelId(null);
                 seek(0);
                 setPreviewing((v) => !v);
@@ -1048,6 +1036,11 @@ export default function HighlightAnnotator({
           {/* voz */}
           <div className="bg-panel border border-border rounded-2xl p-4 mb-4" data-testid="voice-panel">
             <div className="text-[11px] font-extrabold text-gold tracking-widest uppercase mb-2">Voz del entrenador</div>
+            {activeVoice && (vs.stats.starts > 0) && (
+              <div className="text-[10px] text-muted mb-2" data-testid="voice-stats">
+                Diagnóstico de voz: arranques {vs.stats.starts} · cortes por desfase {vs.stats.drift} · por video atorado {vs.stats.stalls} · por pausa {vs.stats.pauses}
+              </div>
+            )}
             {recording ? (
               <div className="text-sm">
                 <div className="font-bold text-red mb-2">● Grabando {fmt(recSecs)}</div>
@@ -1073,7 +1066,12 @@ export default function HighlightAnnotator({
               </div>
             ) : voice ? (
               <div className="text-sm">
-                <div className="font-bold mb-3">Voz guardada (empieza en {fmt(voice.start)})</div>
+                <div className="font-bold mb-1">Voz guardada (empieza en {fmt(voice.start)})</div>
+                <div className="text-xs text-muted mb-3">
+                  {voice.pauses
+                    ? "Va alineada con las pausas de los dibujos. Si cambias o agregas pausas, graba la voz de nuevo. Para oírla con las pausas usa «Probar con voz»."
+                    : "Esta voz se grabó antes de que existieran las pausas con voz: las pausas no se aplican. Si quieres pausas, graba la voz de nuevo."}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={startRecording} disabled={voiceBusy} className="bg-bg border border-border rounded-lg px-3 py-2.5 text-xs font-bold">
                     🎙 Grabar de nuevo
@@ -1089,7 +1087,7 @@ export default function HighlightAnnotator({
                   🎙 Grabar voz
                 </button>
                 <div className="text-xs text-muted mt-2 leading-relaxed">
-                  Pon el video donde quieras empezar y habla mientras lo ves; los dibujos aparecen solos. El video va en silencio mientras grabas. Con voz, el video ya no se pausa solo.
+                  Pon el video donde quieras empezar y habla mientras lo ves; los dibujos aparecen solos. El video va en silencio mientras grabas. Si un dibujo tiene pausa, el video se congela y tú sigues hablando; la voz queda alineada con esas pausas.
                 </div>
               </div>
             )}

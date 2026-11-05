@@ -16,7 +16,17 @@ export function useMusicSync(opts: {
   enabled?: boolean;
   duck?: boolean; // true mientras se oye la voz
 }) {
-  const { url, volume, now, paused, enabled = true, duck = false } = opts;
+  const { url, volume, now, paused: pausedRaw, enabled = true, duck = false } = opts;
+  // El estado "pausado" a veces parpadea al cargar el video; se ignora si dura muy poco.
+  const [paused, setPaused] = useState(pausedRaw);
+  useEffect(() => {
+    if (!pausedRaw) {
+      setPaused(false);
+      return;
+    }
+    const id = setTimeout(() => setPaused(true), 180);
+    return () => clearTimeout(id);
+  }, [pausedRaw]);
   const audio = useRef<HTMLAudioElement | null>(null);
   const ctx = useRef<AudioContext | null>(null);
   const gain = useRef<GainNode | null>(null);

@@ -18,8 +18,9 @@ function getCtx(): AudioContext | null {
   return sharedCtx;
 }
 
-const DRIFT = 0.25; // si la voz se desfasa más de esto respecto al video, se reacomoda
-const STALL_MS = 250; // el video lleva este tiempo sin avanzar estando "en play": se atoró cargando
+const DRIFT = 0.4; // si la voz se desfasa más de esto respecto al video, se reacomoda
+const STALL_MS = 700; // el video lleva este tiempo sin avanzar estando "en play": se atoró cargando
+const PAUSE_MS = 180; // un "pausado" más corto que esto (parpadeo del reproductor) no corta la voz
 
 export function useVoiceSync(opts: {
   url: string | null;
@@ -33,6 +34,8 @@ export function useVoiceSync(opts: {
   const [muted, setMuted] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [stalled, setStalled] = useState(false);
+  const [pausedStable, setPausedStable] = useState(paused);
+  const stats = useRef({ starts: 0, drift: 0, stalls: 0, pauses: 0 });
   const src = useRef<{ node: AudioBufferSourceNode; ctxStart: number; offset: number } | null>(null);
   const gain = useRef<GainNode | null>(null);
   const lastAdv = useRef({ now: 0, at: 0 });
@@ -74,6 +77,16 @@ export function useVoiceSync(opts: {
     }
   }, []);
 
+  // Algunos navegadores hacen parpadear el estado "pausado" al cargar; se ignora si dura muy poco.
+  useEffect(() => {
+    if (!paused) {
+      setPausedStable(false);
+      return;
+    }
+    const id = setTimeout(() => setPausedStable(true), PAUSE_MS);
+    return () => clearTimeout(id);
+  }, [paused]);
+
   useEffect(() => () => stop(), [stop]);
   useEffect(() => stop(), [url, buffer, stop]);
 
@@ -103,7 +116,11 @@ export function useVoiceSync(opts: {
     if (!ctx || !buffer) return;
     const target = now - start;
     const inRange = target >= 0 && target < buffer.duration - 0.02;
-    if (!enabled || paused || stalled || !inRange) {
+    if (!enabled || pausedStable || stalled || !inRange) {
+      if (src.current) {
+        if (pausedStable) stats.current.pauses++;
+        else if (stalled) stats.current.stalls++;
+      }
       stop();
       return;
     }
@@ -111,6 +128,7 @@ export function useVoiceSync(opts: {
     if (cur) {
       const pos = cur.offset + (ctx.currentTime - cur.ctxStart);
       if (Math.abs(pos - target) <= DRIFT) return; // va bien
+      stats.current.drift++;
       stop();
     }
     if ((ctx.state as string) !== "running") {
@@ -134,7 +152,8 @@ export function useVoiceSync(opts: {
     };
     node.start(0, Math.max(0, target));
     src.current = { node, ctxStart: ctx.currentTime, offset: Math.max(0, target) };
-  }, [buffer, start, now, paused, stalled, enabled, muted, stop]);
+    stats.current.starts++;
+  }, [buffer, start, now, pausedStable, stalled, enabled, muted, stop]);
 
   /** Llamar dentro de un toque del usuario: en iPhone/Safari el audio solo se "desbloquea" así. */
   const unlock = useCallback(() => {
@@ -144,8 +163,8 @@ export function useVoiceSync(opts: {
   }, []);
 
   const speaking = Boolean(
-    url && buffer && enabled && !muted && !paused && !stalled && now >= start && now - start <= buffer.duration
+    url && buffer && enabled && !muted && !pausedStable && !stalled && now >= start && now - start <= buffer.duration
   );
 
-  return { muted, setMuted, blocked, unlock, speaking };
+  return { muted, setMuted, blocked, unlock, speaking, stats: stats.current };
 }
