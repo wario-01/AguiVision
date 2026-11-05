@@ -113,9 +113,9 @@ export function useVoiceSync(opts: {
       if (Math.abs(pos - target) <= DRIFT) return; // va bien
       stop();
     }
-    if (ctx.state !== "running") {
+    if ((ctx.state as string) !== "running") {
       ctx.resume().then(() => setBlocked(false)).catch(() => setBlocked(true));
-      if (ctx.state !== "running") {
+      if ((ctx.state as string) !== "running") {
         setBlocked(true);
         return;
       }
@@ -140,7 +140,7 @@ export function useVoiceSync(opts: {
   const unlock = useCallback(() => {
     const ctx = getCtx();
     if (!ctx) return;
-    if (ctx.state !== "running") ctx.resume().then(() => setBlocked(false)).catch(() => {});
+    if ((ctx.state as string) !== "running") ctx.resume().then(() => setBlocked(false)).catch(() => {});
   }, []);
 
   const speaking = Boolean(
