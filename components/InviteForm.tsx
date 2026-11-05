@@ -58,6 +58,7 @@ export default function InviteForm({
     setInfo("");
     try {
       let direct = 0;
+      let already = 0;
       for (const slug of targets) {
         const res = await fetch("/api/invitations", {
           method: "POST",
@@ -72,8 +73,11 @@ export default function InviteForm({
         const data = await res.json();
         if (!res.ok) throw new Error(`${slug}: ${data.error ?? "no se pudo invitar"}`);
         if (data.direct) direct++;
+        if (data.already) already++;
       }
-      if (direct > 0) setInfo("Esa persona ya tenía cuenta: quedó agregada de inmediato.");
+      if (already > 0) setInfo("Esa persona ya estaba ligada a este jugador.");
+      else if (direct > 0) setInfo("Esa persona ya tenía cuenta: quedó ligada de inmediato.");
+      else if (needsPlayer) setInfo("Invitación creada. Cuando esa persona entre por primera vez, quedará ligada al jugador.");
       setEmail("");
       setPlayerName("");
       setStatus("idle");
@@ -161,7 +165,8 @@ export default function InviteForm({
       {needsPlayer && (
         <div className="text-xs text-muted">
           Escribí el nombre de un jugador ya cargado (aparece mientras escribís) o uno nuevo — si es nuevo, se
-          crea solo. Si lo dejás vacío, esa persona no queda vinculada a ningún jugador en particular.
+          crea solo. Si lo dejás vacío, esa persona no queda vinculada a ningún jugador en particular. Para ligar el mismo
+          correo a otro hijo, vuelve a invitarlo con el nombre del otro jugador.
         </div>
       )}
       {role === "collaborator" && (

@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 4 de noviembre de 2026 (último paquete subido: 55; en curso: 56 cuota acordada).
+Última actualización: 4 de noviembre de 2026 (último paquete subido: 56; en curso: 57 varios hijos por correo).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -162,7 +162,7 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 - Empezar por simular una página del álbum y una hoja de estampas (como se hizo con la ficha) y mostrársela a Mario antes de tocar el código.
 - Para imprimir: la ficha ya es un SVG que se ve igual impresa (`.ficha-card`, ancho de 4 pulgadas en `app/globals.css`). Ojo: el holograma es solo de pantalla; al imprimir sale con los colores pero sin movimiento.
 - Preguntas abiertas: tamaño de la estampa (¿varias por hoja carta?), número de copias por niño, quién imprime, qué pregunta lleva cada una, si el álbum incluye a los entrenadores.
-- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 55.
+- Forma de trabajo: Claude solo puede LEER el repo (el push está bloqueado); cada cambio se entrega como zip numerado (paquete N) que Mario sube a GitHub web, y después se verifica contra origin/main. El último paquete subido fue el 56.
 
 ## Finanzas: cuota acordada (paquete 56)
 - Tabla `player_fees` (historial; la vigente es la más reciente). Solo dueño y quienes expiden recibos pueden ajustar; cada cambio lleva motivo, nombre y fecha.

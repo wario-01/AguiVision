@@ -131,6 +131,28 @@ export async function POST(req: Request) {
     }
   }
 
+  // Jugador / madre-padre: si esa persona ya tiene cuenta, queda ligada de inmediato. Así un mismo
+  // correo puede quedar ligado a varios jugadores del mismo equipo (una fila por jugador).
+  if ((body.role === "player" || body.role === "parent") && isAdminConfigured) {
+    const admin = createAdminClient();
+    if (admin) {
+      const { data: profile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+      if (profile) {
+        let q = admin.from("team_members").select("id").eq("team_id", team.id).eq("profile_id", profile.id).eq("role", body.role);
+        q = playerId ? q.eq("player_id", playerId) : q.is("player_id", null);
+        const { data: dup } = await q.limit(1);
+        if (dup && dup.length > 0) {
+          return NextResponse.json({ ok: true, direct: true, already: true });
+        }
+        const { error: addError } = await admin
+          .from("team_members")
+          .insert({ team_id: team.id, profile_id: profile.id, role: body.role, player_id: playerId });
+        if (addError) return NextResponse.json({ error: "No se pudo ligar a esa persona" }, { status: 500 });
+        return NextResponse.json({ ok: true, direct: true });
+      }
+    }
+  }
+
   const { error } = await supabase.from("team_invitations").insert({
     team_id: team.id,
     email,
@@ -139,7 +161,7 @@ export async function POST(req: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: "No se pudo crear la invitación (¿ya existía?)" }, { status: 403 });
+    return NextResponse.json({ error: "No se pudo crear la invitación (¿ya existía para ese jugador?)" }, { status: 403 });
   }
 
   return NextResponse.json({ ok: true });
