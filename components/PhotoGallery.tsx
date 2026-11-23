@@ -11,6 +11,7 @@ export type GalleryPhoto = {
   thumbUrl: string;
   fileName: string;
   keep: boolean;
+  webUntil: string | null; // si está publicada en el sitio web, hasta cuándo
   mine: boolean;
   kind: "photo" | "video";
   durationSeconds: number | null;
@@ -192,6 +193,28 @@ export default function PhotoGallery({
     router.refresh();
   }
 
+  async function setWeb(web: boolean) {
+    const ids = Array.from(selected).filter((id) => byId.get(id)?.kind !== "video");
+    if (ids.length === 0) return setMessage("Los videos no se pueden mostrar en el sitio; elige fotos.");
+    if (web && !confirm(`¿Mostrar ${ids.length} foto${ids.length === 1 ? "" : "s"} en el sitio público nidoaustintx.com por 30 días?\n\nConfirma que los papás dieron permiso y que no aparecen de frente jugadores de otros equipos.`)) return;
+    setBusy(web ? "Publicando…" : "Quitando…");
+    const res = await fetch("/api/fotos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamSlug, ids, web }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy("");
+    if (!res.ok) return setMessage(data.error ?? "No se pudo actualizar");
+    setMessage(
+      web
+        ? `${data.updated} foto${data.updated === 1 ? "" : "s"} en el sitio por ${data.webDays ?? 30} días. Aparecen en 1–2 minutos.`
+        : "Fotos quitadas del sitio. Desaparecen en 1–2 minutos."
+    );
+    clear();
+    router.refresh();
+  }
+
   async function remove() {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
@@ -258,6 +281,12 @@ export default function PhotoGallery({
                 <button onClick={() => setKeep(false)} disabled={!!busy} className="text-xs font-bold rounded-full px-3.5 py-2 border border-borderMuted text-muted">
                   Quitar guardado
                 </button>
+                <button onClick={() => setWeb(true)} disabled={!!busy} className="text-xs font-bold rounded-full px-3.5 py-2 border border-goldBorderDim text-goldText">
+                  🌐 Mostrar en el sitio
+                </button>
+                <button onClick={() => setWeb(false)} disabled={!!busy} className="text-xs font-bold rounded-full px-3.5 py-2 border border-borderMuted text-muted">
+                  Quitar del sitio
+                </button>
               </>
             )}
             {canDeleteSelection && (
@@ -306,8 +335,18 @@ export default function PhotoGallery({
                         )}
                       </>
                     )}
-                    {p.keep && (
-                      <span className="absolute top-1 left-1 bg-black/60 text-goldText text-[11px] font-extrabold px-1.5 rounded">★</span>
+                    {(p.keep || p.webUntil) && (
+                      <span className="absolute top-1 left-1 flex gap-1">
+                        {p.keep && <span className="bg-black/60 text-goldText text-[11px] font-extrabold px-1.5 rounded">★</span>}
+                        {p.webUntil && (
+                          <span
+                            title={`En el sitio hasta ${p.webUntil.slice(0, 10)}`}
+                            className="bg-black/60 text-white text-[11px] font-extrabold px-1.5 rounded"
+                          >
+                            🌐
+                          </span>
+                        )}
+                      </span>
                     )}
                     {selecting && (
                       <span

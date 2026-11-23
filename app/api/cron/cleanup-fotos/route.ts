@@ -24,6 +24,8 @@ export async function GET(req: Request) {
     .select("id, r2_key, thumb_key")
     .eq("keep", false)
     .lt("created_at", cutoff)
+    // Las que están publicadas en el sitio web esperan a que termine su tiempo.
+    .or(`web_until.is.null,web_until.lt.${new Date().toISOString()}`)
     .limit(500);
   if (error) return NextResponse.json({ error: "Error consultando fotos" }, { status: 500 });
 

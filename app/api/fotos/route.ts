@@ -174,28 +174,41 @@ export async function DELETE(req: Request) {
 }
 
 // PATCH /api/fotos
-// body: { teamSlug, ids: string[], keep: boolean }
+// body: { teamSlug, ids: string[], keep: boolean }        → "Guardar"
+//    o: { teamSlug, ids: string[], web: boolean }         → "Mostrar en el sitio"
 // "Guardar": las fotos marcadas no se borran solas a los 60 días.
+// "Mostrar en el sitio": la foto aparece en la galería de nidoaustintx.com por
+// WEB_DAYS días y después se retira sola (solo fotos, no videos).
+const WEB_DAYS = 30;
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => null);
   const ctx = await context(body?.teamSlug);
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   const { supabase, team, role } = ctx;
   if (role !== "coach" && role !== "assistant") {
-    return NextResponse.json({ error: "Solo el cuerpo técnico puede guardar fotos" }, { status: 403 });
+    return NextResponse.json({ error: "Solo el cuerpo técnico puede cambiar esto" }, { status: 403 });
   }
   const ids: string[] = Array.isArray(body.ids) ? body.ids.filter((x: unknown) => typeof x === "string").slice(0, 200) : [];
-  if (ids.length === 0 || typeof body.keep !== "boolean") {
+  const isWeb = typeof body.web === "boolean";
+  if (ids.length === 0 || (!isWeb && typeof body.keep !== "boolean")) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
-  const { data, error } = await supabase
+  let q = supabase
     .from("photos")
-    .update({ keep: body.keep })
+    .update(
+      isWeb
+        ? { web_until: body.web ? new Date(Date.now() + WEB_DAYS * 24 * 3600 * 1000).toISOString() : null }
+        : { keep: body.keep }
+    )
     .in("id", ids)
-    .eq("team_id", team.id)
-    .select("id");
+    .eq("team_id", team.id);
+  if (isWeb && body.web) q = q.eq("kind", "photo"); // los videos no se publican en el sitio
+  const { data, error } = await q.select("id");
   if (error || !data || data.length === 0) {
-    return NextResponse.json({ error: "No se pudo actualizar" }, { status: 403 });
+    return NextResponse.json(
+      { error: isWeb && body.web ? "No se pudo publicar (los videos no se pueden mostrar en el sitio)" : "No se pudo actualizar" },
+      { status: 403 }
+    );
   }
-  return NextResponse.json({ ok: true, updated: data.length });
+  return NextResponse.json({ ok: true, updated: data.length, webDays: WEB_DAYS });
 }

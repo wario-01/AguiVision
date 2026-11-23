@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { clubParts } from "@/lib/tz";
+import { isR2Configured, r2ViewUrl } from "@/lib/r2";
 
 // GET /api/public/club
 // Datos PÚBLICOS para el sitio web del club (NidoAustin.com):
@@ -8,6 +9,8 @@ import { clubParts } from "@/lib/tz";
 //   - upcoming: próximos partidos y torneos del calendario
 //   - results:  últimos marcadores capturados en el año (solo del equipo)
 //   - records:  récord del año por categoría (G-E-P, goles a favor/en contra)
+//   - photos:   fotos que el cuerpo técnico marcó "Mostrar en el sitio" (30 días);
+//               enlaces temporales de 1 h, solo de esas fotos
 //
 // Solo devuelve campos que ya son públicos o no identifican a nadie:
 // categoría, rival, liga, cancha, hora y el link a /en-vivo/<id> (que ya es
@@ -33,7 +36,7 @@ export function OPTIONS() {
 export async function GET(req: Request) {
   const admin = createAdminClient();
   if (!admin) {
-    return NextResponse.json({ live: [], upcoming: [], results: [], records: [] }, { headers: { ...CORS, ...CACHE } });
+    return NextResponse.json({ live: [], upcoming: [], results: [], records: [], photos: [] }, { headers: { ...CORS, ...CACHE } });
   }
 
   const origin = new URL(req.url).origin;
@@ -133,5 +136,24 @@ export async function GET(req: Request) {
   }
   const records = Array.from(byCat.values()).map((r) => ({ ...r, year }));
 
-  return NextResponse.json({ live, upcoming, results, records }, { headers: { ...CORS, ...CACHE } });
+  // ---- Fotos publicadas en el sitio (solo fotos, nunca videos ni nombres de archivo)
+  let photos: { id: string; category: string | null; url: string; thumb_url: string }[] = [];
+  if (isR2Configured) {
+    const { data: ph } = await admin
+      .from("photos")
+      .select("id, r2_key, thumb_key, kind, web_until, teams!inner(age_category, active)")
+      .gt("web_until", new Date().toISOString())
+      .eq("kind", "photo")
+      .eq("teams.active", true)
+      .order("web_until", { ascending: false })
+      .limit(60);
+    photos = (ph ?? []).map((x: any) => ({
+      id: x.id,
+      category: x.teams?.age_category ?? null,
+      url: r2ViewUrl(x.r2_key),
+      thumb_url: r2ViewUrl(x.thumb_key),
+    }));
+  }
+
+  return NextResponse.json({ live, upcoming, results, records, photos }, { headers: { ...CORS, ...CACHE } });
 }

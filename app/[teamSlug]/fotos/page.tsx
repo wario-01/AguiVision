@@ -32,6 +32,7 @@ export default async function FotosPage({ params }: { params: { teamSlug: string
       thumbUrl: r2ViewUrl(p.thumb_key),
       fileName: p.file_name,
       keep: p.keep,
+      webUntil: p.web_until && new Date(p.web_until).getTime() > Date.now() ? p.web_until : null,
       mine: p.uploaded_by === user?.id,
       kind: p.kind === "video" ? "video" : "photo",
       durationSeconds: p.duration_seconds ?? null,
@@ -55,7 +56,7 @@ export default async function FotosPage({ params }: { params: { teamSlug: string
       <div className="flex-grow overflow-y-auto px-5 pt-24 pb-24 md:p-11">
         <div className="font-display text-2xl font-bold mb-1">Fotos y videos</div>
         <div className="text-sm text-muted mb-6">
-          {team.name} · las fotos y videos se borran solos a los 60 días, salvo las marcadas con “Guardar”
+          {team.name} · las fotos y videos se borran solos a los 60 días, salvo las marcadas con “Guardar” · 🌐 = se ve en nidoaustintx.com
         </div>
         {!isR2Configured ? (
           <div className="text-sm text-muted">Falta conectar el almacenamiento de fotos.</div>
