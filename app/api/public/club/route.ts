@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       .eq("teams.active", true)
       .gte("start_at", from)
       .order("start_at", { ascending: true })
-      .limit(30),
+      .limit(60),
   ]);
 
   // Si todavía no existe la columna "cancelled" (SQL sin correr), se pide sin ella.
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
       .eq("teams.active", true)
       .gte("start_at", from)
       .order("start_at", { ascending: true })
-      .limit(30);
+      .limit(60);
     eventRows = retry.data ?? [];
   }
 
@@ -105,7 +105,7 @@ export async function GET(req: Request) {
 
   const upcoming = active
     .filter((e: any) => !(e.type === "tournament" && withGames.has(e.id)))
-    .slice(0, 12)
+    .slice(0, 30)
     .map((e: any) => {
       const parent = e.parent_event_id ? parents.get(e.parent_event_id) : undefined;
       return {
