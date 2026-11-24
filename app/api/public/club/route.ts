@@ -53,12 +53,12 @@ export async function GET(req: Request) {
       .limit(6),
     admin
       .from("events")
-      .select("id, type, title, opponent, opponent_logo_url, league, location, start_at, end_at, cancelled, teams!inner(age_category, active)")
+      .select("id, type, title, opponent, opponent_logo_url, league, location, start_at, end_at, cancelled, parent_event_id, teams!inner(age_category, active)")
       .in("type", ["game", "tournament"])
       .eq("teams.active", true)
       .gte("start_at", from)
       .order("start_at", { ascending: true })
-      .limit(8),
+      .limit(30),
   ]);
 
   // Si todavía no existe la columna "cancelled" (SQL sin correr), se pide sin ella.
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
       .eq("teams.active", true)
       .gte("start_at", from)
       .order("start_at", { ascending: true })
-      .limit(8);
+      .limit(30);
     eventRows = retry.data ?? [];
   }
 
@@ -83,18 +83,46 @@ export async function GET(req: Request) {
     watch_url: `${origin}/en-vivo/${s.id}`,
   }));
 
-  const upcoming = eventRows.filter((e: any) => !e.cancelled).map((e: any) => ({
-    id: e.id,
-    type: e.type,
-    category: e.teams?.age_category ?? null,
-    title: e.title,
-    opponent: e.opponent,
-    opponent_logo_url: e.opponent_logo_url,
-    league: e.league,
-    location: e.location,
-    start_at: e.start_at,
-    end_at: e.end_at,
-  }));
+  // Torneos con juegos: en el sitio se muestran SOLO los juegos, cada uno con
+  // el nombre del torneo (event_name) y la dirección del torneo (venue).
+  // El torneo "padre" se oculta si tiene juegos; si no tiene, se muestra solo.
+  const active = eventRows.filter((e: any) => !e.cancelled);
+  const parentIds = Array.from(new Set(active.map((e: any) => e.parent_event_id).filter(Boolean)));
+  const tournIds = active.filter((e: any) => e.type === "tournament").map((e: any) => e.id);
+  const parents = new Map<string, { title: string | null; location: string | null; league: string | null }>();
+  const withGames = new Set<string>();
+  if (parentIds.length) {
+    const { data: ps } = await admin.from("events").select("id, title, location, league").in("id", parentIds);
+    for (const x of ps ?? []) parents.set(x.id, { title: x.title, location: x.location, league: x.league });
+  }
+  if (tournIds.length) {
+    const { data: kids } = await admin
+      .from("events")
+      .select("parent_event_id, cancelled")
+      .in("parent_event_id", tournIds);
+    for (const k of kids ?? []) if (!k.cancelled) withGames.add(k.parent_event_id);
+  }
+
+  const upcoming = active
+    .filter((e: any) => !(e.type === "tournament" && withGames.has(e.id)))
+    .slice(0, 12)
+    .map((e: any) => {
+      const parent = e.parent_event_id ? parents.get(e.parent_event_id) : undefined;
+      return {
+        id: e.id,
+        type: e.type,
+        category: e.teams?.age_category ?? null,
+        title: e.title,
+        opponent: e.opponent,
+        opponent_logo_url: e.opponent_logo_url,
+        league: e.league || parent?.league || null,
+        location: e.location || parent?.location || null, // cancha del juego
+        event_name: parent?.title ?? null,                // nombre del torneo
+        venue: parent?.location && parent.location !== e.location ? parent.location : null, // dirección del torneo
+        start_at: e.start_at,
+        end_at: e.end_at,
+      };
+    });
 
   // ---- Resultados del año (mismo criterio que el Perfil del equipo: año calendario del club).
   // Solo marcador del EQUIPO; game_stats (jugadores) nunca se lee aquí.
