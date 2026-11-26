@@ -7,8 +7,10 @@ import {
   getCurriculumItems,
   groupCurriculumByPeriod,
   getFormativeEvaluationsForPlayer,
+  getPlayerCycleMessage,
 } from "@/lib/data-evaluaciones";
 import PlayerEvalForm from "@/components/PlayerEvalForm";
+import PlayerMessageEditor from "@/components/PlayerMessageEditor";
 import { isGoalkeeper } from "@/lib/ficha-shared";
 
 export default async function EvaluarJugadorPage({
@@ -29,9 +31,10 @@ export default async function EvaluarJugadorPage({
   const player = players.find((p) => p.id === params.playerId);
   if (!player) notFound();
 
-  const [items, evaluaciones] = await Promise.all([
+  const [items, evaluaciones, coachMessage] = await Promise.all([
     getCurriculumItems(cycle.id),
     getFormativeEvaluationsForPlayer(player.id, cycle.id),
+    getPlayerCycleMessage(player.id, cycle.id),
   ]);
 
   // Las competencias de portero solo se califican a los porteros.
@@ -66,6 +69,17 @@ export default async function EvaluarJugadorPage({
             groups={groups}
             evaluaciones={evaluacionesSimples}
           />
+        )}
+
+        {groups.length > 0 && (
+          <div className="mt-8">
+            <PlayerMessageEditor
+              playerId={player.id}
+              cycleId={cycle.id}
+              playerName={player.full_name}
+              initial={coachMessage?.mensaje ?? ""}
+            />
+          </div>
         )}
 
         <div className="flex items-center gap-3 mt-8">

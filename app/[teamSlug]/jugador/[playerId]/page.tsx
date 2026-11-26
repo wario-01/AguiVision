@@ -30,7 +30,6 @@ import {
 } from "@/lib/data-evaluaciones";
 import FormativeRadarChart from "@/components/charts/FormativeRadarChart";
 import FormativeProgress from "@/components/FormativeProgress";
-import PlayerMessageEditor from "@/components/PlayerMessageEditor";
 import PhysicalProgress from "@/components/PhysicalProgress";
 import PlayerCard from "@/components/PlayerCard";
 import { getFicha } from "@/lib/data-ficha";
@@ -202,19 +201,6 @@ export default async function PerfilJugadorPage({
             </div>
           )}
         </div>
-
-        {/* ---------- Mensaje del entrenador (va en el informe PDF) ---------- */}
-        {canEdit && breakdown && (
-          <div className="no-print mb-8">
-            <div className="text-sm font-bold mb-3">Mensaje del entrenador para el jugador</div>
-            <PlayerMessageEditor
-              playerId={player.id}
-              cycleId={breakdown.cycleId}
-              cycleName={breakdown.cycleName}
-              initial={coachMessage?.mensaje ?? ""}
-            />
-          </div>
-        )}
 
         {/* ---------- Evaluación físico-técnica ---------- */}
         {physicalEnabled && (

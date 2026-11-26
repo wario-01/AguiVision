@@ -182,7 +182,7 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 ## Informe PDF: desglose por área y mensaje del entrenador (paquete 64)
 - El informe en PDF del jugador ahora trae, después del resumen formativo, un recuadro por área con cada competencia evaluada (periodo, nivel, barra y nota del entrenador), con el promedio del área.
 - La lista suelta de comentarios del final se quitó: cada comentario sale dentro de su competencia.
-- Mensaje del entrenador para el jugador: se escribe en el perfil del jugador (botón "Guardar mensaje"), uno por jugador y ciclo, y sale al final del PDF con la firma del entrenador. Vacío = no se muestra.
+- Mensaje del entrenador para el jugador: se escribe al final de la evaluación del jugador (Evaluaciones → ciclo → jugador, botón "Guardar mensaje"), uno por jugador y ciclo, y sale al final del PDF con la firma del entrenador. Vacío = no se muestra.
 - SQL: supabase/mensaje-entrenador.sql (tabla player_cycle_messages).
 - Pendiente posible: que las familias también vean el mensaje en "Mi evaluación" cuando se publique el ciclo.
 
