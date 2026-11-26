@@ -1,6 +1,6 @@
 # AguiVision — Roadmap
 
-Última actualización: 5 de noviembre de 2026 (último paquete subido: 61; en curso: 62 guardar dibujos y voz juntos).
+Última actualización: 26 de noviembre de 2026 (último paquete subido: 62; en curso: 63 roadmap y 64 informe PDF).
 
 ## Hecho
 - Evaluación del jugador: formativa (todos los equipos) y físico-técnica (U12 y U14), con perfil unificado y PDF. Ver sección "Evaluaciones" abajo para lo de octubre 2026.
@@ -178,3 +178,28 @@ Decidido con Mario (todo en español, explicaciones cortas, primero simular ante
 - Las pausas de los dibujos ahora funcionan con voz: el video se congela y la voz/música siguen (tiempo de presentación = segundo del video + pausas cumplidas; `components/usePresentation.ts`). La voz se graba con las pausas activas y guarda `voice_pauses = true` (SQL `highlights-voz-pausas.sql`). Las voces anteriores (sin la bandera) se tratan como antes: sin pausas. Si se cambian pausas después de grabar, hay que regrabar la voz.
 - Video final: congela el video en las pausas y sigue grabando; la voz/música van en tiempo real.
 - Voz y música ignoran parpadeos cortos de «pausado»; el panel de voz muestra una línea de diagnóstico (arranques y cortes).
+
+## Informe PDF: desglose por área y mensaje del entrenador (paquete 64)
+- El informe en PDF del jugador ahora trae, después del resumen formativo, un recuadro por área con cada competencia evaluada (periodo, nivel, barra y nota del entrenador), con el promedio del área.
+- La lista suelta de comentarios del final se quitó: cada comentario sale dentro de su competencia.
+- Mensaje del entrenador para el jugador: se escribe en el perfil del jugador (botón "Guardar mensaje"), uno por jugador y ciclo, y sale al final del PDF con la firma del entrenador. Vacío = no se muestra.
+- SQL: supabase/mensaje-entrenador.sql (tabla player_cycle_messages).
+- Pendiente posible: que las familias también vean el mensaje en "Mi evaluación" cuando se publique el ciclo.
+
+## Posibles a futuro (conversación del 14 de nov 2026)
+
+### Plataforma para varias academias (más de 100 equipos)
+Idea: crecer AguiVision para una academia grande y poder cederla a otras, sin perder el control ni la identidad. Por ahora es solo una posibilidad.
+- Una sola app y una sola base de datos para todas; nueva capa «academia» sobre los equipos. Las reglas de acceso de Supabase pasan de equipo a academia, así una academia no ve nada de otra.
+- Tres niveles: dueño de la plataforma (crea y suspende academias, ve el uso), administrador de academia (crea equipos y personas solo en su academia) y los roles actuales (entrenador, asistente, padre, jugador).
+- Personalización por academia: logo, nombre y colores sobre la base AguiVision («Con tecnología AguiVision»); luego dirección propia (`academia.aguivision.com`) y módulos activables por academia (finanzas, highlights, transmisión).
+- Costo: lo que más pesa es el video en Mux. Cuotas por academia (horas de partidos y transmisión), retención como la actual, archivos pesados y fotos en R2, y un plan por academia que cubra su consumo.
+- Finanzas: emisores y dueño por academia (hoy los correos están fijos en el código).
+- Orden sugerido: 1) tabla de academias y acceso por academia (los equipos actuales pasan a ser «tu academia»), 2) administrador de academia y pantalla para crearlas, 3) logo/colores, 4) cuotas y uso, 5) cobro a academias y dominios propios.
+- Por decidir: cuota fija o por uso; si una persona puede estar en más de una academia con el mismo correo.
+
+### Presentación ejecutiva para el director de la academia
+Pendiente: presentación (deck) de AguiVision con sus capacidades, versatilidad y desglose de costos (Vercel, Supabase, Mux, R2, Resend, dominio, etc.), hecha con datos actuales de precios y del uso real.
+
+### Guía para entender y diagnosticar AguiVision
+Pendiente: sesión(es) de aprendizaje para entender la herramienta al 100 %: cómo se conectan las piezas (app, base de datos, video, archivos, correo), dónde mirar cuando algo falla (Vercel, Supabase, consola del navegador) y cómo leer los errores. Mario hoy lo entiende a nivel básico y quiere profundizar.

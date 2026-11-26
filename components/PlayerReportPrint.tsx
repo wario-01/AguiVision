@@ -6,7 +6,8 @@
 // espacio para observaciones y firmas.
 
 import { CLUB_TZ } from "@/lib/tz";
-import { NIVELES, AREAS, FormativeNote } from "@/lib/data-evaluaciones";
+import { AREAS as AREA_LIST } from "@/lib/data-evaluaciones";
+import { NIVELES, FormativeBreakdown, CoachMessage } from "@/lib/data-evaluaciones";
 import { PrintRadar, PrintCompareBar, PrintLine } from "@/components/charts/PrintCharts";
 import { statsOf, AttRecord, Counts } from "@/lib/asistencia";
 
@@ -46,7 +47,8 @@ export default function PlayerReportPrint({
   metrics,
   historial,
   teamAverages,
-  notes,
+  breakdown,
+  message,
 }: {
   teamName: string;
   playerName: string;
@@ -60,7 +62,8 @@ export default function PlayerReportPrint({
   metrics: Metric[];
   historial: Record<string, Result[]>; // más reciente primero
   teamAverages: Record<string, number>;
-  notes: FormativeNote[];
+  breakdown: FormativeBreakdown | null;
+  message: CoachMessage | null;
 }) {
   const hoy = new Date().toLocaleDateString("es-MX", {
     timeZone: CLUB_TZ,
@@ -174,7 +177,7 @@ export default function PlayerReportPrint({
                 </tr>
               </thead>
               <tbody>
-                {AREAS.filter((a) => areas[a.value] != null).map((a) => {
+                {AREA_LIST.filter((a) => areas[a.value] != null).map((a) => {
                   const v = areas[a.value];
                   const n = Math.min(5, Math.max(1, Math.round(v)));
                   return (
@@ -212,6 +215,53 @@ export default function PlayerReportPrint({
           <div className="text-[12px] text-[#6b6450]">Sin evaluaciones formativas registradas.</div>
         )}
       </div>
+
+      {/* Desglose por área */}
+      {breakdown && breakdown.areas.length > 0 && (
+        <div className="mb-5">
+          <SectionTitle>Desglose por área · {breakdown.cycleName}</SectionTitle>
+          {breakdown.areas.map((ar) => {
+            const pn = Math.min(5, Math.max(1, Math.round(ar.promedio)));
+            return (
+              <div key={ar.area} className="border border-[#d9d2be] mb-3 break-inside-avoid">
+                <div className="flex items-center justify-between bg-[#f4f0e2] border-b-2 border-[#B8963A] px-2.5 py-1.5">
+                  <span className="font-bold text-[#003C71] text-[13px]">{ar.label}</span>
+                  <span className="text-[11px] text-[#1a1a1a]">
+                    Promedio {ar.promedio.toFixed(1)} / 5 · {NIVELES[pn - 1].label}
+                  </span>
+                </div>
+                {ar.items.map((it, i) => {
+                  const n = NIVELES.findIndex((x) => x.value === it.nivel) + 1 || 1;
+                  return (
+                    <div key={i} className="px-2.5 py-1.5 border-b border-[#d9d2be] last:border-b-0 break-inside-avoid">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-[11.5px] leading-snug flex-grow">{it.descripcion}</div>
+                        <div className="shrink-0 text-right">
+                          <div className="text-[10px] font-bold text-[#6b6450] uppercase tracking-wide">
+                            {it.periodo} · {NIVELES[n - 1].label}
+                          </div>
+                          <span className="inline-flex gap-[2px] align-middle">
+                            {[1, 2, 3, 4, 5].map((k) => (
+                              <span
+                                key={k}
+                                className={`inline-block h-[6px] w-[16px] ${k <= n ? "bg-[#003C71]" : "bg-[#d9d2be]"}`}
+                              />
+                            ))}
+                          </span>{" "}
+                          <span className="text-[10px] text-[#6b6450]">{n} / 5</span>
+                        </div>
+                      </div>
+                      {it.notas && (
+                        <div className="text-[11px] italic text-[#444] mt-1 leading-snug">Entrenador: «{it.notas}»</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Evaluación físico-técnica */}
       {filasFisicas.length > 0 && (
@@ -273,26 +323,18 @@ export default function PlayerReportPrint({
         </div>
       )}
 
-      {/* Observaciones */}
-      <div className="mb-8 break-inside-avoid">
-        <SectionTitle>Comentarios y observaciones del entrenador</SectionTitle>
-        {notes.length > 0 && (
-          <div className="mb-2">
-            {notes.map((n, i) => (
-              <div key={i} className="border-b border-[#d9d2be] py-1.5 break-inside-avoid">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-[#6b6450]">
-                  {n.periodo} · {AREAS.find((a) => a.value === n.area)?.label ?? n.area} ·{" "}
-                  {NIVELES.find((x) => x.value === n.nivel)?.label ?? n.nivel}
-                </div>
-                <div className="text-[12px] leading-snug">{n.notas}</div>
-              </div>
-            ))}
+      {/* Mensaje del entrenador */}
+      {message && message.mensaje.trim() && (
+        <div className="mb-8 break-inside-avoid">
+          <SectionTitle>Mensaje del entrenador para {playerName.split(" ")[0]}</SectionTitle>
+          <div className="border-[1.5px] border-[#B8963A] bg-[#fbf8ee] px-4 py-3">
+            <div className="text-[13.5px] leading-relaxed whitespace-pre-line">«{message.mensaje.trim()}»</div>
+            {message.author_name && (
+              <div className="text-right text-[11px] text-[#6b6450] mt-2">— {message.author_name}</div>
+            )}
           </div>
-        )}
-        <div className="h-[22px] border-b border-[#9b9378]" />
-        <div className="h-[22px] border-b border-[#9b9378]" />
-        <div className="h-[22px] border-b border-[#9b9378]" />
-      </div>
+        </div>
+      )}
 
       {/* Firmas */}
       <div className="grid grid-cols-2 gap-16 mt-10 break-inside-avoid">

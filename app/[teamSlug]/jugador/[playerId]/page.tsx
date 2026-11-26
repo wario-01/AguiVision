@@ -20,7 +20,8 @@ import {
   getPlayerProfile,
   getPlayerHighlights,
   getLatestFormativeSnapshot,
-  getLatestFormativeNotes,
+  getLatestFormativeBreakdown,
+  getPlayerCycleMessage,
   getPhysicalEvalEnabled,
   getPhysicalMetrics,
   getPhysicalResultsForPlayer,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/data-evaluaciones";
 import FormativeRadarChart from "@/components/charts/FormativeRadarChart";
 import FormativeProgress from "@/components/FormativeProgress";
+import PlayerMessageEditor from "@/components/PlayerMessageEditor";
 import PhysicalProgress from "@/components/PhysicalProgress";
 import PlayerCard from "@/components/PlayerCard";
 import { getFicha } from "@/lib/data-ficha";
@@ -56,13 +58,14 @@ export default async function PerfilJugadorPage({
   const attYear = new Date().getFullYear();
   const attendance = await getPlayerAttendance(player.id, attYear);
 
-  const [formativeSnapshot, formativeNotes, highlights, metrics] = await Promise.all([
+  const [formativeSnapshot, breakdown, highlights, metrics] = await Promise.all([
     getLatestFormativeSnapshot(player.id, team.id),
-    getLatestFormativeNotes(player.id, team.id),
+    getLatestFormativeBreakdown(player.id, team.id),
     getPlayerHighlights(player.id, 5),
     physicalEnabled ? getPhysicalMetrics(team.id) : Promise.resolve([]),
   ]);
 
+  const coachMessage = breakdown ? await getPlayerCycleMessage(player.id, breakdown.cycleId) : null;
   const ficha = await getFicha(player, team.id);
   const historial = physicalEnabled ? await getPhysicalResultsForPlayer(player.id) : {};
   const teamAverages =
@@ -200,6 +203,19 @@ export default async function PerfilJugadorPage({
           )}
         </div>
 
+        {/* ---------- Mensaje del entrenador (va en el informe PDF) ---------- */}
+        {canEdit && breakdown && (
+          <div className="no-print mb-8">
+            <div className="text-sm font-bold mb-3">Mensaje del entrenador para el jugador</div>
+            <PlayerMessageEditor
+              playerId={player.id}
+              cycleId={breakdown.cycleId}
+              cycleName={breakdown.cycleName}
+              initial={coachMessage?.mensaje ?? ""}
+            />
+          </div>
+        )}
+
         {/* ---------- Evaluación físico-técnica ---------- */}
         {physicalEnabled && (
           <div className="mb-8">
@@ -280,7 +296,8 @@ export default async function PerfilJugadorPage({
         metrics={metrics.map((m) => ({ id: m.id, nombre: m.nombre, unidad: m.unidad }))}
         historial={historial}
         teamAverages={teamAverages}
-        notes={formativeNotes}
+        breakdown={breakdown}
+        message={coachMessage}
       />
     </div>
   );

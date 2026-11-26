@@ -523,3 +523,115 @@ export async function getLatestFormativeNotes(
       notas: (r.notas as string).trim(),
     }));
 }
+
+// ---------- Informe en PDF: desglose por área + mensaje del entrenador ----------
+
+export interface BreakdownItem {
+  periodo: string;
+  descripcion: string;
+  nivel: Nivel;
+  notas: string | null;
+}
+
+export interface BreakdownArea {
+  area: string;
+  label: string;
+  promedio: number;
+  items: BreakdownItem[];
+}
+
+export interface FormativeBreakdown {
+  cycleId: string;
+  cycleName: string;
+  areas: BreakdownArea[];
+}
+
+// Todas las competencias evaluadas del ciclo formativo MÁS RECIENTE del jugador,
+// agrupadas por área (con su nivel y su nota), para el informe en PDF.
+export async function getLatestFormativeBreakdown(
+  playerId: string,
+  teamId: string
+): Promise<FormativeBreakdown | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('formative_evaluations')
+    .select(
+      'nivel, notas, eval_curriculum_items!inner(area, descripcion, period_label, period_order, item_order, cycle_id, eval_cycles!inner(name, start_date, team_id))'
+    )
+    .eq('player_id', playerId);
+
+  if (error || !data) {
+    if (error) console.error('getLatestFormativeBreakdown error', error);
+    return null;
+  }
+
+  const rows = (data as any[]).filter((r) => r.eval_curriculum_items?.eval_cycles?.team_id === teamId);
+  if (rows.length === 0) return null;
+
+  let latestCycle = '';
+  let latestStart = '';
+  let latestName = '';
+  for (const r of rows) {
+    const it = r.eval_curriculum_items;
+    const start = it.eval_cycles.start_date as string;
+    if (start >= latestStart) {
+      latestStart = start;
+      latestCycle = it.cycle_id as string;
+      latestName = it.eval_cycles.name as string;
+    }
+  }
+
+  const mine = rows
+    .filter((r) => r.eval_curriculum_items.cycle_id === latestCycle)
+    .sort(
+      (a, b) =>
+        (a.eval_curriculum_items.period_order ?? 0) - (b.eval_curriculum_items.period_order ?? 0) ||
+        (a.eval_curriculum_items.item_order ?? 0) - (b.eval_curriculum_items.item_order ?? 0)
+    );
+
+  const areas: BreakdownArea[] = [];
+  for (const a of AREAS) {
+    const items = mine.filter((r) => r.eval_curriculum_items.area === a.value);
+    if (items.length === 0) continue;
+    const nums = items.map((r) => NIVEL_A_NUMERO[r.nivel as Nivel] ?? 1);
+    areas.push({
+      area: a.value,
+      label: a.label,
+      promedio: nums.reduce((x, y) => x + y, 0) / nums.length,
+      items: items.map((r) => ({
+        periodo: r.eval_curriculum_items.period_label as string,
+        descripcion: r.eval_curriculum_items.descripcion as string,
+        nivel: r.nivel as Nivel,
+        notas: typeof r.notas === 'string' && r.notas.trim() ? (r.notas as string).trim() : null,
+      })),
+    });
+  }
+
+  return { cycleId: latestCycle, cycleName: latestName, areas };
+}
+
+export interface CoachMessage {
+  mensaje: string;
+  author_name: string | null;
+}
+
+export async function getPlayerCycleMessage(
+  playerId: string,
+  cycleId: string
+): Promise<CoachMessage | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('player_cycle_messages')
+    .select('mensaje, author_name')
+    .eq('player_id', playerId)
+    .eq('cycle_id', cycleId)
+    .maybeSingle();
+  if (error || !data) {
+    if (error) console.error('getPlayerCycleMessage error', error);
+    return null;
+  }
+  return data as CoachMessage;
+}
